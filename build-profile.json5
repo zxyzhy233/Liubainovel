@@ -1,0 +1,51 @@
+{
+  "app": {
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:\\Users\\47539\\.ohos\\config\\default_ReaderKitDemo_DNbl65FIr4sI3mid5L1SCdGyTrRcXHw-iTunKIy_zgo=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B3B8167E03AEB651B1EB1168F84CDA3912F9FC509294A278371FC6DC76F93B7DDF8F831BBDAE40D",
+          "profile": "C:\\Users\\47539\\.ohos\\config\\default_ReaderKitDemo_DNbl65FIr4sI3mid5L1SCdGyTrRcXHw-iTunKIy_zgo=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\47539\\.ohos\\config\\default_ReaderKitDemo_DNbl65FIr4sI3mid5L1SCdGyTrRcXHw-iTunKIy_zgo=.p12",
+          "storePassword": "0000001B5171A2DCD49BC21365B183838666D49E7ED554A899697957E8801411B9D92DA6D56D7F56CE528C"
+        }
+      }
+    ],
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "compatibleSdkVersion": "5.0.4(16)",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+        }
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug",
+      },
+      {
+        "name": "release"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}

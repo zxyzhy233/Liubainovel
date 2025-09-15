@@ -1,0 +1,25 @@
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * Global reader settings data model.
+ */
+export class ReaderSettings {
+    fontName: string = 'System Font';
+    fontPath: string = '';
+    fontSize: number = 18;
+    lineHeight: number = 1.9;
+    theme: string = 'white';
+    flipMode: string = '0'; // '0' for emulation, '1' for horizontal scroll
+}

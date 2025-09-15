@@ -1,0 +1,540 @@
+Ôr@Ÿªassertions¤code´customTransformCache¬dependencies¢id¤meta±moduleSideEffects¬originalCode±originalSourcemap«resolvedIds®sourcemapChainµsyntheticNamedExportsµtransformDependencies®transformFiles¨cacheAstÔrAÚ"/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+import window from "@ohos.window";
+import deviceInfo from "@ohos.deviceInfo";
+import display from "@ohos.display";
+import hilog from "@ohos.hilog";
+const TAG = 'WindowAbility';
+export class WindowAbility {
+    constructor() {
+        this.context = null;
+        this.windowStage = null;
+        this.windowClass = null;
+        this.windowType = null;
+    }
+    static getInstance() {
+        return WindowAbility.INSTANCE;
+    }
+    initContext(context) {
+        this.context = context;
+    }
+    setWindowStage(windowStage) {
+        this.windowStage = windowStage;
+    }
+    getWindowStage() {
+        return this.windowStage;
+    }
+    /**
+     * Initialize avoid area parameters
+     * @param - mainWindow windows
+     * @returns void
+     */
+    async initAvoidArea(mainWindow) {
+        hilog.info(0x0000, TAG, 'initAvoidArea start');
+        // Initialize default values
+        AppStorage.setOrCreate('statusBarHeight', 36);
+        AppStorage.setOrCreate('navigationAiBarHeight', 28);
+        const defaultDisplay = display.getDefaultDisplaySync();
+        let scaledDensity = (defaultDisplay.scaledDensity > 0) ? defaultDisplay.scaledDensity : 1;
+        const systemArea = mainWindow.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
+        const navArea = mainWindow.getWindowAvoidArea(window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR);
+        if (systemArea) {
+            const statusBarHeight = systemArea.topRect.height / scaledDensity;
+            hilog.info(0x0000, TAG, "initAvoidArea statusBarHeight: " + statusBarHeight);
+            AppStorage.setOrCreate('statusBarHeight', statusBarHeight);
+            if (deviceInfo.deviceType === 'tablet') {
+                AppStorage.setOrCreate("Paf.TopHeight", 56);
+            }
+            else if (deviceInfo.deviceType === '2in1') {
+                AppStorage.setOrCreate("Paf.TopHeight", 0);
+            }
+            else {
+                AppStorage.setOrCreate("Paf.TopHeight", systemArea.topRect.height);
+            }
+        }
+        if (navArea) {
+            const navigationAiBarHeight = navArea.bottomRect.height / scaledDensity;
+            hilog.info(0x0000, TAG, "initAvoidArea navigationAiBarHeight: " + navigationAiBarHeight);
+            AppStorage.setOrCreate('navigationAiBarHeight', navigationAiBarHeight);
+            if (deviceInfo.deviceType === 'tablet') {
+                AppStorage.setOrCreate("NavigationBarHeight", navArea.bottomRect.height);
+            }
+            else if (deviceInfo.deviceType === '2in1') {
+                AppStorage.setOrCreate("NavigationBarHeight", 0);
+            }
+            else {
+                AppStorage.setOrCreate("NavigationBarHeight", navArea.bottomRect.height);
+            }
+        }
+        hilog.info(0x0000, TAG, 'initAvoidArea end');
+    }
+    initWindowSize() {
+        window.getLastWindow(this.context, (err, windowClass) => {
+            if (err.code) {
+                hilog.error(0x0000, TAG, 'setWindowWidth getLastWindow failed, error is: ' + JSON.stringify(err));
+                return;
+            }
+            let windowProperty = windowClass.getWindowProperties();
+            AppStorage.setOrCreate('windowWidth', windowProperty.windowRect.width);
+            AppStorage.setOrCreate('windowHeight', windowProperty.windowRect.height);
+            this.windowClass = windowClass;
+            this.onWindowSizeChange();
+            this.onWindowStatusChange();
+            this.onWindowRectChange();
+        });
+    }
+    onWindowStatusChange() {
+        if (!this.windowClass) {
+            return;
+        }
+        this.windowClass.on('windowStatusChange', (type) => {
+            this.windowType = type;
+            hilog.info(0x0000, TAG, 'onWindowStatusChange type: ', JSON.stringify(type));
+            this.initAvoidArea(this.windowClass);
+            if (type === window.WindowStatusType.FLOATING) {
+                AppStorage.setOrCreate("NavigationBarHeight", 0);
+            }
+        });
+    }
+    onWindowRectChange() {
+        if (!this.windowClass) {
+            return;
+        }
+        this.windowClass.on('windowRectChange', (option) => {
+            if (this.windowType === window.WindowStatusType.SPLIT_SCREEN ||
+                this.windowType === window.WindowStatusType.FULL_SCREEN) {
+                // Reacquire the navigation bar height
+                this.setNavigationBar();
+            }
+        });
+    }
+    setNavigationBar() {
+        if (!this.windowClass) {
+            return;
+        }
+        const nav = this.windowClass.getWindowAvoidArea(window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR);
+        hilog.info(0x0000, TAG, 'setNavigationBar avoidArea: ', JSON.stringify(nav));
+        if (nav) {
+            AppStorage.setOrCreate("NavigationBarHeight", nav.bottomRect.height);
+        }
+    }
+    async setWindowLayoutFullScreen(isFullScreen) {
+        if (deviceInfo.deviceType === '2in1') {
+            return;
+        }
+        window.getLastWindow(this.context).then(async (wnd) => {
+            await wnd.setWindowLayoutFullScreen(isFullScreen);
+        });
+    }
+    onWindowSizeChange(callback) {
+        if (!this.windowClass) {
+            return;
+        }
+        try {
+            this.windowClass.on('windowSizeChange', (size) => {
+                hilog.info(0x0000, TAG, 'onWindowSizeChange windowSizeChange size is: ' + JSON.stringify(size));
+                AppStorage.setOrCreate('windowWidth', size.width);
+                AppStorage.setOrCreate('windowHeight', size.height);
+                callback && callback();
+            });
+        }
+        catch (exception) {
+            hilog.error(0x0000, TAG, 'onWindowSizeChange failed, error is ' + JSON.stringify(exception));
+        }
+    }
+    setOrientation(windowStage, orientation) {
+        windowStage.getMainWindow().then((win) => {
+            win.setPreferredOrientation(orientation).then((data) => {
+                hilog.info(0x0000, TAG, 'setOrientation succeeded, error is: ' + JSON.stringify(data));
+            }).catch((err) => {
+                hilog.error(0x0000, TAG, 'setOrientation setPreferredOrientation failed. error is: ' + JSON.stringify(err));
+            });
+        }).catch((err) => {
+            hilog.error(0x0000, TAG, 'setOrientation getMainWindow failed, error is ' + JSON.stringify(err));
+        });
+    }
+    /**
+     * Set the system bar to have visible.
+     *
+     * @param { Array<'status' | 'navigation'> } names - The set of system bar
+     * @param context - Current application context
+     */
+    toggleWindowSystemBar(names, windowContext) {
+        window.getLastWindow(windowContext, (err, data) => {
+            try {
+                if (err.code) {
+                    return;
+                }
+                let windowClass = data;
+                if (names.length === 0) {
+                    AppStorage.setOrCreate('Grid.tabPro.enableAvoidAreaListener', false);
+                }
+                windowClass.setWindowSystemBarEnable(names).then(() => {
+                    hilog.info(0x0000, TAG, 'toggleWindowSystemBar setWindowSystemBarEnable succeeded');
+                }, (error) => {
+                    if (error) {
+                        hilog.error(0x0000, TAG, 'toggleWindowSystemBar setWindowSystemBarEnable failed, error is:' + JSON.stringify(error));
+                    }
+                });
+                if (names.length > 0) {
+                    AppStorage.setOrCreate('Grid.tabPro.enableAvoidAreaListener', true);
+                }
+                hilog.info(0x0000, TAG, 'toggleWindowSystemBar Succeeded in setting the system bar to be invisible.');
+            }
+            catch (exception) {
+                hilog.error(0x0000, TAG, 'toggleWindowSystemBar Failed to set the system bar to be invisible. Cause:' + JSON.stringify(exception));
+            }
+        });
+    }
+}
+WindowAbility.INSTANCE = new WindowAbility();
+//# sourceMappingURL=WindowAbility.js.mapÂ”Ùf hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.window.d.tsÙj hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.deviceInfo.d.tsÙg hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.display.d.tsÙe hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.hilog.d.tsÙED:\ST\ReaderKitDemo\entry\src\main\ets\entryability\WindowAbility.etsÔrB›ªmoduleName±isLocalDependency¯isNodeEntryFile§pkgPath±belongProjectPath§pkgNameªpkgVersion±dependencyPkgInfo°belongModulePath¯hostModulesInfo¬shouldEmitJs¥entryÃÂ¹D:\ST\ReaderKitDemo\entry³D:\ST\ReaderKitDemo¥entry¥1.0.0Ô  ¹D:\ST\ReaderKitDemo\entry“ÔrC’²hostDependencyName®hostModuleName¯./WindowAbility¥entryC½../entryability/WindowAbility¥entryC½../entryability/WindowAbility¥entryÃÃÚ!¥/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { window } from '@kit.ArkUI';
+import { deviceInfo } from '@kit.BasicServicesKit';
+import { display } from '@kit.ArkUI';
+import { common } from '@kit.AbilityKit';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+
+const TAG = 'WindowAbility';
+
+export class WindowAbility {
+  private static readonly INSTANCE: WindowAbility = new WindowAbility();
+  private context: common.UIAbilityContext | null = null;
+  private windowStage: window.WindowStage | null = null;
+  private windowClass: window.Window | null = null;
+  private windowType: window.WindowStatusType | null = null;
+
+  private constructor() {
+  }
+
+  public static getInstance(): WindowAbility {
+    return WindowAbility.INSTANCE;
+  }
+
+  initContext(context: common.UIAbilityContext) {
+    this.context = context;
+  }
+
+  setWindowStage(windowStage: window.WindowStage): void {
+    this.windowStage = windowStage;
+  }
+
+  getWindowStage(): window.WindowStage | null {
+    return this.windowStage;
+  }
+
+  /**
+   * Initialize avoid area parameters
+   * @param - mainWindow windows
+   * @returns void
+   */
+  async initAvoidArea(mainWindow: window.Window): Promise<void> {
+    hilog.info(0x0000, TAG, 'initAvoidArea start');
+    // Initialize default values
+    AppStorage.setOrCreate<number>('statusBarHeight', 36);
+    AppStorage.setOrCreate<number>('navigationAiBarHeight', 28);
+    const defaultDisplay = display.getDefaultDisplaySync();
+    let scaledDensity = (defaultDisplay.scaledDensity > 0) ? defaultDisplay.scaledDensity : 1;
+    const systemArea: window.AvoidArea = mainWindow.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
+    const navArea: window.AvoidArea = mainWindow.getWindowAvoidArea(window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR);
+    if (systemArea) {
+      const statusBarHeight = systemArea.topRect.height / scaledDensity;
+      hilog.info(0x0000, TAG, "initAvoidArea statusBarHeight: " + statusBarHeight);
+      AppStorage.setOrCreate<number>('statusBarHeight', statusBarHeight);
+
+      if (deviceInfo.deviceType === 'tablet') {
+        AppStorage.setOrCreate<number>("Paf.TopHeight", 56);
+      } else if (deviceInfo.deviceType === '2in1') {
+        AppStorage.setOrCreate<number>("Paf.TopHeight", 0);
+      } else {
+        AppStorage.setOrCreate<number>("Paf.TopHeight", systemArea.topRect.height);
+      }
+    }
+    if (navArea) {
+      const navigationAiBarHeight = navArea.bottomRect.height / scaledDensity;
+      hilog.info(0x0000, TAG, "initAvoidArea navigationAiBarHeight: " + navigationAiBarHeight);
+      AppStorage.setOrCreate<number>('navigationAiBarHeight', navigationAiBarHeight);
+
+      if (deviceInfo.deviceType === 'tablet') {
+        AppStorage.setOrCreate<number>("NavigationBarHeight", navArea.bottomRect.height);
+      } else if (deviceInfo.deviceType === '2in1') {
+        AppStorage.setOrCreate<number>("NavigationBarHeight", 0);
+      } else {
+        AppStorage.setOrCreate<number>("NavigationBarHeight", navArea.bottomRect.height);
+      }
+    }
+    hilog.info(0x0000, TAG, 'initAvoidArea end');
+  }
+
+  initWindowSize(): void {
+    window.getLastWindow(this.context, (err, windowClass) => {
+      if (err.code) {
+        hilog.error(0x0000, TAG, 'setWindowWidth getLastWindow failed, error is: ' + JSON.stringify(err));
+        return;
+      }
+      let windowProperty = windowClass.getWindowProperties();
+      AppStorage.setOrCreate<number>('windowWidth', windowProperty.windowRect.width);
+      AppStorage.setOrCreate<number>('windowHeight', windowProperty.windowRect.height);
+      this.windowClass = windowClass;
+      this.onWindowSizeChange();
+      this.onWindowStatusChange();
+      this.onWindowRectChange();
+    });
+  }
+
+  private onWindowStatusChange(): void {
+    if (!this.windowClass) {
+      return;
+    }
+    this.windowClass.on('windowStatusChange', (type: window.WindowStatusType) => {
+      this.windowType = type;
+      hilog.info(0x0000, TAG, 'onWindowStatusChange type: ', JSON.stringify(type));
+      this.initAvoidArea(this.windowClass!);
+      if (type === window.WindowStatusType.FLOATING) {
+        AppStorage.setOrCreate<number>("NavigationBarHeight", 0);
+      }
+    })
+  }
+
+  private onWindowRectChange(): void {
+    if (!this.windowClass) {
+      return;
+    }
+    this.windowClass.on('windowRectChange', (option) => {
+      if (this.windowType === window.WindowStatusType.SPLIT_SCREEN ||
+        this.windowType === window.WindowStatusType.FULL_SCREEN) {
+        // Reacquire the navigation bar height
+        this.setNavigationBar();
+      }
+    })
+  }
+
+  private setNavigationBar(): void {
+    if (!this.windowClass) {
+      return;
+    }
+    const nav: window.AvoidArea = this.windowClass.getWindowAvoidArea(window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR);
+    hilog.info(0x0000, TAG, 'setNavigationBar avoidArea: ', JSON.stringify(nav));
+    if (nav) {
+      AppStorage.setOrCreate<number>("NavigationBarHeight", nav.bottomRect.height);
+    }
+  }
+
+  async setWindowLayoutFullScreen(isFullScreen: boolean): Promise<void> {
+    if (deviceInfo.deviceType === '2in1') {
+      return;
+    }
+    window.getLastWindow(this.context).then(async (wnd: window.Window) => {
+      await wnd.setWindowLayoutFullScreen(isFullScreen);
+    });
+  }
+
+  onWindowSizeChange(callback?: () => void): void {
+    if (!this.windowClass) {
+      return;
+    }
+    try {
+      this.windowClass.on('windowSizeChange', (size) => {
+        hilog.info(0x0000, TAG,
+          'onWindowSizeChange windowSizeChange size is: ' + JSON.stringify(size));
+        AppStorage.setOrCreate<number>('windowWidth', size.width);
+        AppStorage.setOrCreate<number>('windowHeight', size.height);
+        callback && callback();
+      });
+    } catch (exception) {
+      hilog.error(0x0000, TAG,
+        'onWindowSizeChange failed, error is ' + JSON.stringify(exception));
+    }
+  }
+
+  setOrientation(windowStage: window.WindowStage, orientation: window.Orientation): void {
+    windowStage.getMainWindow().then((win) => {
+      win.setPreferredOrientation(orientation).then((data) => {
+        hilog.info(0x0000, TAG, 'setOrientation succeeded, error is: ' + JSON.stringify(data));
+      }).catch((err: Error) => {
+        hilog.error(0x0000, TAG, 'setOrientation setPreferredOrientation failed. error is: ' + JSON.stringify(err));
+      });
+    }).catch((err: Error) => {
+      hilog.error(0x0000, TAG, 'setOrientation getMainWindow failed, error is ' + JSON.stringify(err));
+    });
+  }
+
+  /**
+   * Set the system bar to have visible.
+   *
+   * @param { Array<'status' | 'navigation'> } names - The set of system bar
+   * @param context - Current application context
+   */
+  toggleWindowSystemBar(names: Array<'status' | 'navigation'>, windowContext: Context | undefined): void {
+    window.getLastWindow(windowContext, (err, data) => {
+      try {
+        if (err.code) {
+          return;
+        }
+        let windowClass = data;
+        if (names.length === 0) {
+          AppStorage.setOrCreate('Grid.tabPro.enableAvoidAreaListener', false);
+        }
+        windowClass.setWindowSystemBarEnable(names).then(() => {
+          hilog.info(0x0000, TAG, 'toggleWindowSystemBar setWindowSystemBarEnable succeeded');
+        }, (error: Error) => {
+          if (error) {
+            hilog.error(0x0000, TAG,
+              'toggleWindowSystemBar setWindowSystemBarEnable failed, error is:' + JSON.stringify(error));
+          }
+        })
+        if (names.length > 0) {
+          AppStorage.setOrCreate('Grid.tabPro.enableAvoidAreaListener', true);
+        }
+        hilog.info(0x0000, TAG, 'toggleWindowSystemBar Succeeded in setting the system bar to be invisible.');
+      } catch (exception) {
+        hilog.error(0x0000, TAG,
+          'toggleWindowSystemBar Failed to set the system bar to be invisible. Cause:' + JSON.stringify(exception));
+      }
+    });
+  }
+}ÀÔrD”¬@ohos.window°@ohos.deviceInfo­@ohos.display«@ohos.hilogÔrE—ªassertions¨external¢id¤meta±moduleSideEffectsªresolvedByµsyntheticNamedExportsAÃÙf hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.window.d.tsAÃªoh-resolveÂEAÃÙj hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.deviceInfo.d.tsAÃªoh-resolveÂEAÃÙg hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.display.d.tsAÃªoh-resolveÂEAÃÙe hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.hilog.d.tsAÃªoh-resolveÂ“ÔrF–§version¤fileªsourceRoot§sources¥names¨mappings°WindowAbility.js ‘±WindowAbility.etsÜ Ê‘”    ‘” –”   ” 	” ” ”! #”" $–”   ” 	” ” ”) 2”* 3–”   ” 	” ” ”# $”$ %–”   ” 	” ” ” 3”  4–”   ” ”	 	” ” ” ””   ” ” ” ‘” •” 
+” ” 4” 8” 9•” 
+” ” 3” 7”  8•” 
+” ” .” 2”  3•” 
+” ” 7” ;” <’” ” ”” !	”
+ !” !” !–” "” "” "” "”% "!”& ""’” #” #”” %” %” %” %.—” &” &” &	” &” &” &” &’” '” '”” )” )” )” )0—” *” *” *	” *” *”& *"”' *#’” +” +’” -” -–” .” .” .” .” .”  .’” /” /‘” 1‘” 5–” 6”	 6”
+ 6” 6” 6”" 6/œ” 7” 7	” 7
+” 7” 7” 7” 7” 7”  7”5 71”6 72”7 73’” 8”$ 8 š” 9” 9” 9” 9” 9#”0 94”2 96”4 98”5 99”6 9:š” :” :” :” :” :#”6 ::”8 :<”: :>”; :?”< :Ì@™” ;” ;
+” ;” ;”& ;"”' ;#”< ;8”> ;:”? ;;Ü ” <” <” <” <” <”+ <'”, <(”9 <5”< <8”= <9”> <:”? <;”Ì@ <<”ÌA <=”ÌO <ÌK”ÌP <ÌL”Ì] <ÌY”Ì^ <ÌZ”Ì_ <Ì[”Ì` <Ì\”Ìa <Ì]”Ìb <Ì^Ÿ” =” =
+” =” =)”% =3”& =4”8 =ÌF”9 =ÌG”? =ÌM”Ì@ =ÌN”ÌM =Ì[”ÌN =Ì\”ÌY =Ìg”ÌZ =Ìh”Ì[ =ÌiŸ” >” >
+” >” >&”" >0”# >1”5 >ÌC”6 >ÌD”< >ÌJ”= >ÌK”ÌJ >ÌX”ÌK >ÌY”Ìd >Ìr”Ìe >Ìs”Ìf >Ìt”” ?” ?” ?” ?œ” Ì@” Ì@”! Ì@”$ Ì@”. Ì@(”/ Ì@)”6 Ì@0”7 Ì@1”= Ì@7”Ì@ Ì@:”ÌM Ì@ÌG”ÌN Ì@ÌH” ÌA” ÌA” ÌA” ÌA” ÌA” ÌA” ÌA”" ÌA”$ ÌA”ÌE ÌA?”ÌH ÌAÌB”ÌW ÌAÌQ”ÌX ÌAÌR”ÌY ÌAÌSš” ÌB” ÌB” ÌB”" ÌB”# ÌB%”4 ÌB6”6 ÌB8”ÌE ÌBÌG”ÌF ÌBÌH”ÌG ÌBÌI˜” ÌD” ÌD
+” ÌD” ÌD”% ÌD”* ÌD$”2 ÌD,”4 ÌD.š” ÌE” ÌE” ÌE”& ÌE”' ÌE'”6 ÌE6”8 ÌE8”: ÌE:”; ÌE;”< ÌE<‘” ÌF˜” ÌF” ÌF” ÌF”  ÌF”* ÌF&”/ ÌF+”5 ÌF1”7 ÌF3š” ÌG” ÌG” ÌG”& ÌG”' ÌG'”6 ÌG6”8 ÌG8”9 ÌG9”: ÌG:”; ÌG;‘” ÌH‘” ÌH” ÌI” ÌI” ÌI”& ÌI”' ÌI'”6 ÌI6”8 ÌI8”ÌB ÌIÌB”ÌC ÌIÌC”ÌJ ÌIÌJ”ÌK ÌIÌK”ÌQ ÌIÌQ”ÌR ÌIÌR”ÌS ÌIÌS‘” ÌJ‘”	 ÌK”” ÌL” ÌL” ÌL” ÌLœ” ÌM” ÌM”' ÌM!”* ÌM$”1 ÌM+”2 ÌM,”< ÌM6”= ÌM7”ÌC ÌM=”ÌF ÌMÌ@”ÌS ÌMÌM”ÌT ÌMÌN” ÌN” ÌN” ÌN” ÌN” ÌN” ÌN” ÌN”" ÌN”$ ÌN”ÌK ÌNÌE”ÌN ÌNÌH”Ìc ÌNÌ]”Ìd ÌNÌ^”Ìe ÌNÌ_š” ÌO” ÌO” ÌO”" ÌO”# ÌO%”: ÌO<”< ÌO>”ÌQ ÌOÌS”ÌR ÌOÌT”ÌS ÌOÌU˜” ÌQ” ÌQ
+” ÌQ” ÌQ”% ÌQ”* ÌQ$”2 ÌQ,”4 ÌQ.” ÌR” ÌR” ÌR”& ÌR”' ÌR'”< ÌR<”> ÌR>”ÌE ÌRÌE”ÌF ÌRÌF”ÌP ÌRÌP”ÌQ ÌRÌQ”ÌW ÌRÌW”ÌX ÌRÌX”ÌY ÌRÌY‘” ÌS˜” ÌS” ÌS” ÌS”  ÌS”* ÌS&”/ ÌS+”5 ÌS1”7 ÌS3š” ÌT” ÌT” ÌT”& ÌT”' ÌT'”< ÌT<”> ÌT>”? ÌT?”Ì@ ÌTÌ@”ÌA ÌTÌA‘” ÌU‘” ÌU” ÌV” ÌV” ÌV”& ÌV”' ÌV'”< ÌV<”> ÌV>”ÌE ÌVÌE”ÌF ÌVÌF”ÌP ÌVÌP”ÌQ ÌVÌQ”ÌW ÌVÌW”ÌX ÌVÌX”ÌY ÌVÌY‘” ÌW‘”	 ÌXœ” ÌY” ÌY	” ÌY
+” ÌY” ÌY” ÌY” ÌY” ÌY”  ÌY”3 ÌY/”4 ÌY0”5 ÌY1’” ÌZ” ÌZ’” Ì\” Ì\Ÿ” Ì]” Ì]
+” Ì]” Ì]” Ì]”! Ì]”" Ì]”) Ì]%”+ Ì]'”, Ì](”/ Ì]+”1 Ì]-”< Ì]8”> Ì]:”Ì@ Ì]<–” Ì^” Ì^
+” Ì^” Ì^” Ì^” Ì^Ü ” Ì_” Ì_” Ì_” Ì_” Ì_”" Ì_”$ Ì_”' Ì_”) Ì_!”ÌZ Ì_ÌR”Ì] Ì_ÌU”Ìa Ì_ÌY”Ìb Ì_ÌZ”Ìk Ì_Ìc”Ìl Ì_Ìd”Ìo Ì_Ìg”Ìp Ì_Ìh”Ìq Ì_Ìi”Ìr Ì_Ìj’” Ì`” Ì`‘” Ìa™” Ìb” Ìb
+” Ìb”! Ìb”, Ìb&”- Ìb'”Ì@ Ìb:”ÌB Ìb<”ÌC Ìb=” Ìc” Ìc” Ìc”" Ìc”# Ìc%”0 Ìc2”2 Ìc4”Ì@ ÌcÌB”ÌA ÌcÌC”ÌK ÌcÌM”ÌL ÌcÌN”ÌQ ÌcÌS”ÌR ÌcÌT”ÌS ÌcÌU” Ìd” Ìd” Ìd”" Ìd”# Ìd%”1 Ìd3”3 Ìd5”ÌA ÌdÌC”ÌB ÌdÌD”ÌL ÌdÌN”ÌM ÌdÌO”ÌS ÌdÌU”ÌT ÌdÌV”ÌU ÌdÌW—” Ìe” Ìe
+” Ìe” Ìe” Ìe”* Ìe$”+ Ìe%–” Ìf” Ìf
+” Ìf”# Ìf”% Ìf”& Ìf –” Ìg” Ìg
+” Ìg”% Ìg”' Ìg!”( Ìg"–” Ìh” Ìh
+” Ìh”# Ìh”% Ìh”& Ìh ”” Ìi”	 Ìi”
+ Ìi” Ìi’” Ìj” Ìj’” Ìl
+” Ìl—” Ìm” Ìm” Ìm	” Ìm” Ìm” Ìm” Ìm’” Ìn” Ìn‘”	 Ìo” Ìp” Ìp” Ìp	” Ìp” Ìp” Ìp” Ìp”0 Ìp,”2 Ìp.”3 Ìp/”7 ÌpÌL”9 ÌpÌN”; ÌpÌP—” Ìq” Ìq
+” Ìq” Ìq” Ìq”" Ìq”# ÌqÜ ” Ìr” Ìr” Ìr” Ìr” Ìr” Ìr” Ìr”" Ìr”$ Ìr”ÌA Ìr;”ÌC Ìr=”ÌG ÌrÌA”ÌH ÌrÌB”ÌQ ÌrÌK”ÌR ÌrÌL”ÌV ÌrÌP”ÌW ÌrÌQ”ÌX ÌrÌR”ÌY ÌrÌSš” Ìs” Ìs
+” Ìs” Ìs” Ìs”# Ìs”$ Ìs”/ Ìs*”0 Ìs+”1 Ìs,š” Ìt” Ìt
+” Ìt” Ìt” Ìt”  Ìt”0 Ìt*”1 Ìt+”9 Ìt3”; Ìt5š” Ìu” Ìu” Ìu”& Ìu”' Ìu'”< Ìu<”> Ìu>”? Ìu?”Ì@ ÌuÌ@”ÌA ÌuÌA‘” Ìv”” Ìw”	 Ìw”
+ Ìw” Ìw’” Ìx” Ìx’” Ìz
+” Ìz—” Ì{” Ì{” Ì{	” Ì{” Ì{” Ì{” Ì{’” Ì|” Ì|‘”	 Ì}” Ì~” Ì~” Ì~	” Ì~” Ì~” Ì~” Ì~”. Ì~*”0 Ì~,”1 Ì~-”7 Ì~3”9 Ì~5”; Ì~7›” Ì” Ì
+” Ì” Ì” Ì”$ Ì”* Ì$”+ Ì%”; Ì5”< Ì6”ÌH ÌÌB›” Ì€” Ì€” Ì€” Ì€”$ Ì€”* Ì€"”+ Ì€#”; Ì€3”< Ì€4”ÌG Ì€?”ÌI Ì€ÌA’” Ì”6 Ì.–” Ì‚” Ì‚” Ì‚”% Ì‚”' Ì‚”( Ì‚ ‘” Ìƒ”” Ì„”	 Ì„”
+ Ì„” Ì„’” Ì…” Ì…’” Ì‡
+” Ì‡—” Ìˆ” Ìˆ” Ìˆ	” Ìˆ” Ìˆ” Ìˆ” Ìˆ’” Ì‰” Ì‰‘”	 ÌŠÜ ” Ì‹” Ì‹
+” Ì‹” Ì‹"” Ì‹&” Ì‹'”$ Ì‹2”% Ì‹3”7 Ì‹ÌE”8 Ì‹ÌF”> Ì‹ÌL”? Ì‹ÌM”ÌL Ì‹ÌZ”ÌM Ì‹Ì[”Ìf Ì‹Ìt”Ìg Ì‹Ìu”Ìh Ì‹ÌvÜ ” ÌŒ” ÌŒ	” ÌŒ
+” ÌŒ” ÌŒ” ÌŒ” ÌŒ” ÌŒ”  ÌŒ”> ÌŒ:”Ì@ ÌŒ<”ÌD ÌŒÌ@”ÌE ÌŒÌA”ÌN ÌŒÌJ”ÌO ÌŒÌK”ÌR ÌŒÌN”ÌS ÌŒÌO”ÌT ÌŒÌP”ÌU ÌŒÌQ”” Ì” Ì” Ì” Ì” Ì” Ì” Ì”" Ì”# Ì%”8 Ì:”: Ì<”= Ì?”> ÌÌ@”ÌH ÌÌJ”ÌI ÌÌK”ÌO ÌÌQ”ÌP ÌÌR”ÌQ ÌÌS‘”	 Ì’” Ì” Ì–” Ì’”	 Ì’”
+ Ì’”# Ì’!”$ Ì’"”0 Ì’7˜” Ì“” Ì“” Ì“” Ì“”! Ì“”& Ì“"”, Ì“(”. Ì“*’” Ì”” Ì”‘”	 Ì•Ü ” Ì–” Ì–
+” Ì–” Ì–” Ì–”! Ì–”" Ì–”) Ì–%”* Ì–&”+ Ì–'”/ Ì–+”0 Ì–,”5 Ì–1”7 Ì–3”: Ì–ÌE”< Ì–ÌG”> Ì–ÌI™” Ì—” Ì—” Ì—” Ì—”/ Ì—)”0 Ì—*”< Ì—6”= Ì—7”> Ì—8”” Ì˜”	 Ì˜”
+ Ì˜” Ì˜’” Ì™” Ì™”” Ì›” Ì›” Ì›” Ì›*—” Ìœ” Ìœ” Ìœ	” Ìœ” Ìœ” Ìœ” Ìœ’” Ì” Ì‘”	 Ì’” ÌŸ” ÌŸ” Ì ” Ì 
+” Ì ” Ì ” Ì ” Ì ”  Ì ”2 Ì ,”4 Ì .”5 Ì /”9 Ì 3”; Ì 5”= Ì 7Ü ” Ì¡” Ì¡” Ì¡” Ì¡” Ì¡”! Ì¡”# Ì¡”& Ì¡”( Ì¢
+”ÌW Ì¢9”ÌZ Ì¢<”Ì^ Ì¢Ì@”Ì_ Ì¢ÌA”Ìh Ì¢ÌJ”Ìi Ì¢ÌK”Ìm Ì¢ÌO”Ìn Ì¢ÌP”Ìo Ì¢ÌQ”Ìp Ì¢ÌRœ” Ì£” Ì£” Ì£”& Ì£”' Ì£'”4 Ì£4”6 Ì£6”: Ì£:”; Ì£;”Ì@ Ì£Ì@”ÌA Ì£ÌA”ÌB Ì£ÌBœ” Ì¤” Ì¤” Ì¤”& Ì¤”' Ì¤'”5 Ì¤5”7 Ì¤7”; Ì¤;”< Ì¤<”ÌB Ì¤ÌB”ÌC Ì¤ÌC”ÌD Ì¤ÌD–” Ì¥” Ì¥” Ì¥”$ Ì¥”& Ì¥”' Ì¥”” Ì¦” Ì¦” Ì¦” Ì¦	‘”	 Ì§”” Ì§” Ì§” Ì§” Ì§Ü ” Ì¨” Ì¨” Ì¨” Ì¨” Ì¨” Ì¨”  Ì¨”# Ì¨”% Ì©”ÌK Ì©.”ÌN Ì©1”ÌR Ì©5”ÌS Ì©6”Ì\ Ì©?”Ì] Ì©Ì@”Ìf Ì©ÌI”Ìg Ì©ÌJ”Ìh Ì©ÌK”Ìi Ì©ÌL‘”	 Ìª’” Ì«” Ì«–” Ì­” Ì­” Ì­” Ì­0”  Ì­2”+ Ì­ÌQœ” Ì®” Ì®” Ì®”! Ì®”# Ì®”$ Ì® ”( Ì®$”) Ì®%”* Ì®&”- Ì®)”/ Ì®+”1 Ì®-” Ì¯” Ì¯	” Ì¯
+”' Ì¯!”( Ì¯"”3 Ì¯-”4 Ì¯.”5 Ì¯/”9 Ì¯3”: Ì¯4”; Ì¯5”? Ì¯9”ÌA Ì¯;”ÌC Ì¯=Ü ” Ì°” Ì°” Ì°” Ì°” Ì°”! Ì°”# Ì°”& Ì°”( Ì° ”ÌN Ì°ÌF”ÌQ Ì°ÌI”ÌU Ì°ÌM”ÌV Ì°ÌN”Ì_ Ì°ÌW”Ì` Ì°ÌX”Ìd Ì°Ì\”Ìe Ì°Ì]”Ìf Ì°Ì^”Ìg Ì°Ì_š” Ì±” Ì±” Ì±” Ì±	” Ì±” Ì±” Ì±” Ì±” Ì±” Ì±Ü ” Ì²” Ì²” Ì²” Ì²” Ì²”" Ì²”$ Ì²”' Ì²”) Ì²!”Ìd Ì²Ì\”Ìg Ì²Ì_”Ìk Ì²Ìc”Ìl Ì²Ìd”Ìu Ì²Ìm”Ìv Ì²Ìn”Ìy Ì²Ìq”Ìz Ì²Ìr”Ì{ Ì²Ìs”Ì| Ì²Ìt”” Ì³” Ì³” Ì³” Ì³	š” Ì´”	 Ì´”
+ Ì´” Ì´” Ì´” Ì´” Ì´” Ì´” Ì´” Ì´Ü ” Ìµ” Ìµ” Ìµ” Ìµ” Ìµ” Ìµ”  Ìµ”# Ìµ”% Ìµ”ÌU ÌµÌO”ÌX ÌµÌR”Ì\ ÌµÌV”Ì] ÌµÌW”Ìf ÌµÌ`”Ìg ÌµÌa”Ìj ÌµÌd”Ìk ÌµÌe”Ìl ÌµÌf”Ìm ÌµÌg”” Ì¶”	 Ì¶”
+ Ì¶” Ì¶’” Ì·” Ì·‘” Ì¹‘” Ì¾–” Ì¿” Ì¿” Ì¿” Ì¿=”! Ì¿?”. Ì¿Ìa” ÌÀ” ÌÀ
+” ÌÀ” ÌÀ” ÌÀ”* ÌÀ&”, ÌÀ(”- ÌÀ)”0 ÌÀ,”2 ÌÀ.”6 ÌÀ2”8 ÌÀ4”: ÌÀ6’” ÌÁ” ÌÁ
+–” ÌÂ” ÌÂ” ÌÂ” ÌÂ” ÌÂ” ÌÂ’” ÌÃ
+” ÌÃ‘” ÌÄ	–” ÌÅ” ÌÅ” ÌÅ”" ÌÅ”& ÌÅ”' ÌÅ˜” ÌÆ” ÌÆ” ÌÆ” ÌÆ”  ÌÆ”% ÌÆ”& ÌÆ”( ÌÆ š” ÌÇ
+” ÌÇ” ÌÇ”* ÌÇ ”+ ÌÇ!”ÌP ÌÇÌF”ÌR ÌÇÌH”ÌW ÌÇÌM”ÌX ÌÇÌN”ÌY ÌÇÌO‘” ÌÈ	œ” ÌÉ” ÌÉ” ÌÉ”4 ÌÉ,”5 ÌÉ-”: ÌÉ2”; ÌÉ3”< ÌÉ4”Ì@ ÌÉ8”ÌA ÌÉ9”ÌD ÌÉ<”ÌF ÌÉ>œ” ÌÊ
+” ÌÊ” ÌÊ” ÌÊ” ÌÊ”% ÌÊ”' ÌÊ”* ÌÊ ”, ÌÊ"”Ìf ÌÊÌ\”Ìg ÌÊÌ]”Ìh ÌÊÌ^—” ÌË” ÌË	” ÌË” ÌË” ÌË” ÌË” ÌË”” ÌÌ
+” ÌÌ” ÌÌ” ÌÌÜ ” ÌÍ” ÌÍ” ÌÍ”# ÌÍ”$ ÌÍ”* ÌÍ”, ÌÍ ”/ ÌÍ#”1 ÌÎ”Ìs ÌÎÌP”Ìv ÌÎÌS”Ìz ÌÎÌW”Ì{ ÌÎÌX”Ì„ ÌÎÌa”Ì… ÌÎÌb”ÌŠ ÌÎÌg”Ì‹ ÌÎÌh”ÌŒ ÌÎÌi”Ì ÌÎÌj‘” ÌÏ”” ÌĞ” ÌĞ	” ÌĞ
+” ÌĞ
+˜” ÌÑ” ÌÑ” ÌÑ” ÌÑ”  ÌÑ”# ÌÑ”$ ÌÑ”& ÌÑš” ÌÒ
+” ÌÒ” ÌÒ”* ÌÒ ”+ ÌÒ!”ÌP ÌÒÌF”ÌR ÌÒÌH”ÌV ÌÒÌL”ÌW ÌÒÌM”ÌX ÌÒÌN‘” ÌÓ	œ” ÌÔ” ÌÔ” ÌÔ” ÌÔ” ÌÔ”! ÌÔ”# ÌÔ”& ÌÔ”( ÌÔ ”Ìt ÌÔÌl”Ìu ÌÔÌm”Ìv ÌÔÌn‘” ÌÕ”” ÌÕ” ÌÕ” ÌÕ” ÌÕÜ ” ÌÖ” ÌÖ” ÌÖ” ÌÖ” ÌÖ”" ÌÖ”$ ÌÖ”' ÌÖ”) Ì×
+”Ìu Ì×ÌV”Ìx Ì×ÌY”Ì| Ì×Ì]”Ì} Ì×Ì^”Ì† Ì×Ìg”Ì‡ Ì×Ìh”Ì Ì×Ìq”Ì‘ Ì×Ìr”Ì’ Ì×Ìs”Ì“ Ì×Ìt‘” ÌØ”” ÌÙ”	 ÌÙ”
+ ÌÙ” ÌÙ’” ÌÚ” ÌÚ—”  ” "” 4” 8”* ÌE”, ÌG”- ÌHÔrG–§version¤file§sources®sourcesContent¥names¨mappingsÀ‘À‘ÀÜ Ë‘”    ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”  	 ‘”  
+ ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”    ‘”  ! ‘”  " ‘”  # ‘”  $ ‘”  % ‘”  & ‘”  ' ‘”  ( ‘”  ) ‘”  * ‘”  + ‘”  , ‘”  - ‘”  . ‘”  / ‘”  0 ‘”  1 ‘”  2 ‘”  3 ‘”  4 ‘”  5 ‘”  6 ‘”  7 ‘”  8 ‘”  9 ‘”  : ‘”  ; ‘”  < ‘”  = ‘”  > ‘”  ? ‘”  Ì@ ‘”  ÌA ‘”  ÌB ‘”  ÌC ‘”  ÌD ‘”  ÌE ‘”  ÌF ‘”  ÌG ‘”  ÌH ‘”  ÌI ‘”  ÌJ ‘”  ÌK ‘”  ÌL ‘”  ÌM ‘”  ÌN ‘”  ÌO ‘”  ÌP ‘”  ÌQ ‘”  ÌR ‘”  ÌS ‘”  ÌT ‘”  ÌU ‘”  ÌV ‘”  ÌW ‘”  ÌX ‘”  ÌY ‘”  ÌZ ‘”  Ì[ ‘”  Ì\ ‘”  Ì] ‘”  Ì^ ‘”  Ì_ ‘”  Ì` ‘”  Ìa ‘”  Ìb ‘”  Ìc ‘”  Ìd ‘”  Ìe ‘”  Ìf ‘”  Ìg ‘”  Ìh ‘”  Ìi ‘”  Ìj ‘”  Ìk ‘”  Ìl ‘”  Ìm ‘”  Ìn ‘”  Ìo ‘”  Ìp ‘”  Ìq ‘”  Ìr ‘”  Ìs ‘”  Ìt ‘”  Ìu ‘”  Ìv ‘”  Ìw ‘”  Ìx ‘”  Ìy ‘”  Ìz ‘”  Ì{ ‘”  Ì| ‘”  Ì} ‘”  Ì~ ‘”  Ì ‘”  Ì€ ‘”  Ì ‘”  Ì‚ ‘”  Ìƒ ‘”  Ì„ ‘”  Ì… ‘”  Ì† ‘”  Ì‡ ‘”  Ìˆ ‘”  Ì‰ ‘”  ÌŠ ‘”  Ì‹ ‘”  ÌŒ ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì‘ ‘”  Ì’ ‘”  Ì“ ‘”  Ì” ‘”  Ì• ‘”  Ì– ‘”  Ì— ‘”  Ì˜ ‘”  Ì™ ‘”  Ìš ‘”  Ì› ‘”  Ìœ ‘”  Ì ‘”  Ì ‘”  ÌŸ ‘”  Ì  ‘”  Ì¡ ‘”  Ì¢ ‘”  Ì£ ‘”  Ì¤ ‘”  Ì¥ ‘”  Ì¦ ‘”  Ì§ ‘”  Ì¨ ‘”  Ì© ‘”  Ìª ‘”  Ì« ‘”  Ì¬ ‘”  Ì­ ‘”  Ì® ‘”  Ì¯ ‘”  Ì° ‘”  Ì± ‘”  Ì² ‘”  Ì³ ‘”  Ì´ ‘”  Ìµ ‘”  Ì¶ ‘”  Ì· ‘”  Ì¸ ‘”  Ì¹ ‘”  Ìº ‘”  Ì» ‘”  Ì¼ ‘”  Ì½ ‘”  Ì¾ ‘”  Ì¿ ‘”  ÌÀ ‘”  ÌÁ ‘”  ÌÂ ‘”  ÌÃ ‘”  ÌÄ ‘”  ÌÅ ‘”  ÌÆ ‘”  ÌÇ ‘”  ÌÈ ‘”  ÌÉ ‘”  ÌÊ ÔrH’§missing¦pluginÃ¦genAbcÂÔ  ÔrI”²dynamicImportCache¹exportAllDeclarationCache»exportNamedDeclarationCache«importCache‘ÔrJ–¤type¥start£end«declarationªspecifiers¦source¶ExportNamedDeclarationÍ$Í!¾ÔrK–¤type¥start£end¢idªsuperClass¤body°ClassDeclarationÍ+Í!¾ÔrL”¤type¥start£end¤nameªIdentifierÍ1Í>­WindowAbilityÀÔrM”¤type¥start£end¤body©ClassBodyÍ?Í!¾ÔrN˜¤type¥start£end¦static¨computed£key¤kind¥value°MethodDefinitionÍFÍßÂÂLªIdentifierÍFÍQ«constructor«constructorÔrO™¤type¥start£end¢idªexpression©generator¥async¦params¤body²FunctionExpressionÍQÍßÀÂÂÂM®BlockStatementÍTÍß”ÔrP”¤type¥start£endªexpression³ExpressionStatementÍ_ÍsÔrQ–¤type¥start£end¨operator¤left¥right´AssignmentExpressionÍ_Ír¡=ÔrR—¤type¥start£end¦object¨property¨computed¨optional°MemberExpressionÍ_ÍkÔrS“¤type¥start£end®ThisExpressionÍ_ÍcLªIdentifierÍdÍk§contextÂÂÔrT•¤type¥start£end¥value£raw§LiteralÍnÍrÀ¤nullP³ExpressionStatementÍ}Í•Q´AssignmentExpressionÍ}Í”¡=R°MemberExpressionÍ}ÍS®ThisExpressionÍ}ÍLªIdentifierÍ‚Í«windowStageÂÂT§LiteralÍÍ”À¤nullP³ExpressionStatementÍŸÍ·Q´AssignmentExpressionÍŸÍ¶¡=R°MemberExpressionÍŸÍ¯S®ThisExpressionÍŸÍ£LªIdentifierÍ¤Í¯«windowClassÂÂT§LiteralÍ²Í¶À¤nullP³ExpressionStatementÍÁÍØQ´AssignmentExpressionÍÁÍ×¡=R°MemberExpressionÍÁÍĞS®ThisExpressionÍÁÍÅLªIdentifierÍÆÍĞªwindowTypeÂÂT§LiteralÍÓÍ×À¤nullN°MethodDefinitionÍåÍ*ÃÂLªIdentifierÍìÍ÷«getInstance¦methodO²FunctionExpressionÍ÷Í*ÀÂÂÂM®BlockStatementÍúÍ*‘ÔrU”¤type¥start£end¨argument¯ReturnStatementÍÍ#R°MemberExpressionÍÍ"LªIdentifierÍÍ­WindowAbilityLªIdentifierÍÍ"¨INSTANCEÂÂN°MethodDefinitionÍ0ÍnÂÂLªIdentifierÍ0Í;«initContext¦methodO²FunctionExpressionÍ;ÍnÀÂÂÂ‘LªIdentifierÍ<ÍC§contextM®BlockStatementÍEÍn‘P³ExpressionStatementÍPÍgQ´AssignmentExpressionÍPÍf¡=R°MemberExpressionÍPÍ\S®ThisExpressionÍPÍTLªIdentifierÍUÍ\§contextÂÂLªIdentifierÍ_Íf§contextN°MethodDefinitionÍtÍÁÂÂLªIdentifierÍtÍ‚®setWindowStage¦methodO²FunctionExpressionÍ‚ÍÁÀÂÂÂ‘LªIdentifierÍƒÍ«windowStageM®BlockStatementÍÍÁ‘P³ExpressionStatementÍ›ÍºQ´AssignmentExpressionÍ›Í¹¡=R°MemberExpressionÍ›Í«S®ThisExpressionÍ›ÍŸLªIdentifierÍ Í««windowStageÂÂLªIdentifierÍ®Í¹«windowStageN°MethodDefinitionÍÇÍÂÂLªIdentifierÍÇÍÕ®getWindowStage¦methodO²FunctionExpressionÍÕÍÀÂÂÂM®BlockStatementÍØÍ‘U¯ReturnStatementÍãÍûR°MemberExpressionÍêÍúS®ThisExpressionÍêÍîLªIdentifierÍïÍú«windowStageÂÂN°MethodDefinitionÍ}Í—ÂÂLªIdentifierÍƒÍ­initAvoidArea¦methodO²FunctionExpressionÍÍ—ÀÂÂÃ‘LªIdentifierÍ‘Í›ªmainWindowM®BlockStatementÍÍ—šP³ExpressionStatementÍ¨Í×ÔrV–¤type¥start£end¦callee©arguments¨optional®CallExpressionÍ¨ÍÖR°MemberExpressionÍ¨Í²LªIdentifierÍ¨Í­¥hilogLªIdentifierÍ®Í²¤infoÂÂ“T§LiteralÍ³Í¹ ¦0x0000LªIdentifierÍ»Í¾£TAGT§LiteralÍÀÍÕ³initAvoidArea startµ'initAvoidArea start'ÂP³ExpressionStatementÍÍ5V®CallExpressionÍÍ4R°MemberExpressionÍÍLªIdentifierÍÍªAppStorageLªIdentifierÍÍ«setOrCreateÂÂ’T§LiteralÍÍ/¯statusBarHeight±'statusBarHeight'T§LiteralÍ1Í3$¢36ÂP³ExpressionStatementÍ?ÍsV®CallExpressionÍ?ÍrR°MemberExpressionÍ?ÍULªIdentifierÍ?ÍIªAppStorageLªIdentifierÍJÍU«setOrCreateÂÂ’T§LiteralÍVÍmµnavigationAiBarHeight·'navigationAiBarHeight'T§LiteralÍoÍq¢28ÂÔrW•¤type¥start£end¬declarations¤kind³VariableDeclarationÍ}Í´‘ÔrX•¤type¥start£end¢id¤init²VariableDeclaratorÍƒÍ³LªIdentifierÍƒÍ‘®defaultDisplayV®CallExpressionÍ”Í³R°MemberExpressionÍ”Í±LªIdentifierÍ”Í›§displayLªIdentifierÍœÍ±µgetDefaultDisplaySyncÂÂÂ¥constW³VariableDeclarationÍ¾Í‘X²VariableDeclaratorÍÂÍLªIdentifierÍÂÍÏ­scaledDensityÔrY–¤type¥start£end¤testªconsequent©alternateµConditionalExpressionÍÒÍÔrZ–¤type¥start£end¤left¨operator¥right°BinaryExpressionÍÓÍóR°MemberExpressionÍÓÍïLªIdentifierÍÓÍá®defaultDisplayLªIdentifierÍâÍï­scaledDensityÂÂ¡>T§LiteralÍòÍó ¡0R°MemberExpressionÍ÷ÍLªIdentifierÍ÷Í®defaultDisplayLªIdentifierÍÍ­scaledDensityÂÂT§LiteralÍÍ¡1£letW³VariableDeclarationÍ"Íu‘X²VariableDeclaratorÍ(ÍtLªIdentifierÍ(Í2ªsystemAreaV®CallExpressionÍ5ÍtR°MemberExpressionÍ5ÍRLªIdentifierÍ5Í?ªmainWindowLªIdentifierÍ@ÍR²getWindowAvoidAreaÂÂ‘R°MemberExpressionÍSÍsR°MemberExpressionÍSÍgLªIdentifierÍSÍY¦windowLªIdentifierÍZÍg­AvoidAreaTypeÂÂLªIdentifierÍhÍs«TYPE_SYSTEMÂÂÂ¥constW³VariableDeclarationÍÍİ‘X²VariableDeclaratorÍ…ÍÜLªIdentifierÍ…ÍŒ§navAreaV®CallExpressionÍÍÜR°MemberExpressionÍÍ¬LªIdentifierÍÍ™ªmainWindowLªIdentifierÍšÍ¬²getWindowAvoidAreaÂÂ‘R°MemberExpressionÍ­ÍÛR°MemberExpressionÍ­ÍÁLªIdentifierÍ­Í³¦windowLªIdentifierÍ´ÍÁ­AvoidAreaTypeÂÂLªIdentifierÍÂÍÛ¹TYPE_NAVIGATION_INDICATORÂÂÂ¥constY«IfStatementÍçÍ
+yLªIdentifierÍëÍõªsystemAreaM®BlockStatementÍ÷Í
+y”W³VariableDeclarationÍÍH‘X²VariableDeclaratorÍÍGLªIdentifierÍÍ¯statusBarHeightZ°BinaryExpressionÍÍGR°MemberExpressionÍÍ7R°MemberExpressionÍÍ0LªIdentifierÍÍ(ªsystemAreaLªIdentifierÍ)Í0§topRectÂÂLªIdentifierÍ1Í7¦heightÂÂ¡/LªIdentifierÍ:ÍG­scaledDensity¥constP³ExpressionStatementÍVÍ£V®CallExpressionÍVÍ¢R°MemberExpressionÍVÍ`LªIdentifierÍVÍ[¥hilogLªIdentifierÍ\Í`¤infoÂÂ“T§LiteralÍaÍg ¦0x0000LªIdentifierÍiÍl£TAGZ°BinaryExpressionÍnÍ¡T§LiteralÍnÍ¿initAvoidArea statusBarHeight: Ù!"initAvoidArea statusBarHeight: "¡+LªIdentifierÍ’Í¡¯statusBarHeightÂP³ExpressionStatementÍ±ÍìV®CallExpressionÍ±ÍëR°MemberExpressionÍ±ÍÇLªIdentifierÍ±Í»ªAppStorageLªIdentifierÍ¼ÍÇ«setOrCreateÂÂ’T§LiteralÍÈÍÙ¯statusBarHeight±'statusBarHeight'LªIdentifierÍÛÍê¯statusBarHeightÂY«IfStatementÍúÍ
+nZ°BinaryExpressionÍşÍ	 R°MemberExpressionÍşÍ	LªIdentifierÍşÍ	ªdeviceInfoLªIdentifierÍ		Í	ªdeviceTypeÂÂ£===T§LiteralÍ	Í	 ¦tablet¨'tablet'M®BlockStatementÍ	"Í	p‘P³ExpressionStatementÍ	5Í	aV®CallExpressionÍ	5Í	`R°MemberExpressionÍ	5Í	KLªIdentifierÍ	5Í	?ªAppStorageLªIdentifierÍ	@Í	K«setOrCreateÂÂ’T§LiteralÍ	LÍ	[­Paf.TopHeight¯"Paf.TopHeight"T§LiteralÍ	]Í	_8¢56ÂY«IfStatementÍ	ƒÍ
+nZ°BinaryExpressionÍ	‡Í	§R°MemberExpressionÍ	‡Í	œLªIdentifierÍ	‡Í	‘ªdeviceInfoLªIdentifierÍ	’Í	œªdeviceTypeÂÂ£===T§LiteralÍ	¡Í	§¤2in1¦'2in1'M®BlockStatementÍ	©Í	ö‘P³ExpressionStatementÍ	¼Í	çV®CallExpressionÍ	¼Í	æR°MemberExpressionÍ	¼Í	ÒLªIdentifierÍ	¼Í	ÆªAppStorageLªIdentifierÍ	ÇÍ	Ò«setOrCreateÂÂ’T§LiteralÍ	ÓÍ	â­Paf.TopHeight¯"Paf.TopHeight"T§LiteralÍ	äÍ	å ¡0ÂM®BlockStatementÍ
+	Í
+n‘P³ExpressionStatementÍ
+Í
+_V®CallExpressionÍ
+Í
+^R°MemberExpressionÍ
+Í
+2LªIdentifierÍ
+Í
+&ªAppStorageLªIdentifierÍ
+'Í
+2«setOrCreateÂÂ’T§LiteralÍ
+3Í
+B­Paf.TopHeight¯"Paf.TopHeight"R°MemberExpressionÍ
+DÍ
+]R°MemberExpressionÍ
+DÍ
+VLªIdentifierÍ
+DÍ
+NªsystemAreaLªIdentifierÍ
+OÍ
+V§topRectÂÂLªIdentifierÍ
+WÍ
+]¦heightÂÂÂÀY«IfStatementÍ
+ƒÍYLªIdentifierÍ
+‡Í
+§navAreaM®BlockStatementÍ
+ÍY”W³VariableDeclarationÍ
+ŸÍ
+ç‘X²VariableDeclaratorÍ
+¥Í
+æLªIdentifierÍ
+¥Í
+ºµnavigationAiBarHeightZ°BinaryExpressionÍ
+½Í
+æR°MemberExpressionÍ
+½Í
+ÖR°MemberExpressionÍ
+½Í
+ÏLªIdentifierÍ
+½Í
+Ä§navAreaLªIdentifierÍ
+ÅÍ
+ÏªbottomRectÂÂLªIdentifierÍ
+ĞÍ
+Ö¦heightÂÂ¡/LªIdentifierÍ
+ÙÍ
+æ­scaledDensity¥constP³ExpressionStatementÍ
+õÍNV®CallExpressionÍ
+õÍMR°MemberExpressionÍ
+õÍ
+ÿLªIdentifierÍ
+õÍ
+ú¥hilogLªIdentifierÍ
+ûÍ
+ÿ¤infoÂÂ“T§LiteralÍ Í ¦0x0000LªIdentifierÍÍ£TAGZ°BinaryExpressionÍÍLT§LiteralÍÍ4Ù%initAvoidArea navigationAiBarHeight: Ù'"initAvoidArea navigationAiBarHeight: "¡+LªIdentifierÍ7ÍLµnavigationAiBarHeightÂP³ExpressionStatementÍ\Í£V®CallExpressionÍ\Í¢R°MemberExpressionÍ\ÍrLªIdentifierÍ\ÍfªAppStorageLªIdentifierÍgÍr«setOrCreateÂÂ’T§LiteralÍsÍŠµnavigationAiBarHeight·'navigationAiBarHeight'LªIdentifierÍŒÍ¡µnavigationAiBarHeightÂY«IfStatementÍ±ÍNZ°BinaryExpressionÍµÍ×R°MemberExpressionÍµÍÊLªIdentifierÍµÍ¿ªdeviceInfoLªIdentifierÍÀÍÊªdeviceTypeÂÂ£===T§LiteralÍÏÍ×¦tablet¨'tablet'M®BlockStatementÍÙÍD‘P³ExpressionStatementÍìÍ5V®CallExpressionÍìÍ4R°MemberExpressionÍìÍLªIdentifierÍìÍöªAppStorageLªIdentifierÍ÷Í«setOrCreateÂÂ’T§LiteralÍÍ³NavigationBarHeightµ"NavigationBarHeight"R°MemberExpressionÍÍ3R°MemberExpressionÍÍ,LªIdentifierÍÍ!§navAreaLªIdentifierÍ"Í,ªbottomRectÂÂLªIdentifierÍ-Í3¦heightÂÂÂY«IfStatementÍWÍNZ°BinaryExpressionÍ[Í{R°MemberExpressionÍ[ÍpLªIdentifierÍ[ÍeªdeviceInfoLªIdentifierÍfÍpªdeviceTypeÂÂ£===T§LiteralÍuÍ{¤2in1¦'2in1'M®BlockStatementÍ}ÍĞ‘P³ExpressionStatementÍÍÁV®CallExpressionÍÍÀR°MemberExpressionÍÍ¦LªIdentifierÍÍšªAppStorageLªIdentifierÍ›Í¦«setOrCreateÂÂ’T§LiteralÍ§Í¼³NavigationBarHeightµ"NavigationBarHeight"T§LiteralÍ¾Í¿ ¡0ÂM®BlockStatementÍãÍN‘P³ExpressionStatementÍöÍ?V®CallExpressionÍöÍ>R°MemberExpressionÍöÍLªIdentifierÍöÍ ªAppStorageLªIdentifierÍÍ«setOrCreateÂÂ’T§LiteralÍÍ"³NavigationBarHeightµ"NavigationBarHeight"R°MemberExpressionÍ$Í=R°MemberExpressionÍ$Í6LªIdentifierÍ$Í+§navAreaLªIdentifierÍ,Í6ªbottomRectÂÂLªIdentifierÍ7Í=¦heightÂÂÂÀP³ExpressionStatementÍcÍV®CallExpressionÍcÍR°MemberExpressionÍcÍmLªIdentifierÍcÍh¥hilogLªIdentifierÍiÍm¤infoÂÂ“T§LiteralÍnÍt ¦0x0000LªIdentifierÍvÍy£TAGT§LiteralÍ{Í±initAvoidArea end³'initAvoidArea end'ÂN°MethodDefinitionÍÍXÂÂLªIdentifierÍÍ«®initWindowSize¦methodO²FunctionExpressionÍ«ÍXÀÂÂÂM®BlockStatementÍ®ÍX‘P³ExpressionStatementÍ¹ÍQV®CallExpressionÍ¹ÍPR°MemberExpressionÍ¹ÍÍLªIdentifierÍ¹Í¿¦windowLªIdentifierÍÀÍÍ­getLastWindowÂÂ’R°MemberExpressionÍÎÍÚS®ThisExpressionÍÎÍÒLªIdentifierÍÓÍÚ§contextÂÂO·ArrowFunctionExpressionÍÜÍOÀÂÂÂ’LªIdentifierÍİÍà£errLªIdentifierÍâÍí«windowClassM®BlockStatementÍòÍO˜Y«IfStatementÍÍ¬R°MemberExpressionÍÍLªIdentifierÍÍ£errLªIdentifierÍ	Í¤codeÂÂM®BlockStatementÍÍ¬’P³ExpressionStatementÍ"Í„V®CallExpressionÍ"ÍƒR°MemberExpressionÍ"Í-LªIdentifierÍ"Í'¥hilogLªIdentifierÍ(Í-¥errorÂÂ“T§LiteralÍ.Í4 ¦0x0000LªIdentifierÍ6Í9£TAGZ°BinaryExpressionÍ;Í‚T§LiteralÍ;ÍlÙ/setWindowWidth getLastWindow failed, error is: Ù1'setWindowWidth getLastWindow failed, error is: '¡+V®CallExpressionÍoÍ‚R°MemberExpressionÍoÍ}LªIdentifierÍoÍs¤JSONLªIdentifierÍtÍ}©stringifyÂÂ‘LªIdentifierÍ~Í£errÂÂU¯ReturnStatementÍ–ÍÀÀW³VariableDeclarationÍºÍñ‘X²VariableDeclaratorÍ¾ÍğLªIdentifierÍ¾ÍÌ®windowPropertyV®CallExpressionÍÏÍğR°MemberExpressionÍÏÍîLªIdentifierÍÏÍÚ«windowClassLªIdentifierÍÛÍî³getWindowPropertiesÂÂÂ£letP³ExpressionStatementÍÿÍFV®CallExpressionÍÿÍER°MemberExpressionÍÿÍLªIdentifierÍÿÍ	ªAppStorageLªIdentifierÍ
+Í«setOrCreateÂÂ’T§LiteralÍÍ#«windowWidth­'windowWidth'R°MemberExpressionÍ%ÍDR°MemberExpressionÍ%Í>LªIdentifierÍ%Í3®windowPropertyLªIdentifierÍ4Í>ªwindowRectÂÂLªIdentifierÍ?ÍD¥widthÂÂÂP³ExpressionStatementÍTÍV®CallExpressionÍTÍœR°MemberExpressionÍTÍjLªIdentifierÍTÍ^ªAppStorageLªIdentifierÍ_Íj«setOrCreateÂÂ’T§LiteralÍkÍy¬windowHeight®'windowHeight'R°MemberExpressionÍ{Í›R°MemberExpressionÍ{Í”LªIdentifierÍ{Í‰®windowPropertyLªIdentifierÍŠÍ”ªwindowRectÂÂLªIdentifierÍ•Í›¦heightÂÂÂP³ExpressionStatementÍ«ÍÊQ´AssignmentExpressionÍ«ÍÉ¡=R°MemberExpressionÍ«Í»S®ThisExpressionÍ«Í¯LªIdentifierÍ°Í»«windowClassÂÂLªIdentifierÍ¾ÍÉ«windowClassP³ExpressionStatementÍØÍòV®CallExpressionÍØÍñR°MemberExpressionÍØÍïS®ThisExpressionÍØÍÜLªIdentifierÍİÍï²onWindowSizeChangeÂÂÂP³ExpressionStatementÍ ÍV®CallExpressionÍ ÍR°MemberExpressionÍ ÍS®ThisExpressionÍ ÍLªIdentifierÍÍ´onWindowStatusChangeÂÂÂP³ExpressionStatementÍ*ÍDV®CallExpressionÍ*ÍCR°MemberExpressionÍ*ÍAS®ThisExpressionÍ*Í.LªIdentifierÍ/ÍA²onWindowRectChangeÂÂÂÂN°MethodDefinitionÍ^ÍNÂÂLªIdentifierÍ^Ír´onWindowStatusChange¦methodO²FunctionExpressionÍrÍNÀÂÂÂM®BlockStatementÍuÍN’Y«IfStatementÍ€Í¸Ôr[–¤type¥start£end¨operator¦prefix¨argument¯UnaryExpressionÍ„Í•¡!ÃR°MemberExpressionÍ…Í•S®ThisExpressionÍ…Í‰LªIdentifierÍŠÍ•«windowClassÂÂM®BlockStatementÍ—Í¸‘U¯ReturnStatementÍ¦Í­ÀÀP³ExpressionStatementÍÂÍGV®CallExpressionÍÂÍFR°MemberExpressionÍÂÍÕR°MemberExpressionÍÂÍÒS®ThisExpressionÍÂÍÆLªIdentifierÍÇÍÒ«windowClassÂÂLªIdentifierÍÓÍÕ¢onÂÂ’T§LiteralÍÖÍê²windowStatusChange´'windowStatusChange'O·ArrowFunctionExpressionÍìÍEÀÂÂÂ‘LªIdentifierÍíÍñ¤typeM®BlockStatementÍöÍE”P³ExpressionStatementÍÍQ´AssignmentExpressionÍÍ¡=R°MemberExpressionÍÍS®ThisExpressionÍÍ	LªIdentifierÍ
+ÍªwindowTypeÂÂLªIdentifierÍÍ¤typeP³ExpressionStatementÍ*ÍwV®CallExpressionÍ*ÍvR°MemberExpressionÍ*Í4LªIdentifierÍ*Í/¥hilogLªIdentifierÍ0Í4¤infoÂÂ”T§LiteralÍ5Í; ¦0x0000LªIdentifierÍ=Í@£TAGT§LiteralÍBÍ_»onWindowStatusChange type: ½'onWindowStatusChange type: 'V®CallExpressionÍaÍuR°MemberExpressionÍaÍoLªIdentifierÍaÍe¤JSONLªIdentifierÍfÍo©stringifyÂÂ‘LªIdentifierÍpÍt¤typeÂÂP³ExpressionStatementÍ…ÍªV®CallExpressionÍ…Í©R°MemberExpressionÍ…Í—S®ThisExpressionÍ…Í‰LªIdentifierÍŠÍ—­initAvoidAreaÂÂ‘R°MemberExpressionÍ˜Í¨S®ThisExpressionÍ˜ÍœLªIdentifierÍÍ¨«windowClassÂÂÂY«IfStatementÍ¸Í:Z°BinaryExpressionÍ¼ÍåLªIdentifierÍ¼ÍÀ¤type£===R°MemberExpressionÍÅÍåR°MemberExpressionÍÅÍÜLªIdentifierÍÅÍË¦windowLªIdentifierÍÌÍÜ°WindowStatusTypeÂÂLªIdentifierÍİÍå¨FLOATINGÂÂM®BlockStatementÍçÍ:‘P³ExpressionStatementÍúÍ+V®CallExpressionÍúÍ*R°MemberExpressionÍúÍLªIdentifierÍúÍªAppStorageLªIdentifierÍÍ«setOrCreateÂÂ’T§LiteralÍÍ&³NavigationBarHeightµ"NavigationBarHeight"T§LiteralÍ(Í) ¡0ÂÀÂN°MethodDefinitionÍTÍ	ÂÂLªIdentifierÍTÍf²onWindowRectChange¦methodO²FunctionExpressionÍfÍ	ÀÂÂÂM®BlockStatementÍiÍ	’Y«IfStatementÍtÍ¬[¯UnaryExpressionÍxÍ‰¡!ÃR°MemberExpressionÍyÍ‰S®ThisExpressionÍyÍ}LªIdentifierÍ~Í‰«windowClassÂÂM®BlockStatementÍ‹Í¬‘U¯ReturnStatementÍšÍ¡ÀÀP³ExpressionStatementÍ¶ÍV®CallExpressionÍ¶ÍR°MemberExpressionÍ¶ÍÉR°MemberExpressionÍ¶ÍÆS®ThisExpressionÍ¶ÍºLªIdentifierÍ»ÍÆ«windowClassÂÂLªIdentifierÍÇÍÉ¢onÂÂ’T§LiteralÍÊÍÜ°windowRectChange²'windowRectChange'O·ArrowFunctionExpressionÍŞÍ ÀÂÂÂ‘LªIdentifierÍßÍå¦optionM®BlockStatementÍêÍ ‘Y«IfStatementÍùÍõZ±LogicalExpressionÍıÍZ°BinaryExpressionÍıÍ5R°MemberExpressionÍıÍS®ThisExpressionÍıÍLªIdentifierÍÍªwindowTypeÂÂ£===R°MemberExpressionÍÍ5R°MemberExpressionÍÍ(LªIdentifierÍÍ¦windowLªIdentifierÍÍ(°WindowStatusTypeÂÂLªIdentifierÍ)Í5¬SPLIT_SCREENÂÂ¢||Z°BinaryExpressionÍJÍR°MemberExpressionÍJÍYS®ThisExpressionÍJÍNLªIdentifierÍOÍYªwindowTypeÂÂ£===R°MemberExpressionÍ^ÍR°MemberExpressionÍ^ÍuLªIdentifierÍ^Íd¦windowLªIdentifierÍeÍu°WindowStatusTypeÂÂLªIdentifierÍvÍ«FULL_SCREENÂÂM®BlockStatementÍƒÍõ‘P³ExpressionStatementÍÎÍæV®CallExpressionÍÎÍåR°MemberExpressionÍÎÍãS®ThisExpressionÍÎÍÒLªIdentifierÍÓÍã°setNavigationBarÂÂÂÀÂN°MethodDefinitionÍÍŸÂÂLªIdentifierÍÍ°setNavigationBar¦methodO²FunctionExpressionÍÍŸÀÂÂÂM®BlockStatementÍ"ÍŸ”Y«IfStatementÍ-Íe[¯UnaryExpressionÍ1ÍB¡!ÃR°MemberExpressionÍ2ÍBS®ThisExpressionÍ2Í6LªIdentifierÍ7ÍB«windowClassÂÂM®BlockStatementÍDÍe‘U¯ReturnStatementÍSÍZÀÀW³VariableDeclarationÍoÍÏ‘X²VariableDeclaratorÍuÍÎLªIdentifierÍuÍx£navV®CallExpressionÍ{ÍÎR°MemberExpressionÍ{ÍR°MemberExpressionÍ{Í‹S®ThisExpressionÍ{ÍLªIdentifierÍ€Í‹«windowClassÂÂLªIdentifierÍŒÍ²getWindowAvoidAreaÂÂ‘R°MemberExpressionÍŸÍÍR°MemberExpressionÍŸÍ³LªIdentifierÍŸÍ¥¦windowLªIdentifierÍ¦Í³­AvoidAreaTypeÂÂLªIdentifierÍ´ÍÍ¹TYPE_NAVIGATION_INDICATORÂÂÂ¥constP³ExpressionStatementÍÙÍ&V®CallExpressionÍÙÍ%R°MemberExpressionÍÙÍãLªIdentifierÍÙÍŞ¥hilogLªIdentifierÍßÍã¤infoÂÂ”T§LiteralÍäÍê ¦0x0000LªIdentifierÍìÍï£TAGT§LiteralÍñÍ¼setNavigationBar avoidArea: ¾'setNavigationBar avoidArea: 'V®CallExpressionÍÍ$R°MemberExpressionÍÍLªIdentifierÍÍ¤JSONLªIdentifierÍÍ©stringifyÂÂ‘LªIdentifierÍ Í#£navÂÂY«IfStatementÍ0Í˜LªIdentifierÍ4Í7£navM®BlockStatementÍ9Í˜‘P³ExpressionStatementÍHÍV®CallExpressionÍHÍŒR°MemberExpressionÍHÍ^LªIdentifierÍHÍRªAppStorageLªIdentifierÍSÍ^«setOrCreateÂÂ’T§LiteralÍ_Ít³NavigationBarHeightµ"NavigationBarHeight"R°MemberExpressionÍvÍ‹R°MemberExpressionÍvÍ„LªIdentifierÍvÍy£navLªIdentifierÍzÍ„ªbottomRectÂÂLªIdentifierÍ…Í‹¦heightÂÂÂÀN°MethodDefinitionÍ¥Í»ÂÂLªIdentifierÍ«ÍÄ¹setWindowLayoutFullScreen¦methodO²FunctionExpressionÍÄÍ»ÀÂÂÃ‘LªIdentifierÍÅÍÑ¬isFullScreenM®BlockStatementÍÓÍ»’Y«IfStatementÍŞÍ%Z°BinaryExpressionÍâÍR°MemberExpressionÍâÍ÷LªIdentifierÍâÍìªdeviceInfoLªIdentifierÍíÍ÷ªdeviceTypeÂÂ£===T§LiteralÍüÍ¤2in1¦'2in1'M®BlockStatementÍÍ%‘U¯ReturnStatementÍÍÀÀP³ExpressionStatementÍ/Í´V®CallExpressionÍ/Í³R°MemberExpressionÍ/ÍVV®CallExpressionÍ/ÍQR°MemberExpressionÍ/ÍCLªIdentifierÍ/Í5¦windowLªIdentifierÍ6ÍC­getLastWindowÂÂ‘R°MemberExpressionÍDÍPS®ThisExpressionÍDÍHLªIdentifierÍIÍP§contextÂÂÂLªIdentifierÍRÍV¤thenÂÂ‘O·ArrowFunctionExpressionÍWÍ²ÀÂÂÃ‘LªIdentifierÍ^Ía£wndM®BlockStatementÍfÍ²‘P³ExpressionStatementÍuÍ§U¯AwaitExpressionÍuÍ¦V®CallExpressionÍ{Í¦R°MemberExpressionÍ{Í˜LªIdentifierÍ{Í~£wndLªIdentifierÍÍ˜¹setWindowLayoutFullScreenÂÂ‘LªIdentifierÍ™Í¥¬isFullScreenÂÂN°MethodDefinitionÍÁÍLÂÂLªIdentifierÍÁÍÓ²onWindowSizeChange¦methodO²FunctionExpressionÍÓÍLÀÂÂÂ‘LªIdentifierÍÔÍÜ¨callbackM®BlockStatementÍŞÍL’Y«IfStatementÍéÍ![¯UnaryExpressionÍíÍş¡!ÃR°MemberExpressionÍîÍşS®ThisExpressionÍîÍòLªIdentifierÍóÍş«windowClassÂÂM®BlockStatementÍ Í!‘U¯ReturnStatementÍÍÀÀÔr\–¤type¥start£end¥block§handler©finalizer¬TryStatementÍ+ÍEM®BlockStatementÍ/Í²‘P³ExpressionStatementÍ>Í§V®CallExpressionÍ>Í¦R°MemberExpressionÍ>ÍQR°MemberExpressionÍ>ÍNS®ThisExpressionÍ>ÍBLªIdentifierÍCÍN«windowClassÂÂLªIdentifierÍOÍQ¢onÂÂ’T§LiteralÍRÍd°windowSizeChange²'windowSizeChange'O·ArrowFunctionExpressionÍfÍ¥ÀÂÂÂ‘LªIdentifierÍgÍk¤sizeM®BlockStatementÍpÍ¥”P³ExpressionStatementÍƒÍãV®CallExpressionÍƒÍâR°MemberExpressionÍƒÍLªIdentifierÍƒÍˆ¥hilogLªIdentifierÍ‰Í¤infoÂÂ“T§LiteralÍÍ” ¦0x0000LªIdentifierÍ–Í™£TAGZ°BinaryExpressionÍ›ÍáT§LiteralÍ›ÍÊÙ-onWindowSizeChange windowSizeChange size is: Ù/'onWindowSizeChange windowSizeChange size is: '¡+V®CallExpressionÍÍÍáR°MemberExpressionÍÍÍÛLªIdentifierÍÍÍÑ¤JSONLªIdentifierÍÒÍÛ©stringifyÂÂ‘LªIdentifierÍÜÍà¤sizeÂÂP³ExpressionStatementÍõÍ'V®CallExpressionÍõÍ&R°MemberExpressionÍõÍLªIdentifierÍõÍÿªAppStorageLªIdentifierÍ Í«setOrCreateÂÂ’T§LiteralÍÍ«windowWidth­'windowWidth'R°MemberExpressionÍÍ%LªIdentifierÍÍ¤sizeLªIdentifierÍ Í%¥widthÂÂÂP³ExpressionStatementÍ9ÍmV®CallExpressionÍ9ÍlR°MemberExpressionÍ9ÍOLªIdentifierÍ9ÍCªAppStorageLªIdentifierÍDÍO«setOrCreateÂÂ’T§LiteralÍPÍ^¬windowHeight®'windowHeight'R°MemberExpressionÍ`ÍkLªIdentifierÍ`Íd¤sizeLªIdentifierÍeÍk¦heightÂÂÂP³ExpressionStatementÍÍ–Z±LogicalExpressionÍÍ•LªIdentifierÍÍ‡¨callback¢&&V®CallExpressionÍ‹Í•LªIdentifierÍ‹Í“¨callbackÂÂÔr]•¤type¥start£end¥param¤body«CatchClauseÍ¼ÍELªIdentifierÍÃÍÌ©exceptionM®BlockStatementÍÎÍE‘P³ExpressionStatementÍİÍ:V®CallExpressionÍİÍ9R°MemberExpressionÍİÍèLªIdentifierÍİÍâ¥hilogLªIdentifierÍãÍè¥errorÂÂ“T§LiteralÍéÍï ¦0x0000LªIdentifierÍñÍô£TAGZ°BinaryExpressionÍöÍ8T§LiteralÍöÍÙ$onWindowSizeChange failed, error is Ù&'onWindowSizeChange failed, error is '¡+V®CallExpressionÍÍ8R°MemberExpressionÍÍ-LªIdentifierÍÍ#¤JSONLªIdentifierÍ$Í-©stringifyÂÂ‘LªIdentifierÍ.Í7©exceptionÂÂÀN°MethodDefinitionÍRÍ±ÂÂLªIdentifierÍRÍ`®setOrientation¦methodO²FunctionExpressionÍ`Í±ÀÂÂÂ’LªIdentifierÍaÍl«windowStageLªIdentifierÍnÍy«orientationM®BlockStatementÍ{Í±‘P³ExpressionStatementÍ†ÍªV®CallExpressionÍ†Í©R°MemberExpressionÍ†Í#V®CallExpressionÍ†ÍR°MemberExpressionÍ†Í¦V®CallExpressionÍ†Í¡R°MemberExpressionÍ†ÍŸLªIdentifierÍ†Í‘«windowStageLªIdentifierÍ’ÍŸ­getMainWindowÂÂÂLªIdentifierÍ¢Í¦¤thenÂÂ‘O·ArrowFunctionExpressionÍ§ÍÀÂÂÂ‘LªIdentifierÍ¨Í«£winM®BlockStatementÍ°Í‘P³ExpressionStatementÍ¿ÍV®CallExpressionÍ¿ÍR°MemberExpressionÍ¿ÍwV®CallExpressionÍ¿ÍqR°MemberExpressionÍ¿ÍìV®CallExpressionÍ¿ÍçR°MemberExpressionÍ¿ÍÚLªIdentifierÍ¿ÍÂ£winLªIdentifierÍÃÍÚ·setPreferredOrientationÂÂ‘LªIdentifierÍÛÍæ«orientationÂLªIdentifierÍèÍì¤thenÂÂ‘O·ArrowFunctionExpressionÍíÍpÀÂÂÂ‘LªIdentifierÍîÍò¤dataM®BlockStatementÍ÷Íp‘P³ExpressionStatementÍ
+ÍaV®CallExpressionÍ
+Í`R°MemberExpressionÍ
+ÍLªIdentifierÍ
+Í¥hilogLªIdentifierÍÍ¤infoÂÂ“T§LiteralÍÍ ¦0x0000LªIdentifierÍÍ £TAGZ°BinaryExpressionÍ"Í_T§LiteralÍ"ÍHÙ$setOrientation succeeded, error is: Ù&'setOrientation succeeded, error is: '¡+V®CallExpressionÍKÍ_R°MemberExpressionÍKÍYLªIdentifierÍKÍO¤JSONLªIdentifierÍPÍY©stringifyÂÂ‘LªIdentifierÍZÍ^¤dataÂÂÂLªIdentifierÍrÍw¥catchÂÂ‘O·ArrowFunctionExpressionÍxÍÀÂÂÂ‘LªIdentifierÍyÍ|£errM®BlockStatementÍÍ‘P³ExpressionStatementÍ”Í V®CallExpressionÍ”ÍÿR°MemberExpressionÍ”ÍŸLªIdentifierÍ”Í™¥hilogLªIdentifierÍšÍŸ¥errorÂÂ“T§LiteralÍ Í¦ ¦0x0000LªIdentifierÍ¨Í«£TAGZ°BinaryExpressionÍ­ÍşT§LiteralÍ­ÍèÙ9setOrientation setPreferredOrientation failed. error is: Ù;'setOrientation setPreferredOrientation failed. error is: '¡+V®CallExpressionÍëÍşR°MemberExpressionÍëÍùLªIdentifierÍëÍï¤JSONLªIdentifierÍğÍù©stringifyÂÂ‘LªIdentifierÍúÍı£errÂÂÂÂLªIdentifierÍÍ#¥catchÂÂ‘O·ArrowFunctionExpressionÍ$Í¨ÀÂÂÂ‘LªIdentifierÍ%Í(£errM®BlockStatementÍ-Í¨‘P³ExpressionStatementÍ<ÍV®CallExpressionÍ<ÍœR°MemberExpressionÍ<ÍGLªIdentifierÍ<ÍA¥hilogLªIdentifierÍBÍG¥errorÂÂ“T§LiteralÍHÍN ¦0x0000LªIdentifierÍPÍS£TAGZ°BinaryExpressionÍUÍ›T§LiteralÍUÍ…Ù.setOrientation getMainWindow failed, error is Ù0'setOrientation getMainWindow failed, error is '¡+V®CallExpressionÍˆÍ›R°MemberExpressionÍˆÍ–LªIdentifierÍˆÍŒ¤JSONLªIdentifierÍÍ–©stringifyÂÂ‘LªIdentifierÍ—Íš£errÂÂÂN°MethodDefinitionÍ‚Í!»ÂÂLªIdentifierÍ‚Í—µtoggleWindowSystemBar¦methodO²FunctionExpressionÍ—Í!»ÀÂÂÂ’LªIdentifierÍ˜Í¥namesLªIdentifierÍŸÍ¬­windowContextM®BlockStatementÍ®Í!»‘P³ExpressionStatementÍ¹Í!´V®CallExpressionÍ¹Í!³R°MemberExpressionÍ¹ÍÍLªIdentifierÍ¹Í¿¦windowLªIdentifierÍÀÍÍ­getLastWindowÂÂ’LªIdentifierÍÎÍÛ­windowContextO·ArrowFunctionExpressionÍİÍ!²ÀÂÂÂ’LªIdentifierÍŞÍá£errLªIdentifierÍãÍç¤dataM®BlockStatementÍìÍ!²‘\¬TryStatementÍûÍ!§M®BlockStatementÍÿÍ â–Y«IfStatementÍÍQR°MemberExpressionÍÍLªIdentifierÍÍ£errLªIdentifierÍÍ¤codeÂÂM®BlockStatementÍ ÍQ‘U¯ReturnStatementÍ7Í>ÀÀW³VariableDeclarationÍcÍz‘X²VariableDeclaratorÍgÍyLªIdentifierÍgÍr«windowClassLªIdentifierÍuÍy¤data£letY«IfStatementÍŒÍZ°BinaryExpressionÍÍ¢R°MemberExpressionÍÍœLªIdentifierÍÍ•¥namesLªIdentifierÍ–Íœ¦lengthÂÂ£===T§LiteralÍ¡Í¢ ¡0M®BlockStatementÍ¤Í‘P³ExpressionStatementÍ»Í V®CallExpressionÍ»ÍÿR°MemberExpressionÍ»ÍÑLªIdentifierÍ»ÍÅªAppStorageLªIdentifierÍÆÍÑ«setOrCreateÂÂ’T§LiteralÍÒÍ÷Ù#Grid.tabPro.enableAvoidAreaListenerÙ%'Grid.tabPro.enableAvoidAreaListener'T§LiteralÍùÍşÂ¥falseÂÀP³ExpressionStatementÍ%ÍÅV®CallExpressionÍ%ÍÄR°MemberExpressionÍ%ÍUV®CallExpressionÍ%ÍPR°MemberExpressionÍ%ÍILªIdentifierÍ%Í0«windowClassLªIdentifierÍ1ÍI¸setWindowSystemBarEnableÂÂ‘LªIdentifierÍJÍO¥namesÂLªIdentifierÍQÍU¤thenÂÂ’O·ArrowFunctionExpressionÍVÍÚÀÂÂÂM®BlockStatementÍ\ÍÚ‘P³ExpressionStatementÍsÍÇV®CallExpressionÍsÍÆR°MemberExpressionÍsÍ}LªIdentifierÍsÍx¥hilogLªIdentifierÍyÍ}¤infoÂÂ“T§LiteralÍ~Í„ ¦0x0000LªIdentifierÍ†Í‰£TAGT§LiteralÍ‹ÍÅÙ8toggleWindowSystemBar setWindowSystemBarEnable succeededÙ:'toggleWindowSystemBar setWindowSystemBarEnable succeeded'ÂO·ArrowFunctionExpressionÍÜÍÃÀÂÂÂ‘LªIdentifierÍİÍâ¥errorM®BlockStatementÍçÍÃ‘Y«IfStatementÍşÍ°LªIdentifierÍÍ¥errorM®BlockStatementÍ	Í°‘P³ExpressionStatementÍ$Í™V®CallExpressionÍ$Í˜R°MemberExpressionÍ$Í/LªIdentifierÍ$Í)¥hilogLªIdentifierÍ*Í/¥errorÂÂ“T§LiteralÍ0Í6 ¦0x0000LªIdentifierÍ8Í;£TAGZ°BinaryExpressionÍ=Í—T§LiteralÍ=ÍÙ@toggleWindowSystemBar setWindowSystemBarEnable failed, error is:ÙB'toggleWindowSystemBar setWindowSystemBarEnable failed, error is:'¡+V®CallExpressionÍ‚Í—R°MemberExpressionÍ‚ÍLªIdentifierÍ‚Í†¤JSONLªIdentifierÍ‡Í©stringifyÂÂ‘LªIdentifierÍ‘Í–¥errorÂÂÀÂY«IfStatementÍ×Í [Z°BinaryExpressionÍÛÍëR°MemberExpressionÍÛÍçLªIdentifierÍÛÍà¥namesLªIdentifierÍáÍç¦lengthÂÂ¡>T§LiteralÍêÍë ¡0M®BlockStatementÍíÍ [‘P³ExpressionStatementÍ Í HV®CallExpressionÍ Í GR°MemberExpressionÍ Í LªIdentifierÍ Í ªAppStorageLªIdentifierÍ Í «setOrCreateÂÂ’T§LiteralÍ Í @Ù#Grid.tabPro.enableAvoidAreaListenerÙ%'Grid.tabPro.enableAvoidAreaListener'T§LiteralÍ BÍ FÃ¤trueÂÀP³ExpressionStatementÍ mÍ ÓV®CallExpressionÍ mÍ ÒR°MemberExpressionÍ mÍ wLªIdentifierÍ mÍ r¥hilogLªIdentifierÍ sÍ w¤infoÂÂ“T§LiteralÍ xÍ ~ ¦0x0000LªIdentifierÍ €Í ƒ£TAGT§LiteralÍ …Í ÑÙJtoggleWindowSystemBar Succeeded in setting the system bar to be invisible.ÙL'toggleWindowSystemBar Succeeded in setting the system bar to be invisible.'Â]«CatchClauseÍ ğÍ!§LªIdentifierÍ ÷Í! ©exceptionM®BlockStatementÍ!Í!§‘P³ExpressionStatementÍ!Í!˜V®CallExpressionÍ!Í!—R°MemberExpressionÍ!Í! LªIdentifierÍ!Í!¥hilogLªIdentifierÍ!Í! ¥errorÂÂ“T§LiteralÍ!!Í!' ¦0x0000LªIdentifierÍ!)Í!,£TAGZ°BinaryExpressionÍ!.Í!–T§LiteralÍ!.Í!zÙJtoggleWindowSystemBar Failed to set the system bar to be invisible. Cause:ÙL'toggleWindowSystemBar Failed to set the system bar to be invisible. Cause:'¡+V®CallExpressionÍ!}Í!–R°MemberExpressionÍ!}Í!‹LªIdentifierÍ!}Í!¤JSONLªIdentifierÍ!‚Í!‹©stringifyÂÂ‘LªIdentifierÍ!ŒÍ!•©exceptionÂÂÀÂÀ”Ôr^•¤type¥start£endªspecifiers¦source±ImportDeclarationÍnÍ‘Ôr_”¤type¥start£end¥local¶ImportDefaultSpecifierÍuÍ{LªIdentifierÍuÍ{¦windowT§LiteralÍÍ¬@ohos.window®"@ohos.window"^±ImportDeclarationÍ’Í¼‘_¶ImportDefaultSpecifierÍ™Í£LªIdentifierÍ™Í£ªdeviceInfoT§LiteralÍ©Í»°@ohos.deviceInfo²"@ohos.deviceInfo"^±ImportDeclarationÍ¾Íâ‘_¶ImportDefaultSpecifierÍÅÍÌLªIdentifierÍÅÍÌ§displayT§LiteralÍÒÍá­@ohos.display¯"@ohos.display"^±ImportDeclarationÍäÍ‘_¶ImportDefaultSpecifierÍëÍğLªIdentifierÍëÍğ¥hilogT§LiteralÍöÍ«@ohos.hilog­"@ohos.hilog"

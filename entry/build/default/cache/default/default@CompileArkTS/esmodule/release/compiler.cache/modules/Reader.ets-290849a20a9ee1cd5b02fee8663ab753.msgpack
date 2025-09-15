@@ -1,0 +1,2546 @@
+Ôr@Ÿªassertions¤code´customTransformCache¬dependencies¢id¤meta±moduleSideEffects¬originalCode±originalSourcemap«resolvedIds®sourcemapChainµsyntheticNamedExportsµtransformDependencies®transformFiles¨cacheAstÔrAÚîóif (!("finalizeConstruction" in ViewPU.prototype)) {
+    Reflect.set(ViewPU.prototype, "finalizeConstruction", () => { });
+}
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+import { WindowAbility } from '../entryability/WindowAbility';
+import display from "@ohos.display";
+import fs from "@ohos.file.fs";
+import image from "@ohos.multimedia.image";
+import { FontFileInfo } from '../common/FontFileInfo';
+import hilog from '@ohos.hilog';
+import { bookDataManager } from '../utils/BookDataManager';
+import { settingsManager } from '../utils/SettingsManager';
+import preferences from "@ohos.data.preferences";
+import { ReadPageComponent as ReadPageComponent } from "@hms.core.readerservice.readerComponent";
+import { readerCore as readerCore } from "@hms.core.readerservice.readerComponent";
+import { bookParser as bookParser } from "@hms.core.readerservice.bookParser";
+import ConfigurationConstant from "@ohos.app.ability.ConfigurationConstant";
+const TAG = 'ReaderPage';
+const PREFERENCES_NAME = 'reader_progress';
+class Reader extends ViewPU {
+    constructor(parent, params, __localStorage, elmtId = -1, paramsLambda = undefined, extraInfo) {
+        super(parent, __localStorage, elmtId, extraInfo);
+        if (typeof paramsLambda === "function") {
+            this.paramsGenerator_ = paramsLambda;
+        }
+        this.__windowWidth = this.createStorageLink('windowWidth', 0, "windowWidth");
+        this.__windowHeight = this.createStorageLink('windowHeight', 0, "windowHeight");
+        this.__colorMode = this.createStorageLink('colorMode', ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET, "colorMode");
+        this.__showModalBanner = new ObservedPropertySimplePU(false, this, "showModalBanner");
+        this.__currentIndex = new ObservedPropertySimplePU(-1, this, "currentIndex");
+        this.__catalogItemList = new ObservedPropertyObjectPU([], this, "catalogItemList");
+        this.__currentCatalogIndex = new ObservedPropertySimplePU(-1, this, "currentCatalogIndex");
+        this.catalogListScroller = new Scroller();
+        this.currentData = null;
+        this.defaultHandler = null;
+        this.readerComponentController = new readerCore.ReaderComponentController();
+        this.preference = null;
+        this.filePath = '';
+        this.__bookCover = new ObservedPropertyObjectPU(null, this, "bookCover");
+        this.__bookTitle = new ObservedPropertySimplePU('', this, "bookTitle");
+        this.__author = new ObservedPropertySimplePU('', this, "author");
+        this.__fontSize = new ObservedPropertySimplePU('18', this, "fontSize");
+        this.__lineHeight = new ObservedPropertySimplePU('', this, "lineHeight");
+        this.fontList = [new FontFileInfo(this.getUIContext().getHostContext().resourceManager.getStringSync({ "id": 16777233, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" }), ''),
+            new FontFileInfo(this.getUIContext()
+                .getHostContext().resourceManager.getStringSync({ "id": 16777232, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" }), 'fonts/SourceHanSerifCN-VF.ttf')];
+        this.__selectFontPath = new ObservedPropertySimplePU('', this, "selectFontPath");
+        this.__themeList = new ObservedPropertyObjectPU([
+            'white',
+            'yellow',
+            'pink',
+            'green',
+            'dark',
+            'whiteSky',
+            'darkSky'
+        ], this, "themeList");
+        this.THEME_BUTTON_BACKGROUND = {
+            'white': { "id": 16777255, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
+            'yellow': { "id": 16777256, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
+            'pink': { "id": 16777252, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
+            'green': { "id": 16777251, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
+            'dark': { "id": 16777250, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
+            'whiteSky': { "id": 16777255, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
+            'darkSky': { "id": 16777250, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" }
+        };
+        this.THEME_PAGE_COLOR = {
+            'white': '#FFFFFF',
+            'yellow': '#BD9063',
+            'pink': '#FFE4E5',
+            'green': '#C5E7CE',
+            'dark': '#202224',
+            'whiteSky': '#FFFFFF',
+            'darkSky': '#202224'
+        };
+        this.themeBorderColor = {
+            0: { "id": 16777247, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
+            1: { "id": 16777248, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
+            2: { "id": 16777246, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
+            3: { "id": 16777245, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
+            4: { "id": 16777247, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
+            5: { "id": 16777247, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
+            6: { "id": 16777247, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" }
+        };
+        this.__themeSelectIndex = new ObservedPropertySimplePU(0, this, "themeSelectIndex");
+        this.readerSetting = {
+            fontName: this.getUIContext().getHostContext().resourceManager.getStringSync({ "id": 16777233, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" }),
+            fontPath: '',
+            fontSize: Number.parseInt(this.fontSize),
+            fontColor: '#000000',
+            fontWeight: 400,
+            lineHeight: 1.9,
+            nightMode: false,
+            themeColor: 'rgba(248, 249, 250, 1)',
+            themeBgImg: '',
+            flipMode: '0',
+            scaledDensity: display.getDefaultDisplaySync().scaledDensity > 0 ? display.getDefaultDisplaySync().scaledDensity :
+                1,
+            viewPortWidth: this.windowWidth,
+            viewPortHeight: this.windowHeight
+        };
+        this.screenDensityCallBack = null;
+        this.resourceRequest = (filePath) => {
+            hilog.info(0x0000, TAG, 'resourceRequest : filePath = ' + filePath + ', this.selectFontPath = ' + this.selectFontPath);
+            if (filePath.length === 0) {
+                return new ArrayBuffer(0);
+            }
+            let resourcePath = filePath;
+            if (this.isFont(filePath)) {
+                resourcePath = this.selectFontPath;
+            }
+            try {
+                let context = this.getUIContext().getHostContext();
+                let value = context.resourceManager.getRawFileContentSync(resourcePath);
+                hilog.info(0x0000, TAG, 'resourceRequest : get other resource succeeded ');
+                return value.buffer;
+            }
+            catch (error) {
+                let code = error.code;
+                let message = error.message;
+                hilog.error(0x0000, TAG, `resourceRequest : get resource failed, error code: ${code}`);
+                hilog.error(0x0000, TAG, `resourceRequest : get resource failed, message: ${message}.`);
+            }
+            // Get data in the sandbox path
+            return this.loadFileFromPath(resourcePath);
+        };
+        this.setInitiallyProvidedValue(params);
+        this.declareWatch("colorMode", this.colorModeChange);
+        this.finalizeConstruction();
+    }
+    setInitiallyProvidedValue(params) {
+        if (params.showModalBanner !== undefined) {
+            this.showModalBanner = params.showModalBanner;
+        }
+        if (params.currentIndex !== undefined) {
+            this.currentIndex = params.currentIndex;
+        }
+        if (params.catalogItemList !== undefined) {
+            this.catalogItemList = params.catalogItemList;
+        }
+        if (params.currentCatalogIndex !== undefined) {
+            this.currentCatalogIndex = params.currentCatalogIndex;
+        }
+        if (params.catalogListScroller !== undefined) {
+            this.catalogListScroller = params.catalogListScroller;
+        }
+        if (params.currentData !== undefined) {
+            this.currentData = params.currentData;
+        }
+        if (params.defaultHandler !== undefined) {
+            this.defaultHandler = params.defaultHandler;
+        }
+        if (params.readerComponentController !== undefined) {
+            this.readerComponentController = params.readerComponentController;
+        }
+        if (params.preference !== undefined) {
+            this.preference = params.preference;
+        }
+        if (params.filePath !== undefined) {
+            this.filePath = params.filePath;
+        }
+        if (params.bookCover !== undefined) {
+            this.bookCover = params.bookCover;
+        }
+        if (params.bookTitle !== undefined) {
+            this.bookTitle = params.bookTitle;
+        }
+        if (params.author !== undefined) {
+            this.author = params.author;
+        }
+        if (params.fontSize !== undefined) {
+            this.fontSize = params.fontSize;
+        }
+        if (params.lineHeight !== undefined) {
+            this.lineHeight = params.lineHeight;
+        }
+        if (params.fontList !== undefined) {
+            this.fontList = params.fontList;
+        }
+        if (params.selectFontPath !== undefined) {
+            this.selectFontPath = params.selectFontPath;
+        }
+        if (params.themeList !== undefined) {
+            this.themeList = params.themeList;
+        }
+        if (params.THEME_BUTTON_BACKGROUND !== undefined) {
+            this.THEME_BUTTON_BACKGROUND = params.THEME_BUTTON_BACKGROUND;
+        }
+        if (params.THEME_PAGE_COLOR !== undefined) {
+            this.THEME_PAGE_COLOR = params.THEME_PAGE_COLOR;
+        }
+        if (params.themeBorderColor !== undefined) {
+            this.themeBorderColor = params.themeBorderColor;
+        }
+        if (params.themeSelectIndex !== undefined) {
+            this.themeSelectIndex = params.themeSelectIndex;
+        }
+        if (params.readerSetting !== undefined) {
+            this.readerSetting = params.readerSetting;
+        }
+        if (params.screenDensityCallBack !== undefined) {
+            this.screenDensityCallBack = params.screenDensityCallBack;
+        }
+        if (params.resourceRequest !== undefined) {
+            this.resourceRequest = params.resourceRequest;
+        }
+    }
+    updateStateVars(params) {
+    }
+    purgeVariableDependenciesOnElmtId(rmElmtId) {
+        this.__windowWidth.purgeDependencyOnElmtId(rmElmtId);
+        this.__windowHeight.purgeDependencyOnElmtId(rmElmtId);
+        this.__colorMode.purgeDependencyOnElmtId(rmElmtId);
+        this.__showModalBanner.purgeDependencyOnElmtId(rmElmtId);
+        this.__currentIndex.purgeDependencyOnElmtId(rmElmtId);
+        this.__catalogItemList.purgeDependencyOnElmtId(rmElmtId);
+        this.__currentCatalogIndex.purgeDependencyOnElmtId(rmElmtId);
+        this.__bookCover.purgeDependencyOnElmtId(rmElmtId);
+        this.__bookTitle.purgeDependencyOnElmtId(rmElmtId);
+        this.__author.purgeDependencyOnElmtId(rmElmtId);
+        this.__fontSize.purgeDependencyOnElmtId(rmElmtId);
+        this.__lineHeight.purgeDependencyOnElmtId(rmElmtId);
+        this.__selectFontPath.purgeDependencyOnElmtId(rmElmtId);
+        this.__themeList.purgeDependencyOnElmtId(rmElmtId);
+        this.__themeSelectIndex.purgeDependencyOnElmtId(rmElmtId);
+    }
+    aboutToBeDeleted() {
+        this.__windowWidth.aboutToBeDeleted();
+        this.__windowHeight.aboutToBeDeleted();
+        this.__colorMode.aboutToBeDeleted();
+        this.__showModalBanner.aboutToBeDeleted();
+        this.__currentIndex.aboutToBeDeleted();
+        this.__catalogItemList.aboutToBeDeleted();
+        this.__currentCatalogIndex.aboutToBeDeleted();
+        this.__bookCover.aboutToBeDeleted();
+        this.__bookTitle.aboutToBeDeleted();
+        this.__author.aboutToBeDeleted();
+        this.__fontSize.aboutToBeDeleted();
+        this.__lineHeight.aboutToBeDeleted();
+        this.__selectFontPath.aboutToBeDeleted();
+        this.__themeList.aboutToBeDeleted();
+        this.__themeSelectIndex.aboutToBeDeleted();
+        SubscriberManager.Get().delete(this.id__());
+        this.aboutToBeDeletedInternal();
+    }
+    get windowWidth() {
+        return this.__windowWidth.get();
+    }
+    set windowWidth(newValue) {
+        this.__windowWidth.set(newValue);
+    }
+    get windowHeight() {
+        return this.__windowHeight.get();
+    }
+    set windowHeight(newValue) {
+        this.__windowHeight.set(newValue);
+    }
+    get colorMode() {
+        return this.__colorMode.get();
+    }
+    set colorMode(newValue) {
+        this.__colorMode.set(newValue);
+    }
+    get showModalBanner() {
+        return this.__showModalBanner.get();
+    }
+    set showModalBanner(newValue) {
+        this.__showModalBanner.set(newValue);
+    }
+    get currentIndex() {
+        return this.__currentIndex.get();
+    }
+    set currentIndex(newValue) {
+        this.__currentIndex.set(newValue);
+    }
+    get catalogItemList() {
+        return this.__catalogItemList.get();
+    }
+    set catalogItemList(newValue) {
+        this.__catalogItemList.set(newValue);
+    }
+    get currentCatalogIndex() {
+        return this.__currentCatalogIndex.get();
+    }
+    set currentCatalogIndex(newValue) {
+        this.__currentCatalogIndex.set(newValue);
+    }
+    get bookCover() {
+        return this.__bookCover.get();
+    }
+    set bookCover(newValue) {
+        this.__bookCover.set(newValue);
+    }
+    get bookTitle() {
+        return this.__bookTitle.get();
+    }
+    set bookTitle(newValue) {
+        this.__bookTitle.set(newValue);
+    }
+    get author() {
+        return this.__author.get();
+    }
+    set author(newValue) {
+        this.__author.set(newValue);
+    }
+    get fontSize() {
+        return this.__fontSize.get();
+    }
+    set fontSize(newValue) {
+        this.__fontSize.set(newValue);
+    }
+    get lineHeight() {
+        return this.__lineHeight.get();
+    }
+    set lineHeight(newValue) {
+        this.__lineHeight.set(newValue);
+    }
+    get selectFontPath() {
+        return this.__selectFontPath.get();
+    }
+    set selectFontPath(newValue) {
+        this.__selectFontPath.set(newValue);
+    }
+    get themeList() {
+        return this.__themeList.get();
+    }
+    set themeList(newValue) {
+        this.__themeList.set(newValue);
+    }
+    get themeSelectIndex() {
+        return this.__themeSelectIndex.get();
+    }
+    set themeSelectIndex(newValue) {
+        this.__themeSelectIndex.set(newValue);
+    }
+    async aboutToAppear() {
+        // Router addObserver æ–¹æ³•å·²ç§»é™¤ï¼Œå› ä¸ºRouterç±»å‹æ²¡æœ‰è¿™ä¸ªå±æ€§
+        const logCode = 0x0000;
+        const logTag = TAG;
+        const currentDensity = this.readerSetting.scaledDensity;
+        const newDensity = display.getDefaultDisplaySync().scaledDensity;
+        hilog.info(logCode, logTag, `aboutToAppear : current scaledDensity = ${currentDensity}; change scaledDensity = ${newDensity}`);
+        this.readerComponentController = new readerCore.ReaderComponentController();
+        const context = this.getUIContext().getHostContext();
+        try {
+            this.preference = await preferences.getPreferences(context, PREFERENCES_NAME);
+        }
+        catch (err) {
+            const errorMessage = `Failed to get preferences; err: ${err}`;
+            hilog.error(0x0000, TAG, errorMessage);
+        }
+        await settingsManager.init(context);
+        const settings = await settingsManager.loadSettings();
+        // Apply loaded settings
+        this.readerSetting.fontName = settings.fontName;
+        this.readerSetting.fontPath = settings.fontPath;
+        this.selectFontPath = settings.fontPath;
+        this.readerSetting.fontSize = settings.fontSize;
+        this.fontSize = settings.fontSize.toString();
+        this.readerSetting.lineHeight = settings.lineHeight;
+        this.lineHeight = settings.lineHeight.toString();
+        this.readerSetting.flipMode = settings.flipMode;
+        this.themeSelectIndex = this.themeList.indexOf(settings.theme);
+        this.applyTheme(settings.theme, this.themeSelectIndex);
+        this.registerScreenDensityChange();
+        WindowAbility.getInstance().toggleWindowSystemBar([], this.getUIContext().getHostContext());
+        let param = this.getUIContext().getRouter().getParams();
+        this.filePath = param.filePath;
+        let resourceIndex = param.resourceIndex;
+        let domPos = param.domPos;
+        this.startPlay(this.filePath, resourceIndex, domPos);
+    }
+    onPageHide() {
+        // é¡µé¢éšè—æ—¶ä¿å­˜é˜…è¯»è¿›åº¦
+        this.saveReadingProgress();
+    }
+    /**
+     * The color mode of the system changed
+     */
+    colorModeChange() {
+        if (this.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK) {
+            this.readerSetting.nightMode = true;
+            this.readerSetting.fontColor = '#ffffff';
+            this.readerSetting.themeColor = '#202224';
+        }
+        else {
+            this.readerSetting.nightMode = false;
+            this.readerSetting.fontColor = '#000000';
+            this.readerSetting.themeColor = '#FFFFFF';
+        }
+        this.readerComponentController.setPageConfig(this.readerSetting);
+    }
+    /**
+     * register screen density changed callback
+     */
+    registerScreenDensityChange() {
+        this.screenDensityCallBack = (data) => {
+            let displaySync = display.getDefaultDisplaySync();
+            let scaledDensity = displaySync.scaledDensity;
+            if (scaledDensity !== this.readerSetting.scaledDensity) {
+                AppStorage.setOrCreate('isDensityChange', true);
+                this.getUIContext().getRouter().back();
+            }
+        };
+        display.on('change', this.screenDensityCallBack);
+    }
+    async startPlay(path, resourceIndex, domPos) {
+        try {
+            const context = this.getUIContext().getHostContext();
+            const initPromise = this.readerComponentController.init(context);
+            const defaultHandlerPromise = bookParser.getDefaultHandler(path);
+            const results = await Promise.all([defaultHandlerPromise, initPromise]);
+            const defaultHandler = results[0];
+            this.defaultHandler = defaultHandler;
+            hilog.info(0x0000, TAG, 'startPlay getDefaultHandler end,result is:' + JSON.stringify(this.defaultHandler));
+            this.readerComponentController.registerBookParser(this.defaultHandler);
+            // Register listeners
+            this.readerComponentController.on('resourceRequest', this.resourceRequest);
+            this.readerComponentController.on('pageShow', (pageData) => {
+                hilog.info(0x0000, TAG, 'pageshow: data is: ' + JSON.stringify(pageData));
+                this.currentData = pageData;
+                // Save page data
+                this.saveReadingProgress();
+                // Update current catalog index
+                this.updateCurrentCatalogIndex();
+                // æ›´æ–°ç›®å½•æ»šåŠ¨ä½ç½®
+                if (this.currentCatalogIndex >= 0 && this.currentCatalogIndex < this.catalogItemList.length) {
+                    this.catalogListScroller.scrollToIndex(this.currentCatalogIndex);
+                }
+            });
+            WindowAbility.getInstance().onWindowSizeChange(() => {
+                if (this.readerSetting.viewPortWidth != this.windowWidth ||
+                    this.readerSetting.viewPortHeight != this.windowHeight) {
+                    hilog.info(0x0000, TAG, 'onWindowSizeChange is changed, update page config');
+                    // Windows size is changed, update current page viewport size
+                    this.readerSetting.viewPortWidth = this.windowWidth;
+                    this.readerSetting.viewPortHeight = this.windowHeight;
+                    try {
+                        this.readerComponentController.setPageConfig(this.readerSetting);
+                    }
+                    catch (e) {
+                        hilog.error(0x0000, TAG, 'onWindowSizeChange, error ' + JSON.stringify(e));
+                    }
+                }
+            });
+            this.readerComponentController.setPageConfig(this.readerSetting);
+            // ä¼˜å…ˆä» Preferences åŠ è½½è¿›åº¦
+            const progressKey = `${this.filePath}_progress`;
+            const savedProgress = await this.preference?.get(progressKey, '');
+            let startResourceIndex = resourceIndex || 0;
+            let startDomPos = domPos || '';
+            if (typeof savedProgress === 'string' && savedProgress) {
+                try {
+                    const savedProgressObj = JSON.parse(savedProgress);
+                    const savedResourceIndex = savedProgressObj.resourceIndex;
+                    const savedDomPos = savedProgressObj.domPos;
+                    startResourceIndex = savedResourceIndex;
+                    startDomPos = savedDomPos;
+                    hilog.info(0x0000, TAG, `Loaded progress from preferences: resourceIndex=${startResourceIndex}, domPos=${startDomPos}`);
+                }
+                catch (e) {
+                    hilog.error(0x0000, TAG, `Failed to parse saved progress: ${savedProgress}`);
+                }
+            }
+            this.readerComponentController.startPlay(startResourceIndex, startDomPos);
+            // è·å–ç›®å½•åˆ—è¡¨
+            this.catalogItemList = this.defaultHandler?.getCatalogList() || [];
+            this.updateCurrentCatalogIndex();
+        }
+        catch (err) {
+            hilog.error(0x0000, TAG, 'startPlay: err: ' + JSON.stringify(err));
+        }
+    }
+    async getBookInfo() {
+        try {
+            let bookInfo = this.defaultHandler?.getBookInfo();
+            if (bookInfo) {
+                this.bookTitle = bookInfo.bookTitle || '';
+                this.author = bookInfo?.bookCreator || '';
+                // SpineIndex is not required for get the book cover
+                let buffer = this.defaultHandler?.getResourceContent(-1, bookInfo.bookCoverImage);
+                let imageSource = image.createImageSource(buffer);
+                this.bookCover = await imageSource.createPixelMap();
+                imageSource.release();
+            }
+            hilog.info(0x0000, TAG, 'getBookInfo bookInfo is: ' + JSON.stringify(bookInfo));
+        }
+        catch (e) {
+            hilog.error(0x0000, TAG, 'getBookInfo failed', e);
+        }
+    }
+    /**
+     * æ›´æ–°å½“å‰ç« èŠ‚ç´¢å¼•
+     */
+    updateCurrentCatalogIndex() {
+        if (this.currentData && this.defaultHandler) {
+            const spineList = this.defaultHandler.getSpineList();
+            const catalogList = this.defaultHandler.getCatalogList();
+            if (spineList.length > 0 && this.currentData.resourceIndex >= 0 &&
+                this.currentData.resourceIndex < spineList.length) {
+                const currentSpine = spineList[this.currentData.resourceIndex];
+                // æŸ¥æ‰¾å½“å‰spineå¯¹åº”çš„ç›®å½•é¡¹
+                const matchingIndex = catalogList.findIndex(catalog => catalog.href === currentSpine.href);
+                if (matchingIndex !== -1) {
+                    this.currentCatalogIndex = matchingIndex;
+                }
+            }
+        }
+    }
+    aboutToDisappear() {
+        // Force save progress before disappearing
+        this.saveReadingProgress();
+        display.off('change', this.screenDensityCallBack);
+        if (this.readerComponentController) {
+            this.readerComponentController.off('pageShow');
+            this.readerComponentController.off('resourceRequest');
+            this.readerComponentController.releaseBook();
+        }
+        this.defaultHandler = null;
+        this.currentData = null;
+    }
+    buildCatalogItemList(parent = null) {
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Column.create();
+            Column.borderRadius({ topRight: 32, topLeft: 32 });
+            Column.visibility(this.currentIndex === 0 ? Visibility.Visible : Visibility.None);
+            Column.backgroundColor(Color.White);
+            Column.zIndex(3);
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Row.create();
+            Row.width('100%');
+            Row.height(56);
+            Row.alignItems(VerticalAlign.Center);
+            Row.justifyContent(FlexAlign.End);
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Stack.create();
+            Stack.borderRadius('50%');
+            Stack.backgroundColor("#0d777777");
+            Stack.align(Alignment.Center);
+            Stack.width(40);
+            Stack.height(40);
+            Stack.margin({ top: 8, left: 16, right: 16 });
+            Stack.onClick(() => {
+                this.closeModal();
+            });
+        }, Stack);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            SymbolGlyph.create({ "id": 125831487, "type": 40000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            SymbolGlyph.fontColor([{ "id": 16777257, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" }]);
+            SymbolGlyph.width(18);
+            SymbolGlyph.fontSize(18);
+            SymbolGlyph.fontWeight(600);
+            SymbolGlyph.renderingStrategy(SymbolRenderingStrategy.SINGLE);
+            SymbolGlyph.effectStrategy(SymbolEffectStrategy.NONE);
+        }, SymbolGlyph);
+        Stack.pop();
+        Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Row.create();
+            Row.padding({
+                left: 16,
+                right: 16
+            });
+            Row.width('100%');
+            Row.margin({ bottom: 20 });
+            Row.alignSelf(ItemAlign.Start);
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Stack.create({ alignContent: Alignment.Top });
+            Stack.width(42);
+            Stack.shadow({ radius: 18, color: "#4D000000" });
+            Stack.borderRadius(2);
+            Stack.aspectRatio(3 / 4);
+            Stack.visibility(this.bookTitle ? Visibility.Visible : Visibility.None);
+        }, Stack);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Image.create(this.bookCover);
+            Image.draggable(false);
+            Image.width(42);
+            Image.aspectRatio(3 / 4);
+            Image.borderRadius(2);
+            Image.zIndex(1);
+            Image.alt({ "id": 16777275, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.backgroundColor({ "id": 125829129, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+        }, Image);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Image.create({ "id": 16777291, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.draggable(false);
+            Image.aspectRatio(3 / 4);
+            Image.width(42);
+            Image.borderRadius(2);
+            Image.zIndex(2);
+            Image.position({ x: 0, y: 0 });
+        }, Image);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Image.create({ "id": 16777273, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.draggable(false);
+            Image.width(42);
+            Image.opacity(0.7);
+            Image.aspectRatio(3);
+            Image.position({ x: 0, y: 42 / 3 / 4 - 42 / 9 });
+            Image.zIndex(0);
+        }, Image);
+        Stack.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create(this.bookTitle);
+            Text.fontSize({ "id": 125829684, "type": 10002, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Text.textOverflow({ overflow: TextOverflow.Ellipsis });
+            Text.maxLines(1);
+            Text.margin({ right: 12, left: 12 });
+            Text.fontWeight(FontWeight.Bold);
+            Text.flexShrink(1);
+            Text.fontColor("#E6000000");
+            Text.height(40);
+            Text.visibility(this.bookTitle ? Visibility.Visible : Visibility.None);
+        }, Text);
+        Text.pop();
+        Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            List.create({ scroller: this.catalogListScroller });
+            List.scrollBar(BarState.On);
+            List.scrollBarWidth(10);
+            List.scrollBarColor('#80000000');
+            List.edgeEffect(EdgeEffect.Spring);
+            List.onReachStart(() => {
+                hilog.info(0x0000, TAG, 'Catalog list reached start');
+            });
+            List.onReachEnd(() => {
+                hilog.info(0x0000, TAG, 'Catalog list reached end');
+            });
+            List.width('100%');
+            List.height('100%');
+        }, List);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            ForEach.create();
+            const forEachItemGenFunction = (_item, index) => {
+                const item = _item;
+                {
+                    const itemCreation = (elmtId, isInitialRender) => {
+                        ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                        itemCreation2(elmtId, isInitialRender);
+                        if (!isInitialRender) {
+                            ListItem.pop();
+                        }
+                        ViewStackProcessor.StopGetAccessRecording();
+                    };
+                    const itemCreation2 = (elmtId, isInitialRender) => {
+                        ListItem.create(deepRenderFunction, true);
+                    };
+                    const deepRenderFunction = (elmtId, isInitialRender) => {
+                        itemCreation(elmtId, isInitialRender);
+                        this.observeComponentCreation2((elmtId, isInitialRender) => {
+                            Column.create();
+                            Column.padding({
+                                left: item.catalogLevel ? item.catalogLevel * 26 : 16,
+                                right: 16,
+                                top: 6,
+                                bottom: 6
+                            });
+                            Column.backgroundColor(index === this.currentCatalogIndex ? { "id": 16777243, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" } : Color.Transparent);
+                            Column.onClick(async () => {
+                                this.jumpToCatalogItem(item);
+                            });
+                        }, Column);
+                        this.observeComponentCreation2((elmtId, isInitialRender) => {
+                            Row.create();
+                            Row.width('100%');
+                            Row.height(48);
+                            Row.justifyContent(FlexAlign.Center);
+                            Row.alignItems(VerticalAlign.Center);
+                        }, Row);
+                        this.observeComponentCreation2((elmtId, isInitialRender) => {
+                            Row.create();
+                        }, Row);
+                        this.observeComponentCreation2((elmtId, isInitialRender) => {
+                            Text.create(' Â· ');
+                            Text.fontSize(14);
+                            Text.fontColor({ "id": 16777238, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                        }, Text);
+                        Text.pop();
+                        this.observeComponentCreation2((elmtId, isInitialRender) => {
+                            Text.create(item.catalogName);
+                            Text.fontSize(14);
+                            Text.fontColor(index === this.currentCatalogIndex ? Color.Red : { "id": 16777238, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                            Text.textOverflow({ overflow: TextOverflow.Ellipsis });
+                            Text.padding({ top: 8, bottom: 8 });
+                            Text.maxLines(2);
+                            Text.layoutWeight(1);
+                        }, Text);
+                        Text.pop();
+                        Row.pop();
+                        Row.pop();
+                        this.observeComponentCreation2((elmtId, isInitialRender) => {
+                            Divider.create();
+                        }, Divider);
+                        Column.pop();
+                        ListItem.pop();
+                    };
+                    this.observeComponentCreation2(itemCreation2, ListItem);
+                    ListItem.pop();
+                }
+            };
+            this.forEachUpdateFunction(elmtId, this.catalogItemList, forEachItemGenFunction, undefined, true, false);
+        }, ForEach);
+        ForEach.pop();
+        List.pop();
+        Column.pop();
+    }
+    buildSetting(parent = null) {
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Column.create();
+            Column.visibility(this.currentIndex === 1 ? Visibility.Visible : Visibility.None);
+            Column.alignItems(HorizontalAlign.Start);
+            Column.backgroundColor(Color.White);
+            Column.zIndex(3);
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            GridRow.create({
+                columns: {
+                    xs: 4,
+                    sm: 4,
+                    md: 9,
+                    lg: 12
+                },
+                gutter: { x: 8, y: 8 },
+                breakpoints: { value: ['0vp', '520vp', '840vp'] },
+                direction: GridRowDirection.Row
+            });
+            GridRow.margin({ top: 24, left: 16, right: 16 });
+        }, GridRow);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            ForEach.create();
+            const forEachItemGenFunction = _item => {
+                const data = _item;
+                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                    GridCol.create({
+                        span: {
+                            xs: 1,
+                            sm: 2,
+                            md: 3,
+                            lg: 4
+                        },
+                        offset: 0,
+                        order: 0
+                    });
+                }, GridCol);
+                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                    Column.create();
+                    Column.width('100%');
+                    Column.onClick(async () => {
+                        this.selectFontPath = data.getPath();
+                        this.readerSetting.fontName = data.getAlias();
+                        this.readerSetting.fontPath = data.getPath();
+                        this.readerComponentController.setPageConfig(this.readerSetting);
+                        await this.saveSettings();
+                        hilog.info(0x0000, TAG, 'getAlias: = ' + data.getAlias() + " , getPath = " + data.getPath());
+                    });
+                    Column.id(TAG + '_Stack_' + data.getAlias());
+                    Column.onAppear(() => {
+                        focusControl.requestFocus(TAG + '_Stack_' + data.getAlias());
+                    });
+                }, Column);
+                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                    Text.create(data.getAlias());
+                    Text.fontSize(14);
+                    Text.borderRadius(12);
+                    Text.borderWidth(1.5);
+                    Text.width('100%');
+                    Text.height(48);
+                    Text.fontColor(this.selectFontPath !== data.getPath() ? Color.Black :
+                        Color.Red);
+                    Text.textAlign(TextAlign.Center);
+                    Text.backgroundColor(this.selectFontPath !== data.getPath() ? { "id": 16777242, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" } : { "id": 16777241, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                    Text.borderColor(this.selectFontPath !== data.getPath() ? { "id": 16777240, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" } : { "id": 16777247, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                }, Text);
+                Text.pop();
+                Column.pop();
+                GridCol.pop();
+            };
+            this.forEachUpdateFunction(elmtId, this.fontList, forEachItemGenFunction);
+        }, ForEach);
+        ForEach.pop();
+        GridRow.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create();
+            Text.width('92%');
+            Text.height(1);
+            Text.margin({ left: 16, top: 12, right: 16 });
+            Text.backgroundColor({ "id": 16777242, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+        }, Text);
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Row.create({ space: 20 });
+            Row.margin({ left: 16, top: 16, right: 16 });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Radio.create({
+                value: 'flipMode', group: 'radioGroup'
+            });
+            Radio.height(20);
+            Radio.width(20);
+            Radio.checked(true);
+            Radio.radioStyle({
+                checkedBackgroundColor: Color.Red,
+            });
+            Radio.onClick(async () => {
+                this.readerSetting.flipMode = '0';
+                this.readerComponentController.setPageConfig(this.readerSetting);
+                await this.saveSettings();
+            });
+        }, Radio);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create({ "id": 16777223, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Text.fontSize(16);
+            Text.lineHeight(21);
+        }, Text);
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Radio.create({
+                value: 'flipMode', group: 'radioGroup'
+            });
+            Radio.height(20);
+            Radio.width(20);
+            Radio.checked(false);
+            Radio.radioStyle({
+                checkedBackgroundColor: Color.Red,
+            });
+            Radio.onClick(async () => {
+                this.readerSetting.flipMode = '1';
+                this.readerComponentController.setPageConfig(this.readerSetting);
+                await this.saveSettings();
+            });
+        }, Radio);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create({ "id": 16777234, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Text.fontSize(16);
+            Text.lineHeight(21);
+        }, Text);
+        Text.pop();
+        Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create();
+            Text.width('92%');
+            Text.height(1);
+            Text.margin({ left: 16, top: 12, right: 16 });
+            Text.backgroundColor({ "id": 16777242, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+        }, Text);
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Scroll.create();
+            Scroll.margin({ top: 8 });
+            Scroll.scrollable(ScrollDirection.Horizontal);
+            Scroll.scrollBar(BarState.Off);
+            Scroll.edgeEffect(EdgeEffect.Spring);
+        }, Scroll);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Row.create({ space: 12 });
+            Row.constraintSize({
+                minWidth: '100%'
+            });
+            Row.id(TAG + '_Row_1');
+            Row.padding({
+                left: 12,
+                right: 12,
+                top: 12,
+                bottom: 12
+            });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            ForEach.create();
+            const forEachItemGenFunction = (_item, index) => {
+                const item = _item;
+                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                    Stack.create();
+                    Stack.width(`calc((100% - ${(Number(this.themeList.length) - 1) * 12}vp) / ${Number(this.themeList.length)})`);
+                    Stack.constraintSize({
+                        minWidth: 60
+                    });
+                    Stack.borderRadius(30);
+                    Stack.borderStyle(BorderStyle.Solid);
+                    Stack.onClick(async () => {
+                        this.themeSelectIndex = index;
+                        this.applyTheme(item, index);
+                        this.readerComponentController.setPageConfig(this.readerSetting);
+                        await this.saveSettings();
+                    });
+                    Stack.id(TAG + '_Stack_' + index);
+                    Stack.onAppear(() => {
+                        focusControl.requestFocus(TAG + '_Stack_' + index);
+                    });
+                }, Stack);
+                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                    Row.create();
+                    Row.width('100%');
+                    Row.height(40);
+                    Row.borderWidth(this.themeSelectIndex !== index ? 1 : 2);
+                    Row.borderColor(this.themeSelectIndex !== index ? { "id": 16777249, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" } :
+                        this.themeBorderColor[this.themeSelectIndex]);
+                    Row.backgroundImage(this.getBackgroundImage(item));
+                    Row.backgroundColor(this.THEME_BUTTON_BACKGROUND[item.toString()]);
+                    Row.backgroundImagePosition(Alignment.BottomEnd);
+                    Row.backgroundImageSize(ImageSize.Cover);
+                    Row.borderRadius(20);
+                    Row.id(TAG + '_Row_' + index);
+                }, Row);
+                Row.pop();
+                Stack.pop();
+            };
+            this.forEachUpdateFunction(elmtId, this.themeList, forEachItemGenFunction, undefined, true, false);
+        }, ForEach);
+        ForEach.pop();
+        Row.pop();
+        Scroll.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create();
+            Text.width('92%');
+            Text.height(1);
+            Text.margin({ left: 16, top: 12, right: 16 });
+            Text.backgroundColor({ "id": 16777242, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+        }, Text);
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            TextInput.create({ placeholder: { "id": 16777224, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" }, text: this.fontSize });
+            TextInput.margin({
+                left: 16,
+                top: 10,
+                right: 16,
+                bottom: 10
+            });
+            TextInput.backgroundColor({ "id": 16777254, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            TextInput.placeholderColor("#666666");
+            TextInput.type(InputType.Number);
+            TextInput.fontSize(16);
+            TextInput.onChange((value) => {
+                this.fontSize = value;
+            });
+        }, TextInput);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            TextInput.create({ placeholder: { "id": 16777228, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" }, text: this.lineHeight });
+            TextInput.margin({ left: 16, right: 16, bottom: 10 });
+            TextInput.backgroundColor({ "id": 16777254, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            TextInput.placeholderColor("#666666");
+            TextInput.type(InputType.NUMBER_DECIMAL);
+            TextInput.fontSize(16);
+            TextInput.onChange((value) => {
+                this.lineHeight = value;
+            });
+        }, TextInput);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Button.createWithLabel({ "id": 16777235, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Button.onClick(async () => {
+                hilog.info(0x0000, TAG, 'click : update page setting, fontSize = ' + this.fontSize + ' ,lineHeight = ' + this.lineHeight);
+                if (!isNaN(Number.parseInt(this.fontSize))) {
+                    this.readerSetting.fontSize = Number.parseInt(this.fontSize);
+                }
+                if (!isNaN(Number.parseFloat(this.lineHeight))) {
+                    this.readerSetting.lineHeight = Number.parseFloat(this.lineHeight);
+                }
+                this.readerComponentController.setPageConfig(this.readerSetting);
+                await this.saveSettings();
+            });
+            Button.fontSize(16);
+            Button.width('92%');
+            Button.fontColor(Color.Red);
+            Button.backgroundColor({ "id": 16777254, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Button.padding({ top: 10, bottom: 10 });
+            Button.margin({ left: 16, right: 16, bottom: 30 });
+        }, Button);
+        Button.pop();
+        Column.pop();
+    }
+    initialRender() {
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Stack.create();
+            Stack.width('100%');
+            Stack.height('100%');
+            Stack.onClick(() => {
+                this.showModal();
+            });
+        }, Stack);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            __Common__.create();
+            __Common__.zIndex(1);
+        }, __Common__);
+        {
+            this.observeComponentCreation2((elmtId, isInitialRender) => {
+                if (isInitialRender) {
+                    let componentCall = new ReadPageComponent(this, {
+                        controller: this.readerComponentController,
+                        readerCallback: (err, data) => {
+                            this.readerComponentController = data;
+                        }
+                    }, undefined, elmtId, () => { }, { page: "entry/src/main/ets/pages/Reader.ets", line: 725, col: 7 });
+                    ViewPU.create(componentCall);
+                    let paramsLambda = () => {
+                        return {
+                            controller: this.readerComponentController,
+                            readerCallback: (err, data) => {
+                                this.readerComponentController = data;
+                            }
+                        };
+                    };
+                    componentCall.paramsGenerator_ = paramsLambda;
+                }
+                else {
+                    this.updateStateVarsOfChildByElmtId(elmtId, {});
+                }
+            }, { name: "ReadPageComponent" });
+        }
+        __Common__.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // menu bar
+            Column.create();
+            // menu bar
+            Column.width('100%');
+            // menu bar
+            Column.height('100%');
+            // menu bar
+            Column.backgroundColor(this.currentIndex == 0 ? '#0d626262' : Color.Transparent);
+            // menu bar
+            Column.zIndex(this.showModalBanner ? 2 : 0);
+            // menu bar
+            Column.justifyContent(FlexAlign.End);
+            // menu bar
+            Column.onClick(() => {
+                this.closeModal();
+            });
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Column.create();
+            Column.visibility(this.currentIndex < 0 ? Visibility.None : Visibility.Visible);
+            Column.width('100%');
+            Column.height(this.currentIndex === 0 ? 'calc(100%  - 80vp - 56vp)' : '60%');
+            Column.justifyContent(FlexAlign.End);
+            Column.onClick(() => {
+                this.showModalBanner = true;
+            });
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Column.create();
+            Column.padding({ bottom: !this.bookCover && !this.bookTitle ? 56 : 100 });
+            Column.backgroundColor(Color.White);
+            Column.borderRadius({
+                topRight: this.currentIndex === 0 ? 32 : 0,
+                topLeft: this.currentIndex === 0 ? 32 : 0
+            });
+        }, Column);
+        // catalog list view
+        this.buildCatalogItemList.bind(this)();
+        // setting view
+        this.buildSetting.bind(this)();
+        Column.pop();
+        Column.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Row.create();
+            Row.width('100%');
+            Row.height(80);
+            Row.backgroundColor(Color.White);
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create({ "id": 16777221, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Text.width('50%');
+            Text.height('100%');
+            Text.onClick(() => {
+                this.jumpToCatalogList();
+            });
+            Text.textAlign(TextAlign.Center);
+            Text.fontColor(this.currentIndex === 0 ? Color.Red : Color.Black);
+        }, Text);
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create({ "id": 16777231, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Text.width('50%');
+            Text.height('100%');
+            Text.onClick(() => {
+                this.jumpToSetting();
+            });
+            Text.textAlign(TextAlign.Center);
+            Text.fontColor(this.currentIndex === 1 ? Color.Red : Color.Black);
+        }, Text);
+        Text.pop();
+        Row.pop();
+        // menu bar
+        Column.pop();
+        Stack.pop();
+    }
+    applyTheme(theme, index) {
+        this.readerSetting.themeColor = this.THEME_PAGE_COLOR[theme];
+        this.readerSetting.nightMode = false;
+        if (index === 5) {
+            this.readerSetting.themeBgImg = 'white_sky_first.jpg';
+            this.readerSetting.fontColor = '#000000';
+        }
+        else if (index === 6) {
+            this.readerSetting.themeBgImg = 'dark_sky_first.jpg';
+            this.readerSetting.fontColor = '#ffffff';
+            this.readerSetting.nightMode = true;
+        }
+        else if (index == 4) {
+            this.readerSetting.themeBgImg = '';
+            this.readerSetting.nightMode = true;
+            this.readerSetting.fontColor = '#ffffff';
+        }
+        else {
+            this.readerSetting.themeBgImg = '';
+            this.readerSetting.fontColor = '#000000';
+        }
+        this.readerSetting.scaledDensity = display.getDefaultDisplaySync().scaledDensity;
+    }
+    async saveSettings() {
+        await settingsManager.saveSettings({
+            fontName: this.readerSetting.fontName,
+            fontPath: this.readerSetting.fontPath,
+            fontSize: this.readerSetting.fontSize,
+            lineHeight: this.readerSetting.lineHeight,
+            theme: this.themeList[this.themeSelectIndex],
+            flipMode: this.readerSetting.flipMode
+        });
+    }
+    /**
+     * show menu bar
+     */
+    showModal() {
+        this.showModalBanner = true;
+    }
+    /**
+     * ä¿å­˜é˜…è¯»è¿›åº¦ï¼ˆæ”¹ä¸ºè®°å½•ç« èŠ‚åï¼‰
+     */
+    saveReadingProgress() {
+        if (this.filePath && this.currentData && this.currentData.resourceIndex !== undefined) {
+            const resourceIndex = this.currentData.resourceIndex;
+            const domPos = this.currentData.startDomPos || '';
+            const spineList = this.defaultHandler?.getSpineList() || [];
+            // è·å–å½“å‰ç« èŠ‚å
+            let chapterName = 'æœªçŸ¥ç« èŠ‚';
+            if (spineList.length > 0 && resourceIndex >= 0 && resourceIndex < spineList.length) {
+                const currentSpine = spineList[resourceIndex];
+                chapterName = currentSpine.href || 'æœªçŸ¥ç« èŠ‚';
+                // å°è¯•ä»ç›®å½•ä¸­è·å–æ›´å‹å¥½çš„ç« èŠ‚å
+                const catalogList = this.defaultHandler?.getCatalogList() || [];
+                const matchingCatalog = catalogList.find(catalog => catalog.resourceFile === currentSpine.href);
+                if (matchingCatalog && matchingCatalog.catalogName) {
+                    chapterName = matchingCatalog.catalogName;
+                }
+            }
+            // ä¿å­˜åˆ° Preferences
+            const progressKey = `${this.filePath}_progress`;
+            const progressValue = JSON.stringify({ resourceIndex, domPos });
+            this.preference?.put(progressKey, progressValue).then(() => {
+                this.preference?.flush((err) => {
+                    if (err) {
+                        hilog.error(0x0000, TAG, `Failed to flush preferences, err: ${err}`);
+                    }
+                    else {
+                        hilog.info(0x0000, TAG, `Saved progress to preferences: ${progressValue}`);
+                    }
+                });
+            });
+            // æ›´æ–°æ•°æ®åº“ï¼Œä¿å­˜ç« èŠ‚åè€Œä¸æ˜¯è¿›åº¦ç™¾åˆ†æ¯”
+            hilog.info(0x0000, TAG, `Updating progress for ${this.filePath}: resourceIndex=${resourceIndex}, domPos=${domPos}, chapterName=${chapterName}`);
+            bookDataManager.updateBookProgress(this.filePath, resourceIndex, domPos, chapterName);
+        }
+    }
+    /**
+     * close menu bar
+     */
+    closeModal() {
+        this.showModalBanner = false;
+        this.currentIndex = -1;
+    }
+    jumpToCatalogList() {
+        this.currentIndex = 0;
+        this.catalogItemList = this.defaultHandler?.getCatalogList() || [];
+        this.getBookInfo();
+        hilog.info(0x0000, TAG, 'catalog list length: ' + this.catalogItemList.length);
+        // å»¶è¿Ÿæ‰§è¡Œæ»šåŠ¨ï¼Œç¡®ä¿åˆ—è¡¨å·²æ¸²æŸ“
+        setTimeout(() => {
+            if (this.currentCatalogIndex >= 0 && this.currentCatalogIndex < this.catalogItemList.length) {
+                this.catalogListScroller.scrollToIndex(this.currentCatalogIndex);
+                hilog.info(0x0000, TAG, 'Scrolled to catalog index: ' + this.currentCatalogIndex);
+            }
+        }, 100);
+    }
+    jumpToSetting() {
+        this.currentIndex = 1;
+    }
+    async jumpToCatalogItem(catalogItem) {
+        const domPos = await this.getDomPos(catalogItem);
+        const resourceIndex = this.getResourceItemByCatalog(catalogItem).index;
+        this.readerComponentController.startPlay(resourceIndex, domPos);
+        this.closeModal();
+    }
+    async getDomPos(catalogItem) {
+        const domPos = this.defaultHandler?.getDomPosByCatalogHref(catalogItem.href || '') || '';
+        return domPos;
+    }
+    getResourceItemByCatalog(catalogItem) {
+        let resourceFile = catalogItem.resourceFile || '';
+        let spineList = this.defaultHandler?.getSpineList() || [];
+        let resourceItemArr = spineList.filter(item => item.href === resourceFile);
+        if (resourceItemArr.length > 0) {
+            hilog.info(0x0000, TAG, 'getResourceItemByCatalog get resource ', resourceItemArr[0]);
+            let resourceItem = resourceItemArr[0];
+            return resourceItem;
+        }
+        else if (spineList.length > 0) {
+            hilog.info(0x0000, TAG, 'getResourceItemByCatalog get resource in resourceList', spineList[0]);
+            return spineList[0];
+        }
+        else {
+            hilog.info(0x0000, TAG, 'getResourceItemByCatalog get resource in escape');
+            return {
+                idRef: '',
+                index: 0,
+                href: '',
+                properties: ''
+            };
+        }
+    }
+    getBackgroundImage(themeType) {
+        if (themeType === 'whiteSky') {
+            return { "id": 16777295, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" };
+        }
+        else if (themeType === 'darkSky') {
+            return { "id": 16777274, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" };
+        }
+        return '';
+    }
+    isFont(filePath) {
+        let options = [".ttf", ".woff2", ".otf"];
+        let path = filePath.toLowerCase();
+        let result = path.indexOf(options[0]) != -1 || path.indexOf(options[1]) != -1 || path.indexOf(options[2]) != -1;
+        hilog.info(0x0000, TAG, 'isFont = ' + result);
+        return result;
+    }
+    loadFileFromPath(filePath) {
+        try {
+            let stats = fs.statSync(filePath);
+            let file = fs.openSync(filePath, fs.OpenMode.READ_ONLY);
+            let buffer = new ArrayBuffer(stats.size);
+            fs.readSync(file.fd, buffer);
+            fs.closeSync(file);
+            return buffer;
+        }
+        catch (err) {
+            hilog.error(0x0000, TAG, "loadFileFromPath failed with error message: ", err.message, ", error code: ", err.code);
+            return new ArrayBuffer(0);
+        }
+    }
+    /**
+     * Remove the page transition animation to speed up the page access speed of the reader
+     */
+    pageTransition() {
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            PageTransition.create();
+        }, null);
+        PageTransition.pop();
+    }
+    rerender() {
+        this.updateDirtyElements();
+    }
+    static getEntryName() {
+        return "Reader";
+    }
+}
+registerNamedRoute(() => new Reader(undefined, {}), "", { bundleName: "com.example.readerkitdemo", moduleName: "entry", pagePath: "pages/Reader", pageFullPath: "entry/src/main/ets/pages/Reader", integratedHsp: "false", moduleType: "followWithHap" });
+//# sourceMappingURL=Reader.js.mapÂœÙED:\ST\ReaderKitDemo\entry\src\main\ets\entryability\WindowAbility.etsÙg hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.display.d.tsÙg hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.file.fs.d.tsÙp hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.multimedia.image.d.tsÙ>D:\ST\ReaderKitDemo\entry\src\main\ets\common\FontFileInfo.etsÙe hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.hilog.d.tsÙ@D:\ST\ReaderKitDemo\entry\src\main\ets\utils\BookDataManager.etsÙ@D:\ST\ReaderKitDemo\entry\src\main\ets\utils\SettingsManager.etsÙp hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.data.preferences.d.tsÙz hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_hms_ets_api_@hms.core.readerservice.readerComponent.d.etsÙt hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_hms_ets_api_@hms.core.readerservice.bookParser.d.tsÙ hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.app.ability.ConfigurationConstant.d.tsÙ7D:\ST\ReaderKitDemo\entry\src\main\ets\pages\Reader.etsÔrBšªmoduleName±isLocalDependency¯isNodeEntryFile§pkgPath±belongProjectPath§pkgNameªpkgVersion±dependencyPkgInfo°belongModulePath¬shouldEmitJs¥entryÃÂ¹D:\ST\ReaderKitDemo\entry³D:\ST\ReaderKitDemo¥entry¥1.0.0Ô  ¹D:\ST\ReaderKitDemo\entryÃÃÚ‹/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { WindowAbility } from '../entryability/WindowAbility';
+import { display } from '@kit.ArkUI';
+import { fileIo as fs } from '@kit.CoreFileKit';
+import { image } from '@kit.ImageKit';
+import { BusinessError } from '@kit.BasicServicesKit';
+import { FontFileInfo } from '../common/FontFileInfo';
+import hilog from '@ohos.hilog';
+import { bookDataManager } from '../utils/BookDataManager';
+import { settingsManager } from '../utils/SettingsManager';
+import { preferences } from '@kit.ArkData';
+
+import { ReadPageComponent, readerCore, bookParser } from '@kit.ReaderKit';
+import { common, ConfigurationConstant } from '@kit.AbilityKit';
+
+interface paramType {
+  filePath: string;
+  resourceIndex: number;
+  domPos: string;
+}
+
+interface ProgressData {
+  resourceIndex: number;
+  domPos: string;
+}
+
+const TAG: string = 'ReaderPage';
+const PREFERENCES_NAME = 'reader_progress';
+
+@Entry
+@Component
+struct Reader {
+  @StorageLink('windowWidth') windowWidth: number = 0;
+  @StorageLink('windowHeight') windowHeight: number = 0;
+  @StorageLink('colorMode') @Watch('colorModeChange') colorMode: ConfigurationConstant.ColorMode =
+    ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET;
+  /**
+   * Display dialog box
+   */
+  @State showModalBanner: boolean = false;
+  /**
+   * Menu bar type index, 0 : catalog list, 1 : setting, 1 : close dialog
+   */
+  @State currentIndex: number = -1;
+  @State catalogItemList: bookParser.CatalogItem[] = [];
+  @State currentCatalogIndex: number = -1; // å½“å‰ç« èŠ‚ç´¢å¼•
+  private catalogListScroller: Scroller = new Scroller(); // ç›®å½•åˆ—è¡¨æ»šåŠ¨æ§åˆ¶å™¨
+  private currentData: readerCore.PageDataInfo | null = null;
+  private defaultHandler: bookParser.BookParserHandler | null = null;
+  private readerComponentController: readerCore.ReaderComponentController = new readerCore.ReaderComponentController();
+  private preference: preferences.Preferences | null = null;
+  private filePath: string = '';
+  @State bookCover: PixelMap | null = null;
+  @State bookTitle: string = '';
+  @State author: string = '';
+  @State fontSize: string = '18';
+  @State lineHeight: string = '';
+  private fontList: Array<FontFileInfo> =
+    [new FontFileInfo(this.getUIContext().getHostContext()!.resourceManager.getStringSync($r('app.string.system_font')),
+      ''),
+      new FontFileInfo(this.getUIContext()
+        .getHostContext()!.resourceManager.getStringSync($r('app.string.source_han_serif_font')),
+        'fonts/SourceHanSerifCN-VF.ttf')];
+  @State selectFontPath: string = '';
+  @State themeList: string[] = [
+    'white',
+    'yellow',
+    'pink',
+    'green',
+    'dark',
+    'whiteSky',
+    'darkSky'
+  ];
+  private THEME_BUTTON_BACKGROUND: Record<string, Resource> = {
+    'white': $r('app.color.ic_white_theme_button_background'),
+    'yellow': $r('app.color.ic_yellow_theme_button_background'),
+    'pink': $r('app.color.ic_pink_theme_button_background'),
+    'green': $r('app.color.ic_green_theme_button_background'),
+    'dark': $r('app.color.ic_dark_theme_button_background'),
+    'whiteSky': $r('app.color.ic_white_theme_button_background'),
+    'darkSky': $r('app.color.ic_dark_theme_button_background')
+  }
+  private THEME_PAGE_COLOR: Record<string, string> = {
+    'white': '#FFFFFF',
+    'yellow': '#BD9063',
+    'pink': '#FFE4E5',
+    'green': '#C5E7CE',
+    'dark': '#202224',
+    'whiteSky': '#FFFFFF',
+    'darkSky': '#202224'
+  }
+  private themeBorderColor: Record<number, Resource> = {
+    0: $r('app.color.ic_border_select_white'),
+    1: $r('app.color.ic_border_select_yellow'),
+    2: $r('app.color.ic_border_select_pink'),
+    3: $r('app.color.ic_border_select_green'),
+    4: $r('app.color.ic_border_select_white'),
+    5: $r('app.color.ic_border_select_white'),
+    6: $r('app.color.ic_border_select_white')
+  }
+  @State themeSelectIndex: number = 0;
+  private readerSetting: readerCore.ReaderSetting = {
+    fontName: this.getUIContext().getHostContext()!.resourceManager.getStringSync($r('app.string.system_font')),
+    fontPath: '',
+    fontSize: Number.parseInt(this.fontSize),
+    fontColor: '#000000',
+    fontWeight: 400,
+    lineHeight: 1.9,
+    nightMode: false,
+    themeColor: 'rgba(248, 249, 250, 1)',
+    themeBgImg: '',
+    flipMode: '0',
+    scaledDensity: display.getDefaultDisplaySync().scaledDensity > 0 ? display.getDefaultDisplaySync().scaledDensity :
+      1,
+    viewPortWidth: this.windowWidth,
+    viewPortHeight: this.windowHeight
+  };
+  private screenDensityCallBack: Callback<number> | null = null;
+
+  async aboutToAppear() {
+    // Router addObserver æ–¹æ³•å·²ç§»é™¤ï¼Œå› ä¸ºRouterç±»å‹æ²¡æœ‰è¿™ä¸ªå±æ€§
+    
+    const logCode: number = 0x0000;
+    const logTag: string = TAG;
+    const currentDensity: number = this.readerSetting.scaledDensity;
+    const newDensity: number = display.getDefaultDisplaySync().scaledDensity;
+    hilog.info(logCode, logTag,
+      `aboutToAppear : current scaledDensity = ${currentDensity}; change scaledDensity = ${newDensity}`);
+    this.readerComponentController = new readerCore.ReaderComponentController();
+    const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    try {
+      this.preference = await preferences.getPreferences(context, PREFERENCES_NAME);
+    } catch (err) {
+      const errorMessage: string = `Failed to get preferences; err: ${err}`;
+      hilog.error(0x0000, TAG, errorMessage);
+    }
+    await settingsManager.init(context);
+    const settings = await settingsManager.loadSettings();
+
+    // Apply loaded settings
+    this.readerSetting.fontName = settings.fontName;
+    this.readerSetting.fontPath = settings.fontPath;
+    this.selectFontPath = settings.fontPath;
+    this.readerSetting.fontSize = settings.fontSize;
+    this.fontSize = settings.fontSize.toString();
+    this.readerSetting.lineHeight = settings.lineHeight;
+    this.lineHeight = settings.lineHeight.toString();
+    this.readerSetting.flipMode = settings.flipMode;
+    this.themeSelectIndex = this.themeList.indexOf(settings.theme);
+    this.applyTheme(settings.theme, this.themeSelectIndex);
+
+    this.registerScreenDensityChange();
+    WindowAbility.getInstance().toggleWindowSystemBar([], this.getUIContext().getHostContext());
+    let param = this.getUIContext().getRouter().getParams() as paramType;
+    this.filePath = param.filePath;
+    let resourceIndex = param.resourceIndex;
+    let domPos = param.domPos;
+    this.startPlay(this.filePath, resourceIndex, domPos);
+  }
+
+  onPageHide(): void {
+    // é¡µé¢éšè—æ—¶ä¿å­˜é˜…è¯»è¿›åº¦
+    this.saveReadingProgress();
+  }
+
+  /**
+   * The color mode of the system changed
+   */
+  colorModeChange() {
+    if (this.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK) {
+      this.readerSetting.nightMode = true;
+      this.readerSetting.fontColor = '#ffffff';
+      this.readerSetting.themeColor = '#202224';
+    } else {
+      this.readerSetting.nightMode = false;
+      this.readerSetting.fontColor = '#000000';
+      this.readerSetting.themeColor = '#FFFFFF';
+    }
+    this.readerComponentController.setPageConfig(this.readerSetting);
+  }
+
+  /**
+   * register screen density changed callback
+   */
+  registerScreenDensityChange() {
+    this.screenDensityCallBack = (data: number) => {
+      let displaySync = display.getDefaultDisplaySync();
+      let scaledDensity = displaySync.scaledDensity;
+      if (scaledDensity !== this.readerSetting.scaledDensity) {
+        AppStorage.setOrCreate('isDensityChange', true);
+        this.getUIContext().getRouter().back();
+      }
+    }
+    display.on('change', this.screenDensityCallBack);
+  }
+
+  /**
+   * Resource request callback. Font files and theme background images can be stored in the resource directory (resources/rawfile) or application sandbox path
+   */
+  private resourceRequest: bookParser.CallbackRes<string, ArrayBuffer> = (filePath: string): ArrayBuffer => {
+    hilog.info(0x0000, TAG,
+      'resourceRequest : filePath = ' + filePath + ', this.selectFontPath = ' + this.selectFontPath);
+    if (filePath.length === 0) {
+      return new ArrayBuffer(0);
+    }
+    let resourcePath = filePath;
+    if (this.isFont(filePath)) {
+      resourcePath = this.selectFontPath;
+    }
+    try {
+      let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      let value: Uint8Array = context.resourceManager.getRawFileContentSync(resourcePath);
+      hilog.info(0x0000, TAG, 'resourceRequest : get other resource succeeded ');
+      return value.buffer as ArrayBuffer;
+    } catch (error) {
+      let code = (error as BusinessError).code;
+      let message = (error as BusinessError).message;
+      hilog.error(0x0000, TAG,
+        `resourceRequest : get resource failed, error code: ${code}`);
+        hilog.error(0x0000, TAG, `resourceRequest : get resource failed, message: ${message}.`);
+    }
+    // Get data in the sandbox path
+    return this.loadFileFromPath(resourcePath);
+  }
+
+  private async startPlay(path: string, resourceIndex: number, domPos: string) {
+    try {
+      const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      const initPromise: Promise<void> = this.readerComponentController.init(context);
+      const defaultHandlerPromise: Promise<bookParser.BookParserHandler> = bookParser.getDefaultHandler(path);
+      const results = await Promise.all([defaultHandlerPromise, initPromise]);
+      const defaultHandler = results[0];
+      this.defaultHandler = defaultHandler;
+
+      hilog.info(0x0000, TAG, 'startPlay getDefaultHandler end,result is:' + JSON.stringify(this.defaultHandler));
+      this.readerComponentController.registerBookParser(this.defaultHandler);
+
+      // Register listeners
+      this.readerComponentController.on('resourceRequest', this.resourceRequest);
+      this.readerComponentController.on('pageShow', (pageData: readerCore.PageDataInfo): void => {
+        hilog.info(0x0000, TAG, 'pageshow: data is: ' + JSON.stringify(pageData));
+        this.currentData = pageData;
+        // Save page data
+        this.saveReadingProgress();
+        // Update current catalog index
+        this.updateCurrentCatalogIndex();
+        
+        // æ›´æ–°ç›®å½•æ»šåŠ¨ä½ç½®
+        if (this.currentCatalogIndex >= 0 && this.currentCatalogIndex < this.catalogItemList.length) {
+          this.catalogListScroller.scrollToIndex(this.currentCatalogIndex);
+        }
+      });
+
+      WindowAbility.getInstance().onWindowSizeChange(() => {
+        if (this.readerSetting.viewPortWidth != this.windowWidth ||
+          this.readerSetting.viewPortHeight != this.windowHeight) {
+          hilog.info(0x0000, TAG, 'onWindowSizeChange is changed, update page config');
+          // Windows size is changed, update current page viewport size
+          this.readerSetting.viewPortWidth = this.windowWidth;
+          this.readerSetting.viewPortHeight = this.windowHeight;
+          try {
+            this.readerComponentController.setPageConfig(this.readerSetting);
+          } catch (e) {
+            hilog.error(0x0000, TAG,
+              'onWindowSizeChange, error ' + JSON.stringify(e));
+          }
+        }
+      });
+
+      this.readerComponentController.setPageConfig(this.readerSetting);
+
+      // ä¼˜å…ˆä» Preferences åŠ è½½è¿›åº¦
+      const progressKey = `${this.filePath}_progress`;
+      const savedProgress = await this.preference?.get(progressKey, '');
+      let startResourceIndex = resourceIndex || 0;
+      let startDomPos = domPos || '';
+      if (typeof savedProgress === 'string' && savedProgress) {
+        try {
+          const savedProgressObj = JSON.parse(savedProgress) as ProgressData;
+          const savedResourceIndex = savedProgressObj.resourceIndex;
+          const savedDomPos = savedProgressObj.domPos;
+          startResourceIndex = savedResourceIndex;
+          startDomPos = savedDomPos;
+          hilog.info(0x0000, TAG, `Loaded progress from preferences: resourceIndex=${startResourceIndex}, domPos=${startDomPos}`);
+        } catch (e) {
+          hilog.error(0x0000, TAG, `Failed to parse saved progress: ${savedProgress}`);
+        }
+      }
+
+      this.readerComponentController.startPlay(startResourceIndex, startDomPos);
+      
+      // è·å–ç›®å½•åˆ—è¡¨
+      this.catalogItemList = this.defaultHandler?.getCatalogList() || [];
+      this.updateCurrentCatalogIndex();
+     } catch (err) {
+       hilog.error(0x0000, TAG, 'startPlay: err: ' + JSON.stringify(err));
+     }
+  }
+
+  private async getBookInfo() {
+    try {
+      let bookInfo: bookParser.BookInfo | undefined = this.defaultHandler?.getBookInfo();
+      if (bookInfo) {
+        this.bookTitle = bookInfo.bookTitle || '';
+        this.author = bookInfo?.bookCreator || '';
+        // SpineIndex is not required for get the book cover
+        let buffer = this.defaultHandler?.getResourceContent(-1, bookInfo.bookCoverImage);
+        let imageSource: image.ImageSource = image.createImageSource(buffer);
+        this.bookCover = await imageSource.createPixelMap();
+        imageSource.release();
+      }
+      hilog.info(0x0000, TAG, 'getBookInfo bookInfo is: ' + JSON.stringify(bookInfo));
+    } catch (e) {
+      hilog.error(0x0000, TAG, 'getBookInfo failed', e);
+    }
+  }
+
+  /**
+   * æ›´æ–°å½“å‰ç« èŠ‚ç´¢å¼•
+   */
+  private updateCurrentCatalogIndex() {
+    if (this.currentData && this.defaultHandler) {
+      const spineList = this.defaultHandler.getSpineList();
+      const catalogList = this.defaultHandler.getCatalogList();
+      
+      if (spineList.length > 0 && this.currentData.resourceIndex >= 0 && 
+          this.currentData.resourceIndex < spineList.length) {
+        const currentSpine = spineList[this.currentData.resourceIndex];
+        
+        // æŸ¥æ‰¾å½“å‰spineå¯¹åº”çš„ç›®å½•é¡¹
+        const matchingIndex = catalogList.findIndex(catalog => 
+          catalog.href === currentSpine.href
+        );
+        
+        if (matchingIndex !== -1) {
+          this.currentCatalogIndex = matchingIndex;
+        }
+      }
+    }
+  }
+
+  aboutToDisappear(): void {
+    // Force save progress before disappearing
+    this.saveReadingProgress();
+
+    display.off('change', this.screenDensityCallBack);
+    if (this.readerComponentController) {
+      this.readerComponentController.off('pageShow');
+      this.readerComponentController.off('resourceRequest');
+      this.readerComponentController.releaseBook();
+    }
+    this.defaultHandler = null;
+    this.currentData = null;
+  }
+
+  @Builder
+  private buildCatalogItemList() {
+    Column() {
+      Row() {
+        Stack() {
+          SymbolGlyph($r('sys.symbol.xmark'))
+            .fontColor([$r('app.color.ohos_id_color_primary_light')])
+            .width(18)
+            .fontSize(18)
+            .fontWeight(600)
+            .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+            .effectStrategy(SymbolEffectStrategy.NONE)
+        }
+        .borderRadius('50%')
+        .backgroundColor("#0d777777")
+        .align(Alignment.Center)
+        .width(40)
+        .height(40)
+        .margin({ top: 8, left: 16, right: 16 })
+        .onClick(() => {
+          this.closeModal();
+        })
+      }
+      .width('100%')
+      .height(56)
+      .alignItems(VerticalAlign.Center)
+      .justifyContent(FlexAlign.End)
+
+      Row() {
+        Stack({ alignContent: Alignment.Top }) {
+          Image(this.bookCover)
+            .draggable(false)
+            .width(42)
+            .aspectRatio(3 / 4)
+            .borderRadius(2)
+            .zIndex(1)
+            .alt($r('app.media.default_cover'))
+            .backgroundColor($r('sys.color.ohos_id_color_background'))
+
+          Image($r('app.media.spines'))
+            .draggable(false)
+            .aspectRatio(3 / 4)
+            .width(42)
+            .borderRadius(2)
+            .zIndex(2)
+            .position({ x: 0, y: 0 })
+
+          Image($r('app.media.cover_shadow'))
+            .draggable(false)
+            .width(42)
+            .opacity(0.7)
+            .aspectRatio(3)
+            .position({ x: 0, y: 42 / 3 / 4 - 42 / 9 })
+            .zIndex(0)
+        }
+        .width(42)
+        .shadow({ radius: 18, color: "#4D000000" })
+        .borderRadius(2)
+        .aspectRatio(3 / 4)
+        .visibility(this.bookTitle ? Visibility.Visible : Visibility.None)
+
+        Text(this.bookTitle)
+          .fontSize($r('sys.float.ohos_id_text_size_body1'))
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .maxLines(1)
+          .margin({ right: 12, left: 12 })
+          .fontWeight(FontWeight.Bold)
+          .flexShrink(1)
+          .fontColor("#E6000000")
+          .height(40)
+          .visibility(this.bookTitle ? Visibility.Visible : Visibility.None)
+      }
+      .padding({
+        left: 16,
+        right: 16
+      })
+      .width('100%')
+      .margin({ bottom: 20 })
+      .alignSelf(ItemAlign.Start)
+
+      List({ scroller: this.catalogListScroller }) {
+        ForEach(this.catalogItemList, (item: bookParser.CatalogItem, index: number) => {
+          ListItem() {
+            Column() {
+              Row() {
+                Row() {
+                  Text(' Â· ')
+                    .fontSize(14)
+                    .fontColor($r('app.color.black_90_opacity'))
+                  Text(item.catalogName)
+                    .fontSize(14)
+                    .fontColor(index === this.currentCatalogIndex ? Color.Red : $r('app.color.black_90_opacity'))
+                    .textOverflow({ overflow: TextOverflow.Ellipsis })
+                    .padding({ top: 8, bottom: 8 })
+                    .maxLines(2)
+                    .layoutWeight(1)
+                }
+              }
+              .width('100%')
+              .height(48)
+              .justifyContent(FlexAlign.Center)
+              .alignItems(VerticalAlign.Center)
+
+              Divider()
+            }
+            .padding({
+              left: item.catalogLevel ? item.catalogLevel * 26 : 16,
+              right: 16,
+              top: 6,
+              bottom: 6
+            })
+            .backgroundColor(index === this.currentCatalogIndex ? $r('app.color.ic_bg_selected') : Color.Transparent)
+            .onClick(async () => {
+              this.jumpToCatalogItem(item);
+            })
+          }
+        })
+      }
+      .scrollBar(BarState.On) // å¯ç”¨æ»šåŠ¨æ¡
+      .scrollBarWidth(10) // è®¾ç½®æ»šåŠ¨æ¡å®½åº¦ï¼Œå¢åŠ åˆ°10vpæé«˜è§¦æ‘¸ä½“éªŒ
+      .scrollBarColor('#80000000') // è®¾ç½®æ»šåŠ¨æ¡é¢œè‰²
+      .edgeEffect(EdgeEffect.Spring) // æ·»åŠ å¼¹æ€§è¾¹ç¼˜æ•ˆæœ
+      .onReachStart(() => {
+        hilog.info(0x0000, TAG, 'Catalog list reached start');
+      })
+      .onReachEnd(() => {
+        hilog.info(0x0000, TAG, 'Catalog list reached end');
+      })
+      .width('100%')
+      .height('100%')
+    }
+    .borderRadius({ topRight: 32, topLeft: 32 })
+    .visibility(this.currentIndex === 0 ? Visibility.Visible : Visibility.None)
+    .backgroundColor(Color.White)
+    .zIndex(3)
+  }
+
+  @Builder
+  private buildSetting() {
+    Column() {
+      GridRow({
+        columns: {
+          xs: 4,
+          sm: 4,
+          md: 9,
+          lg: 12
+        },
+        gutter: { x: 8, y: 8 },
+        breakpoints: { value: ['0vp', '520vp', '840vp'] },
+        direction: GridRowDirection.Row
+      }) {
+        ForEach(this.fontList, (data: FontFileInfo) => {
+          GridCol({
+            span: {
+              xs: 1,
+              sm: 2,
+              md: 3,
+              lg: 4
+            },
+            offset: 0,
+            order: 0
+          }) {
+            Column() {
+              Text(data.getAlias())
+                .fontSize(14)
+                .borderRadius(12)
+                .borderWidth(1.5)
+                .width('100%')
+                .height(48)
+                .fontColor(this.selectFontPath !== data.getPath() ? Color.Black :
+                Color.Red)
+                .textAlign(TextAlign.Center)
+                .backgroundColor(this.selectFontPath !== data.getPath() ? $r('app.color.ic_bg_grey') :
+                $r('app.color.ic_bg_font_selected'))
+                .borderColor(this.selectFontPath !== data.getPath() ? $r('app.color.color_transparent') :
+                $r('app.color.ic_border_select_white'))
+            }
+            .width('100%')
+            .onClick(async () => {
+              this.selectFontPath = data.getPath();
+              this.readerSetting.fontName = data.getAlias();
+              this.readerSetting.fontPath = data.getPath();
+              this.readerComponentController.setPageConfig(this.readerSetting);
+              await this.saveSettings();
+              hilog.info(0x0000, TAG, 'getAlias: = ' + data.getAlias() + " , getPath = " + data.getPath());
+            })
+            .id(TAG + '_Stack_' + data.getAlias())
+            .onAppear(() => {
+              focusControl.requestFocus(TAG + '_Stack_' + data.getAlias());
+            })
+          }
+        });
+      }.margin({ top: 24, left: 16, right: 16 })
+
+      Text()
+        .width('92%')
+        .height(1)
+        .margin({ left: 16, top: 12, right: 16 })
+        .backgroundColor($r('app.color.ic_bg_grey'))
+
+      Row({ space: 20 }) {
+        Radio({
+          value: 'flipMode', group: 'radioGroup'
+        })
+          .height(20)
+          .width(20)
+          .checked(true)
+          .radioStyle({
+            checkedBackgroundColor: Color.Red,
+          })
+          .onClick(async () => {
+            this.readerSetting.flipMode = '0';
+            this.readerComponentController.setPageConfig(this.readerSetting);
+            await this.saveSettings();
+          })
+        Text($r('app.string.emulation_page'))
+          .fontSize(16)
+          .lineHeight(21)
+
+        Radio({
+          value: 'flipMode', group: 'radioGroup'
+        })
+          .height(20)
+          .width(20)
+          .checked(false)
+          .radioStyle({
+            checkedBackgroundColor: Color.Red,
+          })
+          .onClick(async () => {
+            this.readerSetting.flipMode = '1';
+            this.readerComponentController.setPageConfig(this.readerSetting);
+            await this.saveSettings();
+          })
+        Text($r('app.string.transversal_slip_page'))
+          .fontSize(16)
+          .lineHeight(21)
+      }
+      .margin({ left: 16, top: 16, right: 16 })
+
+      Text()
+        .width('92%')
+        .height(1)
+        .margin({ left: 16, top: 12, right: 16 })
+        .backgroundColor($r('app.color.ic_bg_grey'))
+
+      Scroll() {
+        Row({ space: 12 }) {
+          ForEach(this.themeList, (item: string, index: number) => {
+            Stack() {
+              Row()
+                .width('100%')
+                .height(40)
+                .borderWidth(this.themeSelectIndex !== index ? 1 : 2)
+                .borderColor(this.themeSelectIndex !== index ? $r('app.color.ic_border_unselect') :
+                this.themeBorderColor[this.themeSelectIndex])
+                .backgroundImage(this.getBackgroundImage(item))
+                .backgroundColor(this.THEME_BUTTON_BACKGROUND[item.toString()])
+                .backgroundImagePosition(Alignment.BottomEnd)
+                .backgroundImageSize(ImageSize.Cover)
+                .borderRadius(20)
+                .id(TAG + '_Row_' + index)
+            }
+            .width(`calc((100% - ${(Number(this.themeList.length) - 1) * 12}vp) / ${Number(this.themeList.length)})`)
+            .constraintSize({
+              minWidth: 60
+            })
+            .borderRadius(30)
+            .borderStyle(BorderStyle.Solid)
+            .onClick(async () => {
+              this.themeSelectIndex = index;
+              this.applyTheme(item, index);
+              this.readerComponentController.setPageConfig(this.readerSetting);
+              await this.saveSettings();
+            })
+            .id(TAG + '_Stack_' + index)
+            .onAppear(() => {
+              focusControl.requestFocus(TAG + '_Stack_' + index);
+            })
+          })
+        }
+        .constraintSize({
+          minWidth: '100%'
+        })
+        .id(TAG + '_Row_1')
+        .padding({
+          left: 12,
+          right: 12,
+          top: 12,
+          bottom: 12
+        })
+      }
+      .margin({ top: 8 })
+      .scrollable(ScrollDirection.Horizontal)
+      .scrollBar(BarState.Off)
+      .edgeEffect(EdgeEffect.Spring)
+
+      Text()
+        .width('92%')
+        .height(1)
+        .margin({ left: 16, top: 12, right: 16 })
+        .backgroundColor($r('app.color.ic_bg_grey'))
+
+      TextInput({ placeholder: $r('app.string.font_size_placeholder'), text: this.fontSize })
+        .margin({
+          left: 16,
+          top: 10,
+          right: 16,
+          bottom: 10
+        })
+        .backgroundColor($r('app.color.ic_text_input_bg'))
+        .placeholderColor("#666666")
+        .type(InputType.Number)
+        .fontSize(16)
+        .onChange((value: string) => {
+          this.fontSize = value;
+        })
+
+      TextInput({ placeholder: $r('app.string.line_height_placeholder'), text: this.lineHeight })
+        .margin({ left: 16, right: 16, bottom: 10 })
+        .backgroundColor($r('app.color.ic_text_input_bg'))
+        .placeholderColor("#666666")
+        .type(InputType.NUMBER_DECIMAL)
+        .fontSize(16)
+        .onChange((value: string) => {
+          this.lineHeight = value;
+        })
+
+      Button($r('app.string.update_font_size_and_line_height'))
+        .onClick(async () => {
+          hilog.info(0x0000, TAG,
+            'click : update page setting, fontSize = ' + this.fontSize + ' ,lineHeight = ' + this.lineHeight);
+          if (!isNaN(Number.parseInt(this.fontSize))) {
+            this.readerSetting.fontSize = Number.parseInt(this.fontSize);
+          }
+          if (!isNaN(Number.parseFloat(this.lineHeight))) {
+            this.readerSetting.lineHeight = Number.parseFloat(this.lineHeight);
+          }
+          this.readerComponentController.setPageConfig(this.readerSetting);
+          await this.saveSettings();
+        })
+        .fontSize(16)
+        .width('92%')
+        .fontColor(Color.Red)
+        .backgroundColor($r('app.color.ic_text_input_bg'))
+        .padding({ top: 10, bottom: 10 })
+        .margin({ left: 16, right: 16, bottom: 30 })
+
+    }.visibility(this.currentIndex === 1 ? Visibility.Visible : Visibility.None)
+    .alignItems(HorizontalAlign.Start)
+    .backgroundColor(Color.White)
+    .zIndex(3)
+  }
+
+  build() {
+    Stack() {
+      ReadPageComponent({
+        controller: this.readerComponentController,
+        readerCallback: (err: BusinessError, data: readerCore.ReaderComponentController) => {
+          this.readerComponentController = data;
+        }
+      }).zIndex(1)
+      // menu bar
+      Column() {
+        Column() {
+          Column() {
+            // catalog list view
+            this.buildCatalogItemList()
+            // setting view
+            this.buildSetting()
+          }
+          .padding({ bottom: !this.bookCover && !this.bookTitle ? 56 : 100 })
+          .backgroundColor(Color.White)
+          .borderRadius({
+            topRight: this.currentIndex === 0 ? 32 : 0,
+            topLeft: this.currentIndex === 0 ? 32 : 0
+          })
+        }
+        .visibility(this.currentIndex < 0 ? Visibility.None : Visibility.Visible)
+        .width('100%')
+        .height(this.currentIndex === 0 ? 'calc(100%  - 80vp - 56vp)' : '60%')
+        .justifyContent(FlexAlign.End)
+        .onClick(() => {
+          this.showModalBanner = true;
+        })
+
+        Row() {
+          Text($r('app.string.catalog_list'))
+            .width('50%')
+            .height('100%')
+            .onClick(() => {
+              this.jumpToCatalogList();
+            })
+            .textAlign(TextAlign.Center)
+            .fontColor(this.currentIndex === 0 ? Color.Red : Color.Black)
+          Text($r('app.string.setting'))
+            .width('50%')
+            .height('100%')
+            .onClick(() => {
+              this.jumpToSetting();
+            })
+            .textAlign(TextAlign.Center)
+            .fontColor(this.currentIndex === 1 ? Color.Red : Color.Black)
+        }
+        .width('100%')
+        .height(80)
+        .backgroundColor(Color.White)
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor(this.currentIndex == 0 ? '#0d626262' : Color.Transparent)
+      .zIndex(this.showModalBanner ? 2 : 0)
+      .justifyContent(FlexAlign.End)
+      .onClick(() => {
+        this.closeModal();
+      })
+    }.width('100%').height('100%').onClick(() => {
+      this.showModal();
+    })
+
+  }
+
+  private applyTheme(theme: string, index: number) {
+    this.readerSetting.themeColor = this.THEME_PAGE_COLOR[theme];
+    this.readerSetting.nightMode = false;
+    if (index === 5) {
+      this.readerSetting.themeBgImg = 'white_sky_first.jpg';
+      this.readerSetting.fontColor = '#000000';
+    } else if (index === 6) {
+      this.readerSetting.themeBgImg = 'dark_sky_first.jpg';
+      this.readerSetting.fontColor = '#ffffff';
+      this.readerSetting.nightMode = true;
+    } else if (index == 4) {
+      this.readerSetting.themeBgImg = '';
+      this.readerSetting.nightMode = true;
+      this.readerSetting.fontColor = '#ffffff';
+    } else {
+      this.readerSetting.themeBgImg = '';
+      this.readerSetting.fontColor = '#000000';
+    }
+    this.readerSetting.scaledDensity = display.getDefaultDisplaySync().scaledDensity;
+  }
+
+  private async saveSettings() {
+    await settingsManager.saveSettings({
+      fontName: this.readerSetting.fontName,
+      fontPath: this.readerSetting.fontPath,
+      fontSize: this.readerSetting.fontSize,
+      lineHeight: this.readerSetting.lineHeight,
+      theme: this.themeList[this.themeSelectIndex],
+      flipMode: this.readerSetting.flipMode
+    });
+  }
+
+  /**
+   * show menu bar
+   */
+  private showModal() {
+    this.showModalBanner = true;
+  }
+
+  /**
+   * ä¿å­˜é˜…è¯»è¿›åº¦ï¼ˆæ”¹ä¸ºè®°å½•ç« èŠ‚åï¼‰
+   */
+  private saveReadingProgress() {
+    if (this.filePath && this.currentData && this.currentData.resourceIndex !== undefined) {
+      const resourceIndex = this.currentData.resourceIndex;
+      const domPos = this.currentData.startDomPos || '';
+      const spineList = this.defaultHandler?.getSpineList() || [];
+      
+      // è·å–å½“å‰ç« èŠ‚å
+      let chapterName = 'æœªçŸ¥ç« èŠ‚';
+      if (spineList.length > 0 && resourceIndex >= 0 && resourceIndex < spineList.length) {
+        const currentSpine = spineList[resourceIndex];
+        chapterName = currentSpine.href || 'æœªçŸ¥ç« èŠ‚';
+        
+        // å°è¯•ä»ç›®å½•ä¸­è·å–æ›´å‹å¥½çš„ç« èŠ‚å
+        const catalogList = this.defaultHandler?.getCatalogList() || [];
+        const matchingCatalog = catalogList.find(catalog => 
+          catalog.resourceFile === currentSpine.href
+        );
+        if (matchingCatalog && matchingCatalog.catalogName) {
+          chapterName = matchingCatalog.catalogName;
+        }
+      }
+
+      // ä¿å­˜åˆ° Preferences
+      const progressKey = `${this.filePath}_progress`;
+      const progressValue = JSON.stringify({ resourceIndex, domPos });
+      this.preference?.put(progressKey, progressValue).then(() => {
+        this.preference?.flush((err) => {
+          if (err) {
+            hilog.error(0x0000, TAG, `Failed to flush preferences, err: ${err}`);
+          } else {
+            hilog.info(0x0000, TAG, `Saved progress to preferences: ${progressValue}`);
+          }
+        });
+      });
+
+      // æ›´æ–°æ•°æ®åº“ï¼Œä¿å­˜ç« èŠ‚åè€Œä¸æ˜¯è¿›åº¦ç™¾åˆ†æ¯”
+      hilog.info(0x0000, TAG,
+        `Updating progress for ${this.filePath}: resourceIndex=${resourceIndex}, domPos=${domPos}, chapterName=${chapterName}`);
+      bookDataManager.updateBookProgress(this.filePath, resourceIndex, domPos, chapterName);
+    }
+  }
+
+  /**
+   * close menu bar
+   */
+  private closeModal() {
+    this.showModalBanner = false;
+    this.currentIndex = -1;
+  }
+
+  private jumpToCatalogList() {
+    this.currentIndex = 0;
+    this.catalogItemList = this.defaultHandler?.getCatalogList() || [];
+    this.getBookInfo();
+    hilog.info(0x0000, TAG, 'catalog list length: ' + this.catalogItemList.length);
+    
+    // å»¶è¿Ÿæ‰§è¡Œæ»šåŠ¨ï¼Œç¡®ä¿åˆ—è¡¨å·²æ¸²æŸ“
+    setTimeout(() => {
+      if (this.currentCatalogIndex >= 0 && this.currentCatalogIndex < this.catalogItemList.length) {
+        this.catalogListScroller.scrollToIndex(this.currentCatalogIndex);
+        hilog.info(0x0000, TAG, 'Scrolled to catalog index: ' + this.currentCatalogIndex);
+      }
+    }, 100);
+  }
+
+  private jumpToSetting() {
+    this.currentIndex = 1;
+  }
+
+  private async jumpToCatalogItem(catalogItem: bookParser.CatalogItem) {
+    const domPos = await this.getDomPos(catalogItem);
+    const resourceIndex = this.getResourceItemByCatalog(catalogItem).index;
+    this.readerComponentController.startPlay(resourceIndex, domPos);
+    this.closeModal();
+  }
+
+  private async getDomPos(catalogItem: bookParser.CatalogItem): Promise<string> {
+    const domPos: string = this.defaultHandler?.getDomPosByCatalogHref(catalogItem.href || '') || '';
+    return domPos;
+  }
+
+  private getResourceItemByCatalog(catalogItem: bookParser.CatalogItem): bookParser.SpineItem {
+    let resourceFile = catalogItem.resourceFile || '';
+    let spineList: bookParser.SpineItem[] = this.defaultHandler?.getSpineList() || []
+
+    let resourceItemArr = spineList.filter(item => item.href === resourceFile);
+    if (resourceItemArr.length > 0) {
+      hilog.info(0x0000, TAG, 'getResourceItemByCatalog get resource ', resourceItemArr[0]);
+      let resourceItem = resourceItemArr[0];
+      return resourceItem;
+    } else if (spineList.length > 0) {
+      hilog.info(0x0000, TAG, 'getResourceItemByCatalog get resource in resourceList', spineList[0]);
+      return spineList[0];
+    } else {
+      hilog.info(0x0000, TAG, 'getResourceItemByCatalog get resource in escape');
+      return {
+        idRef: '',
+        index: 0,
+        href: '',
+        properties: ''
+      };
+    }
+  }
+
+  getBackgroundImage(themeType: string): Resource | string {
+    if (themeType === 'whiteSky') {
+      return $r('app.media.white_sky_icon');
+    } else if (themeType === 'darkSky') {
+      return $r('app.media.dark_sky_icon');
+    }
+    return '';
+  }
+
+  private isFont(filePath: string): boolean {
+    let options = [".ttf", ".woff2", ".otf"];
+    let path = filePath.toLowerCase();
+    let result = path.indexOf(options[0]) != -1 || path.indexOf(options[1]) != -1 || path.indexOf(options[2]) != -1;
+    hilog.info(0x0000, TAG, 'isFont = ' + result);
+    return result;
+  }
+
+  private loadFileFromPath(filePath: string): ArrayBuffer {
+    try {
+      let stats = fs.statSync(filePath);
+      let file = fs.openSync(filePath, fs.OpenMode.READ_ONLY);
+      let buffer = new ArrayBuffer(stats.size);
+      fs.readSync(file.fd, buffer);
+      fs.closeSync(file);
+      return buffer;
+    } catch (err) {
+      hilog.error(0x0000, TAG, "loadFileFromPath failed with error message: ", err.message, ", error code: ", err.code);
+      return new ArrayBuffer(0);
+    }
+  }
+
+  /**
+   * Remove the page transition animation to speed up the page access speed of the reader
+   */
+  pageTransition() {
+    // PageTransitionEnter and PageTransitionExit should be used in build method, not here
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ÀÔrCœ­@ohos.display­@ohos.file.fs¶@ohos.multimedia.image«@ohos.hilog¶@ohos.data.preferencesÙ'@hms.core.readerservice.readerComponentÙ"@hms.core.readerservice.bookParserÙ'@ohos.app.ability.ConfigurationConstant½../entryability/WindowAbility¸../utils/BookDataManager¸../utils/SettingsManager¶../common/FontFileInfoÔrD—ªassertions¨external¢id¤meta±moduleSideEffectsªresolvedByµsyntheticNamedExportsAÃÙg hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.display.d.tsÔrE‘¯hostModulesInfo’ÔrF’²hostDependencyName®hostModuleName­@ohos.display¥entryF­@ohos.display¥entryÃªoh-resolveÂDAÃÙg hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.file.fs.d.tsE”F­@ohos.file.fs¥entryF­@ohos.file.fs¥entryF­@ohos.file.fs¥entryF­@ohos.file.fs¥entryÃªoh-resolveÂDAÃÙp hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.multimedia.image.d.tsE‘F¶@ohos.multimedia.image¥entryÃªoh-resolveÂDAÃÙe hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.hilog.d.tsAÃªoh-resolveÂDAÃÙp hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.data.preferences.d.tsE“F¶@ohos.data.preferences¥entryF¶@ohos.data.preferences¥entryF¶@ohos.data.preferences¥entryÃªoh-resolveÂDAÃÙz hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_hms_ets_api_@hms.core.readerservice.readerComponent.d.etsE‘FÙ'@hms.core.readerservice.readerComponent¥entryÃªoh-resolveÂDAÃÙt hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_hms_ets_api_@hms.core.readerservice.bookParser.d.tsE’FÙ"@hms.core.readerservice.bookParser¥entryFÙ"@hms.core.readerservice.bookParser¥entryÃªoh-resolveÂDAÃÙ hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.app.ability.ConfigurationConstant.d.tsE‘FÙ'@ohos.app.ability.ConfigurationConstant¥entryÃªoh-resolveÂDAÂÙED:\ST\ReaderKitDemo\entry\src\main\ets\entryability\WindowAbility.etsAÃªoh-resolveÂDAÂÙ@D:\ST\ReaderKitDemo\entry\src\main\ets\utils\BookDataManager.etsAÃªoh-resolveÂDAÂÙ@D:\ST\ReaderKitDemo\entry\src\main\ets\utils\SettingsManager.etsAÃªoh-resolveÂDAÂÙ>D:\ST\ReaderKitDemo\entry\src\main\ets\common\FontFileInfo.etsAÃªoh-resolveÂ“ÔrG–§version¤fileªsourceRoot§sources¥names¨mappings©Reader.js ‘ªReader.etsÜø‘”    ‘” ˜”   ” ”	 	” ” ” ”= =”> >–”   ” 	” ” ”# $”$ %–”   ” ”	 ” ” /” 0–”   ” 	” ” ”* %”+ &˜”   ” ”	 	” ” ” ”5 5”6 6–”   ” ” ” ” ”   ˜”   ” ”	 	” ” ”   ”: :”; ;˜”   ” ”	 	” ” ”   ”: :”; ;–”   ” 	” ” ”0 *”1 +š”   ” 	”	 	” ” 	”/ ”1 ”7 :”Ì` ÌJ”Ìa ÌKš”   ” ”	 ” &” ”! &”# &”) :”ÌR ÌJ”ÌS ÌKš”   ” (”	 (” 2” (”! 2”# 2”) :”ÌM ÌJ”ÌN ÌK–”   ” ” &”" .”ÌK ?”ÌL Ì@–”  ( ” (”	 (	” (” ( ” (!–”  ) ” )” )” )”* )*”+ )+’” -” -‘” + ””4 .”ÌA .”ÌC .4”ÌD .5””5 /”ÌC /”ÌE /6”ÌF /7˜”2 0”= 0”? 1”ÌT 1”ÌU 1”Ì^ 1#”Ì_ 1$”Ìq 16’”> 5$”ÌC 5)“”; 9 ”< 9!”= 9"’”> :5”Ì@ :7“”ÌB ;'”ÌC ;(”ÌD ;)””# <*”' <.”/ <6”1 <8’” =8” =<’” >Ì@”" >ÌD–”) ?ÌL”- ?ÌP”7 ?ÌZ”8 ?Ì[”ÌQ ?Ìt”ÌS ?Ìv’” Ì@7” Ì@;’” ÌA” ÌA’”8 ÌB&”< ÌB*’”8 ÌC”: ÌC’”5 ÌD”7 ÌD’”7 ÌE”; ÌE ’”9 ÌF”; ÌF Ü ” ÌH” ÌH” ÌH	”) ÌH”* ÌH”. ÌH”/ ÌH”; ÌH'”= ÌH)”> ÌH*”ÌL ÌH8”ÌN ÌH;”ÌO ÌH<”Ì^ ÌHÌK”Ì_ ÌHÌL”Ìl ÌHÌY”Ìİ ÌHÌw”Ìß ÌI”Ìá ÌI”Ìâ ÌI	˜” ÌJ” ÌJ
+” ÌJ” ÌJ”! ÌJ”" ÌJ”. ÌJ(”0 ÌJ*œ” ÌK	” ÌK”! ÌK”" ÌK”1 ÌK*”2 ÌK+”? ÌK8”Ì° ÌKÌ`”Ì² ÌL”ÌÑ ÌL'”ÌÒ ÌL(”ÌÓ ÌL)’”= ÌM"”? ÌM$‘”8 ÌN’” ÌO” ÌO’” ÌP” ÌP’” ÌQ” ÌQ
+’” ÌR” ÌR’” ÌS” ÌS
+’” ÌT” ÌT’” ÌU” ÌU‘”	 ÌV‘”' ÌW>“” ÌX” ÌX”Ì„ ÌX=“” ÌY” ÌY”Ì… ÌY?“” ÌZ” ÌZ
+”Ìƒ ÌZ;“” Ì[” Ì[”Ì„ Ì[=“” Ì\” Ì\
+”Ìƒ Ì\;“” Ì]” Ì]”Ì‡ Ì]Ì@“” Ì^” Ì^”Ì† Ì^>‘”	 Ì_‘”  Ì`5”” Ìa” Ìa” Ìa” Ìa”” Ìb” Ìb” Ìb” Ìb”” Ìc” Ìc
+” Ìc” Ìc”” Ìd” Ìd” Ìd” Ìd”” Ìe” Ìe
+” Ìe” Ìe”” Ìf” Ìf” Ìf”! Ìf”” Ìg” Ìg” Ìg”  Ìg‘”	 Ìh‘”  Ìi7“” Ìj” Ìj”Ì~ Ìj-“” Ìk” Ìk”Ì~ Ìk.“” Ìl” Ìl”Ì~ Ìl,“” Ìm” Ìm”Ì~ Ìm-“” Ìn” Ìn”Ì~ Ìn-“” Ìo” Ìo”Ì~ Ìo-“” Ìp” Ìp”Ì~ Ìp-‘”	 Ìq’”? Ìr$”Ì@ Ìr%‘” Ìs4Ÿ” Ìt” Ìt” Ìt” Ìt” Ìt”' Ìt”) Ìt!”* Ìt"”8 Ìt0”: Ìt3”; Ìt4”ÌJ ÌtÌC”ÌK ÌtÌD”ÌX ÌtÌQ”ÌÉ ÌtÌo”” Ìu” Ìu” Ìu” Ìu›” Ìv” Ìv” Ìv” Ìv” Ìv”% Ìv”& Ìv”* Ìv"”+ Ìv#”3 Ìv+”4 Ìv,”” Ìw” Ìw” Ìw”  Ìw”” Ìx” Ìx” Ìx” Ìx”” Ìy” Ìy” Ìy” Ìy”” Ìz” Ìz” Ìz” Ìz”” Ì{” Ì{” Ì{”0 Ì{(”” Ì|” Ì|” Ì|” Ì|”” Ì}” Ì}” Ì}” Ì}Ü ” Ì~” Ì~” Ì~”" Ì~”# Ì~”8 Ì~0”: Ì~2”; Ì~3”ÌH Ì~Ì@”ÌK Ì~ÌC”ÌL Ì~ÌD”ÌM Ì~ÌE”ÌN Ì~ÌF”ÌO Ì~ÌG”ÌV Ì~ÌN”ÌW Ì~ÌO”Ìl Ì~Ìd”Ìn Ì~Ìf”Ìo Ì~Ìg”Ì| Ì~Ìt”Ì} Ì~Ìu”Ì~ Ì~Ìv’” Ì” Ì–” Ì€” Ì€” Ì€” Ì€”  Ì€”+ Ì€#–” Ì” Ì” Ì”  Ì”! Ì”- Ì%‘”	 Ì‚’”% Ìƒ;”) Ìƒ?•” ÌÕÌI”  ÌÕÌJ”( ÌÕÌZ”* ÌÕÌi”, ÌÕÌkÜ ” ÌÖ” ÌÖ	” ÌÖ
+” ÌÖ” ÌÖ” ÌÖ” ÌÖ”" ÌÖ”$ Ì×”ÌC Ì×%”ÌF Ì×(”ÌN Ì×0”ÌQ Ì×3”Ìk Ì×ÌM”Ìn Ì×ÌP”Ìr Ì×ÌT”Ìs Ì×ÌU”Ì Ì×Ìc”Ì‚ Ì×Ìd”Ìƒ Ì×Ìe˜” ÌØ” ÌØ” ÌØ” ÌØ” ÌØ”$ ÌØ”% ÌØ”' ÌØ˜” ÌÙ” ÌÙ” ÌÙ”& ÌÙ”' ÌÙ”( ÌÙ”) ÌÙ”* ÌÙ ‘” ÌÚ–” ÌÛ” ÌÛ” ÌÛ” ÌÛ”' ÌÛ”( ÌÛ ™” ÌÜ” ÌÜ” ÌÜ” ÌÜ” ÌÜ” ÌÜ”$ ÌÜ”% ÌÜ”' ÌÜ—” Ìİ” Ìİ” Ìİ”# Ìİ”$ Ìİ”2 Ìİ(”3 Ìİ)‘” ÌŞ’” Ìß” Ìßœ” Ìà” Ìà
+” Ìà” Ìà”" Ìà”# Ìà”/ Ìà%”1 Ìà'”2 Ìà(”Ì@ Ìà6”ÌB ÌàÌS”ÌC ÌàÌT” Ìá” Ìá
+” Ìá” Ìá”# Ìá%”$ Ìá&”3 Ìá5”4 Ìá6”ÌI ÌáÌK”ÌJ ÌáÌL”ÌV ÌáÌX”ÌW ÌáÌY”ÌX ÌáÌZœ” Ìâ” Ìâ” Ìâ” Ìâ” Ìâ”! Ìâ”# Ìâ”& Ìâ”( Ìâ”ÌY ÌâÌO”ÌZ ÌâÌP”Ì[ ÌâÌQ–” Ìã” Ìã” Ìã” Ìã”# Ìã(”$ Ìã)‘” Ìä”” Ìä” Ìä” Ìä” Ìä˜” Ìå” Ìå
+” Ìå” Ìå”  Ìå)”! Ìå*”% Ìå.”& Ìå/˜” Ìæ” Ìæ
+” Ìæ” Ìæ”# Ìæ,”$ Ìæ-”+ Ìæ4”, Ìæ5” Ìç” Ìç” Ìç” Ìç” Ìç”" Ìç”$ Ìç”' Ìç”) Ìè”Ì_ Ìè>”Ìc ÌèÌB”Ìe ÌèÌD”Ìf ÌèÌE”Ìg ÌèÌF” Ìé” Ìé” Ìé” Ìé” Ìé”" Ìé”$ Ìé”' Ìé”) Ìé!”Ì\ ÌéÌT”Ìc ÌéÌ[”Ìf ÌéÌ^”Ìg ÌéÌ_”Ìh ÌéÌ`‘” Ìê’” Ìë”+ Ìë#™” Ìì” Ìì” Ìì” Ìì”( Ìì ”) Ìì!”5 Ìì-”6 Ìì.”7 Ìì/’” Ìí”	 Ìí‘” )+’” .” .)’” .” .)’” /” /+’” /” /+’” 06” 0?’” 06” 0?’” 5	” 5’” 5	” 5’” 9	” 9’” 9	” 9’” :	” :’” :	” :’” ;	” ;’” ;	” ;’” ÌB	” ÌB’” ÌB	” ÌB’” ÌC	” ÌC’” ÌC	” ÌC’” ÌD	” ÌD’” ÌD	” ÌD’” ÌE	” ÌE’” ÌE	” ÌE’” ÌF	” ÌF’” ÌF	” ÌF’” ÌM	” ÌM’” ÌM	” ÌM’” ÌN	” ÌN’” ÌN	” ÌN’” Ìr	” Ìr’” Ìr	” Ìr”” Ì…”	 Ì…”
+ Ì…” Ì…’” Ì†”4 Ì†0–” Ìˆ” Ìˆ
+” Ìˆ” Ìˆ” Ìˆ"” Ìˆ#–” Ì‰” Ì‰
+” Ì‰” Ì‰” Ì‰” Ì‰š” ÌŠ” ÌŠ
+” ÌŠ” ÌŠ#”# ÌŠ'”$ ÌŠ(”1 ÌŠ5”2 ÌŠ6”? ÌŠÌC”Ì@ ÌŠÌD›” Ì‹” Ì‹
+” Ì‹” Ì‹”" Ì‹&”# Ì‹'”8 Ì‹<”: Ì‹>”; Ì‹?”ÌH Ì‹ÌL”ÌI Ì‹ÌMÜ ” ÌŒ” ÌŒ	” ÌŒ
+” ÌŒ” ÌŒ” ÌŒ” ÌŒ”" ÌŒ”$ Ì”ÌO Ì1”Ì] Ì?”Ìy ÌÌ[”Ìƒ ÌÌe”Ì… ÌÌg”Ì† ÌÌh”Ì‡ ÌÌi›” Ì” Ì” Ì	”& Ì"”) Ì%”- Ì)”7 Ì3”8 Ì4”ÌQ ÌÌM”ÌS ÌÌO”ÌT ÌÌPœ” Ì” Ì
+” Ì” Ì” Ì” Ì”) Ì%”+ Ì'”, Ì(”: Ì6”< ÌÌS”= ÌÌT’” Ì” ÌŸ” Ì‘” Ì‘
+” Ì‘” Ì‘” Ì‘”$ Ì‘”/ Ì‘)”0 Ì‘*”> Ì‘8”? Ì‘9”ÌF Ì‘Ì@”ÌH Ì‘ÌB”ÌX Ì‘ÌR”ÌY Ì‘ÌS”ÌZ Ì‘ÌT‘”	 Ì’”” Ì’” Ì’” Ì’” Ì’˜” Ì“” Ì“” Ì“”! Ì“#”ÌD Ì“ÌF”ÌG Ì“ÌI”ÌI Ì“ÌK”ÌJ Ì“ÌLœ” Ì”” Ì”” Ì”” Ì”” Ì”” Ì””  Ì””# Ì””% Ì””1 Ì”+”2 Ì”,”3 Ì”-‘”	 Ì•™” Ì–” Ì–
+” Ì–” Ì–”" Ì–”# Ì–”* Ì–&”+ Ì–'”, Ì–(š” Ì—” Ì—
+” Ì—” Ì—” Ì—”. Ì—*”/ Ì—+”; Ì—7”= Ì—9”> Ì—:’” Ì™”  Ì™›” Ìš” Ìš” Ìš	” Ìš” Ìš”# Ìš”& Ìš"”. Ìš*”/ Ìš+”7 Ìš3”8 Ìš4›” Ì›” Ì›” Ì›	” Ì›” Ì›”# Ì›”& Ì›"”. Ì›*”/ Ì›+”7 Ì›3”8 Ì›4™” Ìœ” Ìœ” Ìœ	” Ìœ” Ìœ”& Ìœ"”' Ìœ#”/ Ìœ+”0 Ìœ,›” Ì” Ì” Ì	” Ì” Ì”# Ì”& Ì"”. Ì*”/ Ì+”7 Ì3”8 Ì4œ” Ì” Ì” Ì	” Ì” Ì”  Ì”! Ì”) Ì%”* Ì&”2 Ì.”4 Ì0”5 Ì1›” ÌŸ” ÌŸ” ÌŸ	” ÌŸ” ÌŸ”% ÌŸ!”( ÌŸ$”0 ÌŸ,”1 ÌŸ-”; ÌŸ7”< ÌŸ8œ” Ì ” Ì ” Ì 	” Ì ” Ì ”" Ì ”# Ì ”- Ì )”. Ì *”6 Ì 2”8 Ì 4”9 Ì 5›” Ì¡” Ì¡” Ì¡	” Ì¡” Ì¡”# Ì¡”& Ì¡"”. Ì¡*”/ Ì¡+”7 Ì¡3”8 Ì¡4Ü ” Ì¢” Ì¢” Ì¢	” Ì¢”  Ì¢”$ Ì¢ ”% Ì¢!”. Ì¢*”/ Ì¢+”6 Ì¢2”7 Ì¢3”? Ì¢;”Ì@ Ì¢<”ÌE Ì¢ÌA”ÌF Ì¢ÌB”ÌG Ì¢ÌC” Ì£” Ì£” Ì£	” Ì£” Ì£”  Ì£”! Ì£”& Ì£"”( Ì£$”, Ì£(”- Ì£)”= Ì£9”> Ì£:”? Ì£;–” Ì¥” Ì¥” Ì¥	”( Ì¥$”* Ì¥&”+ Ì¥'Ü ” Ì¦” Ì¦” Ì¦”! Ì¦”# Ì¦”$ Ì¦ ”9 Ì¦5”: Ì¦6”< Ì¦8”> Ì¦:”ÌB Ì¦>”ÌC Ì¦?”ÌO Ì¦ÌK”ÌQ Ì¦ÌM”ÌR Ì¦ÌN”Ì` Ì¦Ì\”Ìb Ì¦Ì^”Ìc Ì¦Ì_”Ìd Ì¦Ì`Ÿ” Ì§” Ì§” Ì§” Ì§” Ì§” Ì§”% Ì§!”' Ì§#”( Ì§$”1 Ì§-”3 Ì§/”4 Ì§0”= Ì§9”? Ì§ÌH”Ì@ Ì§ÌI™” Ì¨” Ì¨” Ì¨	” Ì¨” Ì¨” Ì¨” Ì¨”& Ì¨"”' Ì¨#˜” Ì©” Ì©” Ì©” Ì©”! Ì©”" Ì©”/ Ì©+”0 Ì©,˜” Ìª” Ìª” Ìª” Ìª” Ìª” Ìª”! Ìª”" Ìª” Ì«” Ì«” Ì«	” Ì«” Ì«” Ì«” Ì«”$ Ì« ”& Ì«"”3 Ì«/”5 Ì«1”; Ì«7”< Ì«8”= Ì«9’” Ì¬” Ì¬’” Ì®” Ì®’” Ì¯” Ì¯–” Ì°” Ì°” Ì°	”  Ì°”" Ì°”# Ì°’” Ì±” Ì±‘” Ì³‘” Ìµ’” Ì¶” Ì¶œ” Ì·” Ì·” Ì·” Ì·” Ì·” Ì·”4 Ì·0”5 Ì·1”> Ì·:”? Ì·;”ÌN Ì·ÌJ”ÌP Ì·ÌL™” Ì¸” Ì¸
+” Ì¸” Ì¸” Ì¸”( Ì¸"”+ Ì¸%”/ Ì¸)”0 Ì¸*™” Ì¹” Ì¹
+” Ì¹” Ì¹” Ì¹”( Ì¹"”+ Ì¹%”4 Ì¹.”5 Ì¹/™” Ìº” Ìº
+” Ìº” Ìº” Ìº”) Ìº#”, Ìº&”5 Ìº/”6 Ìº0‘”	 Ì»‘” Ì»™” Ì¼” Ì¼
+” Ì¼” Ì¼” Ì¼”( Ì¼"”+ Ì¼%”0 Ì¼*”1 Ì¼+™” Ì½” Ì½
+” Ì½” Ì½” Ì½”( Ì½"”+ Ì½%”4 Ì½.”5 Ì½/™” Ì¾” Ì¾
+” Ì¾” Ì¾” Ì¾”) Ì¾#”, Ì¾&”5 Ì¾/”6 Ì¾0‘”	 Ì¿œ” ÌÀ” ÌÀ” ÌÀ	”& ÌÀ"”' ÌÀ#”4 ÌÀ0”5 ÌÀ1”9 ÌÀ5”: ÌÀ6”ÌG ÌÀÌC”ÌH ÌÀÌD”ÌI ÌÀÌE’” ÌÁ” ÌÁ‘” ÌÃ‘” ÌÅ’” ÌÆ” ÌÆ™” ÌÇ” ÌÇ” ÌÇ	”" ÌÇ”% ÌÇ!”& ÌÇ"”* ÌÇ.”, ÌÇ0”. ÌÇ2™” ÌÈ” ÌÈ
+” ÌÈ” ÌÈ”% ÌÈ”& ÌÈ ”; ÌÈ5”= ÌÈ7”> ÌÈ8˜” ÌÉ” ÌÉ
+” ÌÉ”  ÌÉ”+ ÌÉ%”, ÌÉ&”9 ÌÉ3”: ÌÉ4š” ÌÊ” ÌÊ
+” ÌÊ”" ÌÊ”& ÌÊ ”' ÌÊ!”4 ÌÊ.”5 ÌÊ/”ÌB ÌÊ<”ÌD ÌÊ>š” ÌË” ÌË” ÌË”& ÌË”' ÌË”8 ÌË0”: ÌË2”> ÌË6”? ÌË7”Ì@ ÌË8œ” ÌÌ” ÌÌ” ÌÌ”! ÌÌ”# ÌÌ”$ ÌÌ”- ÌÌ%”/ ÌÌ'”0 ÌÌ(”4 ÌÌ,”6 ÌÌ.”7 ÌÌ/‘” ÌÍ“” ÌÎ”	 ÌÎ”
+ ÌÎœ” ÌÏ” ÌÏ” ÌÏ” ÌÏ” ÌÏ” ÌÏ” ÌÏ”! ÌÏ”" ÌÏ”7 ÌÏ3”8 ÌÏ4”9 ÌÏ5’” ÌĞ” ÌĞš” Ìï
+”	 Ìï”
+ Ìï” Ìï” Ìï” Ìï&” Ìï(”' Ìï=”) Ìï?”/ ÌïÌM’” Ìğ” Ìğœ” Ìñ” Ìñ” Ìñ” Ìñ”  Ìñ”! Ìñ”- Ìñ'”/ Ìñ)”0 Ìñ*”> Ìñ8”Ì@ ÌñÌU”ÌA ÌñÌV” Ìò” Ìò” Ìò”  Ìò)”$ Ìò-”% Ìò.”> ÌòÌG”? ÌòÌH”ÌC ÌòÌL”ÌD ÌòÌM”ÌK ÌòÌT”ÌL ÌòÌU”ÌM ÌòÌV›” Ìó” Ìó”' Ìó!”* ÌóÌK”4 ÌóÌU”5 ÌóÌV”ÌF ÌóÌg”ÌG ÌóÌh”ÌK ÌóÌl”ÌL ÌóÌm”ÌM ÌóÌnÜ ” Ìô” Ìô” Ìô” Ìô”" Ìô”) Ìô#”* Ìô$”- Ìô'”. Ìô(”/ Ìô)”ÌD Ìô>”ÌF ÌôÌ@”ÌQ ÌôÌK”ÌR ÌôÌL”ÌS ÌôÌM”ÌT ÌôÌN™” Ìõ” Ìõ”  Ìõ”# Ìõ”* Ìõ$”+ Ìõ%”, Ìõ&”- Ìõ'”. Ìõ(—” Ìö” Ìö
+” Ìö” Ìö”" Ìö”0 Ìö*”1 Ìö+Ü ” Ìø” Ìø” Ìø” Ìø” Ìø” Ìø” Ìø”" Ìø”$ Ìø”ÌP ÌøÌJ”ÌS ÌøÌM”ÌW ÌøÌQ”ÌX ÌøÌR”Ìa ÌøÌ[”Ìb ÌøÌ\”Ìf ÌøÌ`”Ìg ÌøÌa”Ìu ÌøÌo”Ìv ÌøÌp”Ìw ÌøÌq”Ìx ÌøÌrœ” Ìù” Ìù
+” Ìù”* Ìù$”+ Ìù%”= Ìù7”> Ìù8”ÌB Ìù<”ÌC Ìù=”ÌQ ÌùÌK”ÌR ÌùÌL”ÌS ÌùÌM’” Ìû”! Ìû” Ìü” Ìü
+” Ìü”* Ìü$”+ Ìü%”- Ìü'”. Ìü(”? Ìü9”ÌA Ìü;”ÌE Ìü?”ÌF ÌüÌ@”ÌU ÌüÌO”ÌV ÌüÌP”ÌW ÌüÌQ” Ìı” Ìı
+” Ìı”* Ìı$”+ Ìı%”- Ìı'”. Ìı(”8 Ìı2”: Ìı4”; Ìı5”ÌC ÌıÌV”ÌE ÌıÌ^”ÌG ÌıÌ`Ü ” Ìş” Ìş” Ìş” Ìş” Ìş”! Ìş”# Ìş”& Ìş”( Ìş ”= Ìş5”Ì@ Ìş8”ÌD Ìş<”ÌE Ìş=”ÌN ÌşÌF”ÌO ÌşÌG”ÌW ÌşÌO”ÌX ÌşÌP”ÌY ÌşÌQ”ÌZ ÌşÌR—” Ìÿ” Ìÿ” Ìÿ”  Ìÿ”# Ìÿ”+ Ìÿ#”, Ìÿ$’” Í ”! Í –” Í” Í” Í”( Í ”* Í"”+ Í#’” Í”/ Í'–” Í” Í” Í”. Í&”0 Í(”1 Í)’” Í” ÍÜ ” Í” Í” Í” Í”, Í$”0 Í(”1 Í)”5 Í-”9 Í1”: Í2”ÌM ÍÌE”ÌP ÍÌH”ÌT ÍÌL”ÌU ÍÌM”Ìd ÍÌ\”Ìe ÍÌ]”Ìk ÍÌc”Ìm ÍÌeœ” Í
+” Í” Í”, Í"”- Í#”: Í0”; Í1”? Í5”Ì@ Í6”ÌS ÍÌI”ÌT ÍÌJ”ÌU ÍÌK‘” Í	”” Í	” Í	” Í	” Í		š” Í” Í” Í”% Í”' Í!”( Í"”: Í4”; Í5”> Í8”Ì@ Í:›” Í” Í” Í” Í”& Í”' Í”4 Í,”8 Í0”< Í4”= Í5”ÌH ÍÌ@›” Í
+” Í” Í”& Í”' Í”5 Í+”9 Í/”= Í3”> Í4”ÌJ ÍÌ@”ÌL ÍÌBœ” Í
+” Í” Í” Í” Í”% Í”' Í”* Í ”, Í"”Ì_ ÍÌU”Ì` ÍÌV”Ìa ÍÌW’” Í
+”ÌQ ÍÌG›” Í
+” Í” Í”& Í”' Í”4 Í*”7 Í-”; Í1”< Í2”ÌG Í=”ÌH Í>›” Í
+” Í” Í”& Í”' Í”5 Í+”8 Í.”< Í2”= Í3”ÌI Í?”ÌJ ÍÌ@’” Í
+” Íœ” Í” Í” Í”6 Í*”7 Í+”ÌD Í8”ÌE Í9”ÌI Í=”ÌJ Í>”ÌW ÍÌK”ÌX ÍÌL”ÌY ÍÌM‘” Í”” Í” Í” Í” ÍÜ ” Í” Í” Í”# Í”$ Í”* Í”, Í ”/ Í#”1 Í”ÌM Í*”ÌP Í-”ÌT Í1”ÌU Í2”Ì^ Í;”Ì_ Í<”Ì` Í=”Ìa Í>”Ìb Í?”Ìc ÍÌ@‘” Í‘” Í	”” Í” Í” Í” Í	œ” Í” Í
+” Í”* Í$”+ Í%”8 Í2”9 Í3”= Í7”> Í8”ÌK ÍÌE”ÌL ÍÌF”ÌM ÍÌG’” Í”# Íš” Í” Í” Í”  Í”# Í”' Í!”( Í"”0 Í*”; Í5”< Í6Ü ” Í” Í” Í”" Í”( Í"”, Í&”- Í'”7 Í1”9 Í3”< Í6”= Í7”ÌH ÍÌB”ÌJ ÍÌD”ÌL ÍÌF”ÌM ÍÌG”ÌN ÍÌH˜” Í ” Í 
+”" Í ”% Í ”2 Í ,”6 Í 0”7 Í 1”8 Í 2˜” Í!” Í!
+” Í!” Í!”$ Í!”( Í!"”* Í!$”+ Í!%™” Í"” Í"
+” Í"”$ Í"”) Í"#”1 Í"+”5 Í"/”ÌB Í"<”ÌD Í">’” Í#” Í#›” Í$
+” Í$”* Í$ ”- Í$#”1 Í$'”2 Í$(”7 Í$-”8 Í$.”ÌE Í$;”ÌF Í$ÌL”ÌG Í$ÌM˜” Í%
+” Í%”, Í%"”/ Í%%”? Í%5”Ì@ Í%6”ÌM Í%ÌC”ÌN Í%ÌD˜” Í&
+” Í&”% Í&”( Í&”8 Í&.”9 Í&/”? Í&5”Ì@ Í&6•” Í'
+”& Í'”) Í'”; Í'1”< Í'2•” Í(
+” Í(”" Í(”- Í(#”. Í($Ü ” Í)
+” Í)” Í)” Í)” Í)”% Í)”' Í)”* Í) ”, Í)"”Ì_ Í)ÌU”Ìq Í)Ìg”Ì} Í)Ìs”Ìˆ Í)Ì~”ÌŠ Í)Ì€”Ì‹ Í)Ì”ÌŒ Í)Ì‚‘” Í*	”” Í*
+” Í*” Í*” Í*” Í+
+” Í+” Í+” Í+”  Í+”& Í+”( Í+”+ Í+!”- Í+#”ÌP Í+ÌF”Ì] Í+ÌS”Ì_ Í+ÌU”Ì` Í+ÌV”Ìa Í+ÌW‘” Í,	‘” Í-œ” Í/” Í/
+” Í/”* Í/$”+ Í/%”4 Í/.”5 Í//”ÌG Í/ÌA”ÌI Í/ÌC”ÌT Í/ÌN”ÌU Í/ÌO”ÌV Í/ÌP’” Í1” Í1” Í2” Í2
+” Í2”  Í2”# Í2”' Í2!”( Í2"”6 Í20”8 Í22”ÌF Í2Ì@”ÌH Í2ÌB”ÌL Í2ÌF”ÌN Í2ÌH”ÌO Í2ÌI–” Í3” Í3
+” Í3”* Í3$”, Í3&”- Í3'‘”	 Í4”” Í4” Í4” Í4” Í4Ü ” Í5” Í5” Í5” Í5” Í5” Í5”  Í5”# Í5”% Í5 ”7 Í52”: Í55”> Í59”? Í5:”ÌH Í5ÌC”ÌI Í5ÌD”ÌL Í5ÌG”ÌM Í5ÌH”ÌN Í5ÌI”ÌO Í5ÌJ‘”	 Í6’” Í7” Í7”” Í9
+”	 Í9”
+ Í9” Í9’” Í:” Í:›” Í;” Í;
+” Í;” Í;6” Í;:”  Í;;”. Í;ÌI”0 Í;ÌK”; Í;ÌV”= Í;ÌX”> Í;ÌY”” Í<” Í<
+” Í<” Í<›” Í=” Í=” Í=” Í=”! Í=”) Í=!”* Í="”3 Í=+”7 Í=/”9 Í=1”: Í=2›” Í>” Í>” Í>” Í>” Í>”& Í>”( Í> ”3 Í>+”7 Í>/”9 Í>1”: Í>2’” Í?”ÌD Í?<Ü ” Í@” Í@” Í@” Í@”! Í@”" Í@”0 Í@(”2 Í@*”ÌD Í@<”ÌE Í@=”ÌF Í@>”ÌG Í@?”ÌI Í@ÌA”ÌQ Í@ÌI”ÌR Í@ÌJ”Ì` Í@ÌX”Ìa Í@ÌY”Ìb Í@ÌZ›” ÍA” ÍA” ÍA”" ÍA-”' ÍA2”( ÍA3”9 ÍAÌD”: ÍAÌE”Ì@ ÍAÌK”ÌA ÍAÌL”ÌB ÍAÌM›” ÍB” ÍB” ÍB” ÍB”! ÍB”' ÍB”2 ÍB*”3 ÍB+”ÌA ÍB9”ÌC ÍB;”ÌD ÍB<–” ÍC” ÍC” ÍC”# ÍC”% ÍC”& ÍC‘” ÍDÜ ” ÍE” ÍE” ÍE” ÍE” ÍE” ÍE” ÍE”" ÍE”$ ÍE”? ÍE9”ÌB ÍE<”ÌF ÍEÌ@”ÌG ÍEÌA”ÌP ÍEÌJ”ÌQ ÍEÌK”ÌY ÍEÌS”ÌZ ÍEÌT”Ì[ ÍEÌU”Ì\ ÍEÌV‘”	 ÍF”” ÍF” ÍF” ÍF” ÍF” ÍG” ÍG” ÍG” ÍG” ÍG” ÍG”  ÍG”# ÍG”% ÍG”9 ÍG3”; ÍG5”< ÍG6”= ÍG7”> ÍG8‘”	 ÍH’” ÍI” ÍI‘” ÍK‘” ÍM’” ÍN
+” ÍN#š” ÍO” ÍO” ÍO” ÍO” ÍO”  ÍO”$ ÍO ”% ÍO!”3 ÍO/”5 ÍO1›” ÍP” ÍP” ÍP” ÍP”" ÍP”# ÍP”1 ÍP+”2 ÍP,”> ÍP8”Ì@ ÍP:”ÌA ÍP;›” ÍQ” ÍQ” ÍQ”  ÍQ”$ ÍQ”% ÍQ”3 ÍQ-”4 ÍQ.”ÌB ÍQ<”ÌD ÍQ>”ÌE ÍQ?Ÿ” ÍS” ÍS
+” ÍS” ÍS”  ÍS”# ÍS”$ ÍS”( ÍS"”, ÍS&”- ÍS'”8 ÍS2”9 ÍS3”ÌF ÍSÌ@”ÌJ ÍSÌD”ÌK ÍSÌE›” ÍT
+” ÍT” ÍT”  ÍT”! ÍT”. ÍT(”1 ÍT+”: ÍT4”; ÍT5”ÌA ÍT;”ÌC ÍT=” ÍU” ÍU”" ÍU”% ÍU”. ÍU&”/ ÍU'”3 ÍU+”4 ÍU,”? ÍU7”Ì@ ÍU8”ÌM ÍUÌE”ÌN ÍUÌF”ÌO ÍUÌG’” ÍW”" ÍWÜ ” ÍX” ÍX”# ÍX”& ÍX”1 ÍX)”2 ÍX*”; ÍX3”< ÍX4”ÌC ÍX;”ÌD ÍX<”ÌF ÍX>”ÌG ÍY
+”ÌN ÍY”ÌO ÍY”ÌS ÍY”ÌX ÍY”Ìd ÍY'”Ìe ÍY(”Ìi ÍY,”Ìj ÍZ	”Ìk ÍZ
+—” Í\” Í\”! Í\”& Í\”' Í\”( Í\ ”* Í\"—” Í]
+” Í]” Í]”, Í]"”/ Í]%”< Í]2”= Í]3‘” Í^	‘” Í_‘”	 Í`’” Ía” Ía’” Íc” Íc’” Íd”2 Íd.–” Íe” Íe” Íe	”  Íe”" Íe”# Íeœ” Íg” Íg” Íg” Íg” Íg” Íg” Íg”" Íg”# Íg”8 Íg4”9 Íg5”: Íg6–” Íh” Íh” Íh” Íh”* Íh&”, Íh(š” Íi” Íi
+” Íi”* Íi$”+ Íi%”. Íi(”/ Íi)”9 Íi3”: Íi4”; Íi5š” Íj” Íj
+” Íj”* Íj$”+ Íj%”. Íj(”/ Íj)”Ì@ Íj:”ÌA Íj;”ÌB Íj<˜” Ík” Ík
+” Ík”* Ík$”+ Ík%”6 Ík0”8 Ík2”9 Ík3‘”	 Íl—” Ím” Ím” Ím	” Ím” Ím”" Ím”# Ím—” Ín” Ín” Ín	” Ín” Ín” Ín”  Ín’” Ío” Ío’” Ír
+” Ír’” Ís” Ís
+” Ís” Ís
+” Íô” Íô”  Íô”" Íô”* Íô”, Íô”. Íô ”0 Íô"”7 Íô)”9 Íô+”; Íô-”= Íô/Ü ” Ís” Ís
+” Íõ” Íõ” Íõ”" Íõ”# Íõ”/ Íõ!”4 Íõ&”5 Íõ'”6 Íõ(”7 Íõ)”8 Íõ*”ÌB Íõ4”ÌC Íõ5”ÌJ Íõ<”ÌK Íõ=”ÌL Íõ>”ÌM Íõ?”ÌW ÍõÌI”ÌX ÍõÌJ”Ì\ ÍõÌN˜” Ís” Ís
+” Íö”" Íö”# Íö”( Íö”) Íö”. Íö –” Ís” Ís
+” Í÷” Í÷” Í÷” Í÷’” Ít” Ít	–” Ít” Ít	” Íˆ” Íˆ” Íˆ” Íˆ–” Ít” Ít	” Í‰” Í‰” Í‰” Í‰˜” Ít” Ít	” ÍŠ” ÍŠ” ÍŠ”( ÍŠ”) ÍŠ ”/ ÍŠ&˜” Ít” Ít	” Í‹” Í‹” Í‹”( Í‹”) Í‹ ”, Í‹#’” Íu” Íu–” Íu” Íu” Í~	” Í~” Í~”$ Í~–” Íu” Íu” Í	”! Í”" Í”- Í$˜” Íu” Íu” Í€	” Í€” Í€”! Í€”" Í€”( Í€–” Íu” Íu” Í	” Í” Í” Í–” Íu” Íu” Í‚	” Í‚” Í‚” Í‚Ü ” Íu” Íu” Íƒ	” Íƒ” Íƒ” Íƒ” Íƒ”  Íƒ”! Íƒ”# Íƒ”' Íƒ”) Íƒ ”+ Íƒ"”- Íƒ$”2 Íƒ)”4 Íƒ+”6 Íƒ-”8 Íƒ/—” Íu” Íu” Í„	” Í„” Í„” Í„” Í„–” Í…
+” Í…” Í…” Í…”! Í…”" Í…’” Í†” Í†	’” Ív
+” Ív–” Ív
+” Ív” Íw”! Íw”" Íw”Ì“ ÍwÌD–” Ív
+” Ív” Íx” Íx” Íx”  Íx–” Ív
+” Ív” Íy”  Íy”! Íy”# Íy–” Ív
+” Ív” Íz”" Íz”# Íz”& Íz˜” Ív
+” Ív” Í{”) Í{”* Í{”ÌA Í{6”ÌB Í{7”ÌH Í{=˜” Ív
+” Ív” Í|”& Í|”' Í|”; Í|0”< Í|1”Ì@ Í|5’” Íu” Íu’” Ít” Ít	’” Í” Í	•” Í” Í	” Í¹” Í¹” Í¹”” Íº” Íº” Íº” Íº”” Í»” Í»” Í»” Í»‘” Í¼–” Í” Í	” Í½” Í½” Í½” Í½š” Í” Í	” Í¾” Í¾” Í¾” Í¾” Í¾”! Í¾”# Í¾”% Í¾˜” Í” Í	” Í¿” Í¿” Í¿”# Í¿”$ Í¿”) Í¿ š” Í” Í” Í” Í”' Í”) Í”2 Í'”3 Í(”6 Í+”8 Í-–” Í” Í” Í¨	” Í¨” Í¨” Í¨” Í” Í” Í©	” Í©” Í©” Í©”! Í©”# Í©”% Í©”' Í©”, Í©#”. Í©%”9 Í©0”; Í©2–” Í” Í” Íª	” Íª” Íª”  Íª˜” Í” Í” Í«	” Í«” Í«” Í«”" Í«”# Í«Ü ” Í” Í” Í¬	” Í¬” Í¬”! Í¬”" Í¬”+ Í¬"”, Í¬#”- Í¬$”. Í¬%”8 Í¬/”9 Í¬0”Ì@ Í¬7”ÌA Í¬8”ÌB Í¬9”ÌC Í¬:”ÌM Í¬ÌD”ÌN Í¬ÌE”ÌR Í¬ÌI–” Í
+” Í” Í” Í” Í”' Í–” Í
+” Í” Í” Í” Í”! Í–” Í
+” Í” Í‘” Í‘” Í‘” Í‘˜” Í
+” Í” Í’” Í’” Í’” Í’”" Í’”# Í’–” Í
+” Í” Í“” Í“” Í“”  Í“–” Í
+” Í” Í”” Í”” Í”” Í””” Í
+” Í” Í•” Í•”” Í
+” Í” Í–”! Í–’” Í˜
+” Í˜–” Í˜
+” Í˜” Í™” Í™” Í™”! Í™˜” Í˜
+” Í˜” Íš” Íš” Íš” Íš”" Íš”# Íš–” Í˜
+” Í˜” Í›” Í›” Í›” Í›–” Í˜
+” Í˜” Íœ” Íœ” Íœ”  Íœ–” Í˜
+” Í˜” Í” Í” Í” Í” Í˜
+” Í˜” Í” Í” Í” Í” Í”  Í”! Í”# Í”$ Í”& Í!”' Í"”) Í$’” Í 
+” Í –” Í 
+” Í ” Í¡” Í¡” Í¡”! Í¡–” Í 
+” Í ” Í¢” Í¢” Í¢” Í¢–” Í 
+” Í ” Í£” Í£” Í£” Í£–” Í 
+” Í ” Í¤” Í¤” Í¤” Í¤Ü ” Í 
+” Í ” Í¥” Í¥” Í¥” Í¥” Í¥”  Í¥”! Í¥”# Í¥”$ Í¥”& Í¥!”( Í¥#”+ Í¥&”, Í¥'”/ Í¥*”0 Í¥+”3 Í¥.”5 Í¥0”8 Í¥3”9 Í¥4”; Í¥6–” Í 
+” Í ” Í¦” Í¦” Í¦” Í¦’” Í” Í–” Í®” Í®” Í®” Í®” Í®”& Í®”” Í®” Í®” Í¯” Í¯œ” Í®” Í®” Í°” Í°” Í°”  Í°”( Í°"”* Í°$”6 Í°0”7 Í°1”? Í°9”ÌA Í°;–” Í®” Í®” Í±” Í±” Í±” Í±” Í®” Í®” Í²” Í²” Í²” Í²” Í²”! Í²”# Í²”% Í²”) Í²#”+ Í²%”- Í²'”/ Í²)˜” Í®” Í®” Í³” Í³” Í³”& Í³ ”' Í³!”+ Í³%–” Í®” Í®” Í´” Í´” Í´” Í´–” Í®” Í®” Íµ” Íµ” Íµ”& Íµ –” Í®” Í®” Í¶” Í¶” Í¶” Í¶Ü ” Í®” Í®” Í·” Í·” Í·”  Í·”! Í·”* Í·$”+ Í·%”, Í·&”- Í·'”7 Í·1”8 Í·2”? Í·9”Ì@ Í·:”ÌA Í·;”ÌB Í·<”ÌL Í·ÌF”ÌM Í·ÌG”ÌQ Í·ÌK’” Í®” Í®’” Í” Í	š” ÍÁ” ÍÁ
+” ÍÁ” ÍÁ”" ÍÁ”$ ÍÁ”( ÍÁ”) ÍÁ”< ÍÁ/”> ÍÁ1˜” ÍÁ” ÍÁ
+” Íç” Íç” Íç”# Íç”$ Íç”& Íç–” ÍÁ” ÍÁ
+” Íè” Íè”  Íè”" Íè–” ÍÁ” ÍÁ
+” Íé” Íé”  Íé”+ Íé!˜” ÍÁ” ÍÁ
+” Íê” Íê” Íê”& Íê”' Íê”- Íê#—” ÍÁ” ÍÁ
+” Íë” Íë” Íë”! Íë”# Íëœ” Íì” Íì” Íì” Íì” Íì”! Íì”# Íì”& Íì”( Íì ”ÌD Íì<”ÌE Íì=”ÌF Íì>’” Íí” Íí—” ÍÁ” ÍÁ
+” Íî” Íî” Íî” Íî”! Íîœ” Íï” Íï” Íï” Íï” Íï”! Íï”# Íï”& Íï”( Íï ”ÌB Íï:”ÌC Íï;”ÌD Íï<’” Íğ” Íğ–” ÍÁ” ÍÁ
+” Íñ” Íñ” Íñ” Íñ–” ÍÁ” ÍÁ
+” Íò” Íò” Íò” Íò’” ÍÂ” ÍÂ’”3 ÍÂÌE”8 ÍÂÌR’” ÍÃ
+”$ ÍÃ’” ÍÄ”" ÍÄ•” ÍÄ”" ÍÄ”# ÍÚ”* ÍÚ”+ ÍÚÜ ”  ÍÛ”$ ÍÛ”& ÍÛ”* ÍÛ”+ ÍÛ”7 ÍÛ%”8 ÍÛ&”9 ÍÛ'”: ÍÛ(”> ÍÛ,”? ÍÛ-”ÌK ÍÛ9”ÌN ÍÛ<”ÌP ÍÛ>”ÌQ ÍÛ?”ÌR ÍÛÌ@”ÌS ÍÛÌA”ÌU ÍÛÌC””  ÍÜ”% ÍÜ”' ÍÜ”) ÍÜ””  Íİ”# Íİ”% Íİ”& Íİ””  ÍŞ”& ÍŞ”( ÍŞ”) ÍŞ‘” ÍßÜ ” ÍÄ”" ÍÄ”# Íà”2 Íà”3 Íà”8 Íà"”= Íà'”ÌA Íà+”ÌB Íà,”ÌU Íà?”ÌV ÍàÌ@”ÌW ÍàÌA”ÌÈ ÍàÌa”ÌÉ ÍàÌb”ÌÊ ÍàÌc”ÌÏ ÍàÌh”ÌĞ ÍàÌi”ÌÛ ÍàÌt˜” ÍÄ”" ÍÄ”# Íá”* Íá”+ Íá”0 Íá”4 Íá”6 Íá ˜”  Íâ”$ Íâ”% Íâ”6 Íâ$”7 Íâ%”; Íâ)”< Íâ*”= Íâ+’” Íã” Íã’” ÍÅ” ÍÅ–” ÍÅ” ÍÅ”  ÍÓ”% ÍÓ”& ÍÓ”, ÍÓ–” ÍÅ” ÍÅ”  ÍÔ”& ÍÔ”' ÍÔ”) ÍÔ˜” ÍÅ” ÍÅ”  ÍÕ”. ÍÕ”/ ÍÕ”8 ÍÕ'”9 ÍÕ(”? ÍÕ.˜” ÍÅ” ÍÅ”  ÍÖ”* ÍÖ”+ ÍÖ”8 ÍÖ'”9 ÍÖ(”? ÍÖ.’” ÍÆ” ÍÆ”” ÍÇ”  ÍÇ”( ÍÇ”- ÍÇ–” ÍÇ”  ÍÇ”! ÍÈ”) ÍÈ”* ÍÈ”, ÍÈ ”” ÍÇ”  ÍÇ”! ÍÉ”* ÍÉ’” ÍÇ” ÍÇ–” ÍÊ”  ÍÊ”( ÍÊ”, ÍÊ”- ÍÊ”8 ÍÊ'–” ÍÊ”  ÍÊ”! ÍË”) ÍË”* ÍË”, ÍË Ü ” ÍÊ”  ÍÊ”! ÍÌ”* ÍÌ”+ ÍÌ”0 ÍÌ$”5 ÍÌ)”9 ÍÌ-”: ÍÌ.”ÌM ÍÌÌA”ÌN ÍÌÌB”ÌO ÍÌÌC”ÌP ÍÌÌD”ÌU ÍÌÌI”ÌV ÍÌÌJ”ÌY ÍÌÌM”ÌZ ÍÌÌN”Ì[ ÍÌÌO”ÌË ÍÌÌpœ” ÍÊ”  ÍÊ”! ÍÍ”- ÍÍ!”. ÍÍ"”0 ÍÍ$”8 ÍÍ,”: ÍÍ.”ÌF ÍÍ:”ÌG ÍÍ;”ÌO ÍÍÌC”ÌQ ÍÍÌE” ÍÊ”  ÍÊ”! ÍÎ”( ÍÎ”) ÍÎ”+ ÍÎ”. ÍÎ"”0 ÍÎ$”1 ÍÎ%”3 ÍÎ'”9 ÍÎ-”; ÍÎ/”< ÍÎ0”> ÍÎ2–” ÍÊ”  ÍÊ”! ÍÏ”) ÍÏ”* ÍÏ”+ ÍÏ–” ÍÊ”  ÍÊ”! ÍĞ”- ÍĞ!”. ÍĞ"”/ ÍĞ#’” ÍÊ” ÍÊ’” ÍÆ” ÍÆ’” ÍÅ” ÍÅ’” ÍØ”# ÍØ’” ÍÄ” ÍÄ’” ÍÃ
+”  ÍÃ’” ÍÃ
+” ÍÃ””/ ÍÂ”3 ÍÂ”4 ÍÂ”ÌC ÍÂ$’” ÍÂ” ÍÂ’” ÍÁ” ÍÁ
+’” Ís” Ís
+‘” Íø’” Íû
+” Íû’” Íü” Íü
+Ü ” Íü” Íü
+” ÍÌ” ÍÌ” ÍÌ”" ÍÌ”# ÍÌ”/ ÍÌ"”4 ÍÌ'”5 ÍÌ(”6 ÍÌ)”7 ÍÌ*”8 ÍÌ+”ÌB ÍÌ5”ÌC ÍÌ6”ÌJ ÍÌ=”ÌK ÍÌ>”ÌL ÍÌ?”ÌM ÍÌÌ@”ÌW ÍÌÌJ”ÌX ÍÌÌK”Ì\ ÍÌÌO˜” Íü” Íü
+” ÍÍ” ÍÍ” ÍÍ”- ÍÍ”. ÍÍ ”3 ÍÍ%˜” Íü” Íü
+” ÍÎ”" ÍÎ”# ÍÎ”( ÍÎ”) ÍÎ”. ÍÎ –” Íü” Íü
+” ÍÏ” ÍÏ” ÍÏ” ÍÏ“” Íı” Íı” Íı“” Íş” Íş” Íş”” Íÿ
+” Íÿ” Íÿ” Íÿ”” Í 
+” Í ” Í ” Í ”” Í
+” Í” Í” Í”” Í
+” Í” Í” Í‘” Í	œ” Í” Í” Í” Í” Í” Í” Í”  Í”! Í”# Í”$ Í”& Í” Í” Í” Í” Í”$ Í”& Í”' Í”, Í$”. Í&”5 Í-”7 Í/”> Í6”? Í7”ÌA Í9–” Í” Í” Í”+ Í#”, Í$”/ Í'‘” ÍÜ ” Íı” Íı” Í1” Í1” Í1” Í1”  Í1”" Í1”$ Í1”& Í1”* Í1”, Í1 ”. Í1"”0 Í1$”5 Í1)”7 Í1+”9 Í1-”; Í1/’” Í” Í“” Í	
+” Í	”# Í	“” Í
+” Í
+” Í
+”” Í” Í”  Í”! Í”” Í” Í”  Í”! Í”” Í” Í”  Í”! Í”” Í” Í”  Í”! Í‘” Í”” Í” Í”  Í”! Í”” Í” Í” Í”  Í‘” Í’” Í” Í–” Í” Í” Í"”  Í"”! Í"”' Í"˜” Í” Í” Í#”" Í#”# Í#”( Í#”, Í#”. Í# š” Í$” Í$” Í$”+ Í$!”. Í$$”2 Í$(”3 Í$)”: Í$0”< Í$2”= Í$3œ” Í%” Í%” Í%”* Í% ”+ Í%!”3 Í%)”6 Í%,”: Í%0”; Í%1”ÌC Í%9”ÌE Í%;”ÌF Í%<œ” Í&” Í&” Í&”* Í& ”+ Í&!”3 Í&)”6 Í&,”: Í&0”; Í&1”ÌB Í&8”ÌD Í&:”ÌE Í&;œ” Í'” Í'” Í'”6 Í',”7 Í'-”ÌD Í':”ÌE Í';”ÌI Í'?”ÌJ Í'Ì@”ÌW Í'ÌM”ÌX Í'ÌN”ÌY Í'ÌO—” Í(” Í(”" Í(”# Í(”/ Í(%”1 Í('”2 Í((Ü ” Í)” Í)” Í)”" Í)”# Í)”) Í)”+ Í)!”. Í)$”0 Í)&”> Í)4”ÌA Í)7”ÌE Í);”ÌF Í)<”ÌN Í)ÌD”ÌP Í)ÌF”ÌS Í)ÌI”Ìb Í)ÌX”Ìe Í)Ì[”Ìi Í)Ì_”Ìj Í)Ì`”Ìq Í)Ìg”Ìs Í)Ìi”Ìt Í)Ìj”Ìu Í)Ìk’” Í*” Í*” Í” Í” Í+” Í+” Í+”! Í+”$ Í+”- Í+”0 Í+"”4 Í+&”5 Í+'”= Í+/”? Í+1—” Í” Í” Í,”# Í,”$ Í,”' Í,”) Í,Ÿ” Í-”$ Í-”% Í-”1 Í-'”2 Í-(”5 Í-+”8 Í-.”ÌA Í-7”ÌD Í-:”ÌH Í->”ÌI Í-?”ÌQ Í-ÌG”ÌS Í-ÌI”ÌT Í-ÌJ”ÌU Í-ÌK’” Í.” Í.—” Í” Í”  Í”$ Í”% Í”- Í ”/ Í"–” Í” Í” Í”! Í”" Í”$ Í–” Í” Í” Í”% Í”& Í”( Í –” Í” Í” Í”$ Í”% Í”( Í –” Í” Í” Í” Í” Í”% Í–” Í” Í” Í” Í”  Í”" ÍÜ ” Í” Í” Í”" Í”# Í”' Í”( Í ”6 Í.”; Í3”? Í7”Ì@ Í8”ÌG Í?”ÌI ÍÌA”ÌJ ÍÌB”ÌK ÍÌC”ÌL ÍÌD”ÌQ ÍÌI”ÌR ÍÌJ”ÌW ÍÌO”ÌX ÍÌP”ÌY ÍÌQ”” Í” Í” Í”! Í˜” Í” Í” Í”" Í”# Í”, Í$”- Í%”3 Í+Ü ” Í” Í” Í”( Í ”) Í!”- Í%”. Í&”< Í4”ÌA Í9”ÌE Í=”ÌF Í>”ÌM ÍÌE”ÌO ÍÌG”ÌP ÍÌH”ÌQ ÍÌI”ÌÂ ÍÌe”ÌÃ ÍÌf”Í3 Í3Ü ” Í” Í” Í”$ Í”% Í”) Í!”* Í"”8 Í0”= Í5”ÌA Í9”ÌB Í:”ÌI ÍÌA”ÌK ÍÌC”ÌL ÍÌD”ÌM ÍÌE”Ì¾ ÍÌh”Ì¿ ÍÌi”Í/ Í 6’” Í” Í’” Í” Í’” Í	
+” Í	””/ Í”3 Í”4 Í”< Í’” Í” Í’” Íı” Íı’” Í3” Í3
+–” Í3” Í3
+” Í4	” Í4” Í4” Í4–” Í3” Í3
+” Í5	” Í5” Í5” Í5Ü ” Í3” Í3
+” Í6	” Í6” Í6” Í6” Í6”  Í6”" Í6”$ Í6”' Í6”) Í6!”+ Í6#”- Í6%”2 Í6*”4 Í6,”6 Í6.”8 Í60”” Í3” Í3
+” Í7	”  Í7’” Í3” Í3
+˜” Í9” Í9	” Í9
+” Í9” Í9”  Í9”" Í9”$ Í9Ü ” Í9” Í9	” Í^” Í^” Í^” Í^” Í^” Í^”! Í^”# Í^”& Í^”( Í^”* Í^!”, Í^#”1 Í^(”3 Í^*”5 Í^,”7 Í^.“” Í:” Í:” Í:˜” Í;
+” Í;” Í;”! Í;”# Í;”( Í;"”* Í;$”6 Í;0‘” Í<	–” Í:” Í:” Í=” Í=” Í=” Í=–” Í:” Í:” Í>” Í>” Í>” Í>–” Í:” Í:” Í?” Í?” Í?” Í?•” Í:” Í:” Í@” Í@” Í@–” ÍA”& ÍA"”( ÍA$”- ÍA)”. ÍA*”1 ÍA-‘” ÍB˜” Í:” Í:” ÍC” ÍC” ÍC” ÍC”# ÍC”% ÍC™” ÍD” ÍD” ÍD”" ÍD”# ÍD”+ ÍD'”. ÍD*”1 ÍD-”2 ÍD.œ” ÍE” ÍE” ÍE”. ÍE*”/ ÍE+”< ÍE8”= ÍE9”ÌA ÍE=”ÌB ÍE>”ÌO ÍEÌK”ÌP ÍEÌL”ÌQ ÍEÌM—” ÍF” ÍF” ÍF” ÍF”' ÍF#”) ÍF%”* ÍF&’” ÍG
+” ÍG’” ÍH” ÍH–” ÍH” ÍH” ÍI” ÍI” ÍI” ÍI–” ÍH” ÍH” ÍJ” ÍJ” ÍJ” ÍJ’” ÍH” ÍH“” ÍL” ÍL” ÍL˜” ÍM
+” ÍM” ÍM”! ÍM”# ÍM”( ÍM"”* ÍM$”6 ÍM0‘” ÍN	–” ÍL” ÍL” ÍO” ÍO” ÍO” ÍO–” ÍL” ÍL” ÍP” ÍP” ÍP” ÍP–” ÍL” ÍL” ÍQ” ÍQ” ÍQ” ÍQ•” ÍL” ÍL” ÍR” ÍR” ÍR–” ÍS”& ÍS"”( ÍS$”- ÍS)”. ÍS*”1 ÍS-‘” ÍT˜” ÍL” ÍL” ÍU” ÍU” ÍU” ÍU”# ÍU”% ÍU™” ÍV” ÍV” ÍV”" ÍV”# ÍV”+ ÍV'”. ÍV*”1 ÍV-”2 ÍV.œ” ÍW” ÍW” ÍW”. ÍW*”/ ÍW+”< ÍW8”= ÍW9”ÌA ÍW=”ÌB ÍW>”ÌO ÍWÌK”ÌP ÍWÌL”ÌQ ÍWÌM—” ÍX” ÍX” ÍX” ÍX”' ÍX#”) ÍX%”* ÍX&’” ÍY
+” ÍY’” ÍZ” ÍZ–” ÍZ” ÍZ” Í[” Í[” Í[” Í[–” ÍZ” ÍZ” Í\” Í\” Í\” Í\’” ÍZ” ÍZ’” Í9” Í9	’” Í`” Í`
+–” Í`” Í`
+” Ía	” Ía” Ía” Ía–” Í`” Í`
+” Íb	” Íb” Íb” ÍbÜ ” Í`” Í`
+” Íc	” Íc” Íc” Íc” Íc”  Íc”" Íc”$ Íc”' Íc”) Íc!”+ Íc#”- Íc%”2 Íc*”4 Íc,”6 Íc.”8 Íc0”” Í`” Í`
+” Íd	”  Íd’” Í`” Í`
+’” Íf” Ífš” Íf” Íf” Í”” Í”” Í”” Í”” Í””! Í””" Í””$ Í”˜” Íf” Íf” Í•” Í•” Í•”- Í•!”. Í•"”8 Í•,˜” Íf” Íf” Í–” Í–” Í–”% Í–”& Í–”) Í–˜” Íf” Íf” Í—” Í—” Í—”( Í—”) Í—”/ Í—#˜” Íg” Íg” Íg” Íg” Íg”  Íg”" Íg”$ Íg•” Íg” Íg” Í‰	” Í‰” Í‰”” ÍŠ
+” ÍŠ” ÍŠ”  ÍŠ‘” Í‹	˜” Íg” Íg” ÍŒ	” ÍŒ” ÍŒ” ÍŒ” ÍŒ”! ÍŒ•” Íg” Íg” Í	” Í” Í”” Í
+” Í” Í” Í”” Í
+” Í” Í” Í”” Í
+” Í” Í” Í”” Í‘
+” Í‘” Í‘” Í‘‘” Í’	’” Íh
+” Íh’”3 Íh1”8 Íh>’” Íi” ÍiÜ ” Íi” Íi” Íw” Íw”  Íw”0 Íw#”1 Íw$”7 Íw*”8 Íw+”< Íw/”= Íw0”ÌF Íw9”ÌG Íw:”ÌM ÍwÌ@”ÌN ÍwÌA”ÌQ ÍwÌD”ÌR ÍwÌE”ÌS ÍwÌF”ÌV ÍwÌI”ÌX ÍwÌK”Ìa ÍwÌT”Ìg ÍwÌZ”Ìh ÍwÌ[”Ìl ÍwÌ_”Ìm ÍwÌ`”Ìv ÍwÌi”Ìw ÍwÌj”Ì} ÍwÌp”Ì~ ÍwÌq”Ì ÍwÌt•” Íi” Íi” Íx”( Íx”) Íx”” Íy”  Íy”" Íy”$ Íy‘” Íz–” Íi” Íi” Í{”& Í{”' Í{”) Í{˜” Íi” Íi” Í|”% Í|”& Í|”1 Í|$”2 Í|%”7 Í|*˜” Íi” Íi” Í}”! Í}”" Í}”' Í}”+ Í}”- Í} —” Í~” Í~” Í~”- Í~#”0 Í~&”5 Í~+”6 Í~,š” Í” Í” Í”' Í”( Í”, Í"”. Í$”3 Í)”4 Í*”5 Í+œ” Í€” Í€” Í€”6 Í€,”7 Í€-”ÌD Í€:”ÌE Í€;”ÌI Í€?”ÌJ Í€Ì@”ÌW Í€ÌM”ÌX Í€ÌN”ÌY Í€ÌO—” Í” Í”" Í”# Í”/ Í%”1 Í'”2 Í(’” Í‚” Í‚š” Íi” Íi” Íƒ” Íƒ” Íƒ”  Íƒ”# Íƒ”, Íƒ”/ Íƒ"”4 Íƒ'—” Íi” Íi” Í„”" Í„”# Í„”& Í„”( Í„œ” Í…”$ Í…”% Í…”1 Í…'”2 Í…(”5 Í…+”8 Í….”ÌA Í…7”ÌD Í…:”ÌI Í…?”ÌJ Í…Ì@”ÌK Í…ÌA’” Í†” Í†’” Íj” Íj–” Íj” Íj” Ík” Ík” Ík”$ Ík–” Íj” Íj” Íl” Íl” Íl”! ÍlÜ ” Íj” Íj” Ím”# Ím”$ Ím”( Ím!”) Ím"”9 Ím2”> Ím7”ÌC Ím<”ÌD Ím=”ÌE Ím>”ÌF Ím?”ÌG ÍmÌ@”ÌH ÍmÌA”ÌI ÍmÌB”ÌJ ÍmÌC”ÌK ÍmÌD” Íj” Íj” Ín”# Ín”$ Ín”( Ín!”) Ín"”9 Ín2”> Ín7”ÌC Ín<”ÌD Ín=”ÌE Ín>”Ì¶ ÍnÌb”Ì· ÍnÌc™” Ío” Ío” Ío”- Ío%”. Ío&”2 Ío*”3 Ío+”ÌC Ío;”ÌD Ío<›” Íj” Íj” Íp”' Íp ”( Íp!”, Íp%”- Íp&”? Íp8”Ì@ Íp9”ÌD Íp=”ÌE Íp>” Íj” Íj” Íq”' Íq ”( Íq!”, Íq%”- Íq&”ÌD Íq=”ÌE Íq>”ÌI ÍqÌB”ÌJ ÍqÌC”ÌR ÍqÌK”ÌT ÍqÌM”ÌU ÍqÌN˜” Íj” Íj” Ír”/ Ír(”0 Ír)”9 Ír2”: Ír3”ÌC Ír<˜” Íj” Íj” Ís”+ Ís$”, Ís%”5 Ís.”6 Ís/”; Ís4–” Íj” Íj” Ít”$ Ít”% Ít”' Ít š” Íj” Íj” Íu” Íu” Íu” Íu”! Íu”( Íu!”+ Íu$”0 Íu)’” Íj” Íj’” Íi” Íi””/ Íh”3 Íh”4 Íh”= Íh ’” Íh
+” Íh’” Íg” Íg’” Íf” Íf’” Í™” Í™
+–” Í™” Í™
+” Íš	” Íš” Íš” Íš–” Í™” Í™
+” Í›	” Í›” Í›” Í›Ü ” Í™” Í™
+” Íœ	” Íœ” Íœ” Íœ” Íœ”  Íœ”" Íœ”$ Íœ”' Íœ”) Íœ!”+ Íœ#”- Íœ%”2 Íœ*”4 Íœ,”6 Íœ.”8 Íœ0”” Í™” Í™
+” Í	”  Í’” Í™” Í™
+” ÍŸ” ÍŸ” ÍŸ” ÍŸ”* ÍŸ”Ì› ÍŸÌE”Ì ÍŸÌG”Ì¡ ÍŸÌK”Ì£ ÍŸÌM”Ì§ ÍŸÌQ”Ì¨ ÍŸÌR”Ì° ÍŸÌZ”Ì² ÍŸÌ\•” ÍŸ” ÍŸ” Í 	” Í ” Í ”” Í¡
+” Í¡” Í¡” Í¡”” Í¢
+” Í¢” Í¢” Í¢”” Í£
+” Í£” Í£” Í£”” Í¤
+” Í¤” Í¤” Í¤‘” Í¥	”” ÍŸ” ÍŸ” Í¦	”% Í¦–” ÍŸ” ÍŸ” Í§	”& Í§”' Í§”0 Í§#˜” ÍŸ” ÍŸ” Í¨	” Í¨” Í¨”$ Í¨”% Í¨”+ Í¨–” ÍŸ” ÍŸ” Í©	” Í©” Í©”! Í©™” ÍŸ” ÍŸ” Íª	” Íª” Íª”  Íª”% Íª ”' Íª"”) Íª$—” Í«
+” Í«” Í«” Í«”  Í«”% Í«”& Í« ’” Í¬” Í¬	” Í®” Í®” Í®” Í®”* Í®”Ì› Í®ÌG”Ì Í®ÌI”Ì¡ Í®ÌM”Ì£ Í®ÌO”Ì§ Í®ÌS”Ì¨ Í®ÌT”Ì² Í®Ì^”Ì´ Í®Ì`Ü ” Í®” Í®” Í¯	” Í¯” Í¯” Í¯”# Í¯”% Í¯”' Í¯”) Í¯”. Í¯!”0 Í¯#”2 Í¯%”4 Í¯'”: Í¯-”< Í¯/”> Í¯1”Ì@ Í¯3”” Í®” Í®” Í°	”% Í°–” Í®” Í®” Í±	”& Í±”' Í±”0 Í±#˜” Í®” Í®” Í²	” Í²” Í²”$ Í²”% Í²”3 Í²&–” Í®” Í®” Í³	” Í³” Í³”! Í³™” Í®” Í®” Í´	” Í´” Í´”  Í´”% Í´ ”' Í´"”) Í´$—” Íµ
+” Íµ” Íµ” Íµ”" Íµ”' Íµ!”( Íµ"’” Í¶” Í¶	’” Í¸” Í¸˜” Í¸” Í¸” Í¹	” Í¹” Í¹”  Í¹”$ Í¹”& Í¹Ü ” Íº
+” Íº” Íº” Íº” Íº”! Íº”# Íº”& Íº ”( Í»”ÌR Í»6”ÌU Í»9”ÌY Í»=”ÌZ Í»>”Ìb Í»ÌF”Ìe Í»ÌI”Ìv Í»ÌZ”Ìy Í»Ì]”Ì} Í»Ìa”Ì~ Í»Ìb”Ìˆ Í»Ìl”Ì‰ Í»Ìm”ÌŠ Í»ÌnŸ” Í¼
+” Í¼” Í¼” Í¼” Í¼”! Í¼”" Í¼”* Í¼$”+ Í¼%”/ Í¼)”0 Í¼*”8 Í¼2”9 Í¼3”: Í¼4”< Í¼6Ü ” Í½” Í½” Í½”& Í½”' Í½”/ Í½'”2 Í½*”8 Í½0”9 Í½1”ÌA Í½9”ÌB Í½:”ÌF Í½>”ÌG Í½?”ÌO Í½ÌG”ÌP Í½ÌH”ÌQ Í½ÌI‘” Í¾Ÿ” Í¿
+” Í¿” Í¿” Í¿” Í¿”! Í¿”" Í¿”, Í¿&”- Í¿'”1 Í¿+”2 Í¿,”< Í¿6”= Í¿7”> Í¿8”Ì@ Í¿:Ü ” ÍÀ” ÍÀ” ÍÀ”& ÍÀ”' ÍÀ”1 ÍÀ)”4 ÍÀ,”: ÍÀ2”; ÍÀ3”ÌE ÍÀ=”ÌF ÍÀ>”ÌJ ÍÀÌB”ÌK ÍÀÌC”ÌU ÍÀÌM”ÌV ÍÀÌN”ÌW ÍÀÌO‘” ÍÁœ” ÍÂ
+” ÍÂ” ÍÂ”. ÍÂ(”/ ÍÂ)”< ÍÂ6”= ÍÂ7”ÌA ÍÂ;”ÌB ÍÂ<”ÌO ÍÂÌI”ÌP ÍÂÌJ”ÌQ ÍÂÌK—” ÍÃ
+” ÍÃ” ÍÃ” ÍÃ”' ÍÃ!”) ÍÃ#”* ÍÃ$’” ÍÄ” ÍÄ	–” Í¸” Í¸” ÍÅ	” ÍÅ” ÍÅ” ÍÅ–” Í¸” Í¸” ÍÆ	” ÍÆ” ÍÆ” ÍÆ˜” Í¸” Í¸” ÍÇ	” ÍÇ” ÍÇ”" ÍÇ”# ÍÇ”& ÍÇ”” Í¸” Í¸” ÍÈ	”" ÍÈ” Í¸” Í¸” ÍÉ	” ÍÉ” ÍÉ” ÍÉ”  ÍÉ”" ÍÉ”$ ÍÉ”& ÍÉ”, ÍÉ"”. ÍÉ$”0 ÍÉ&”2 ÍÉ(Ü ” Í¸” Í¸” ÍÊ	” ÍÊ” ÍÊ” ÍÊ”  ÍÊ”" ÍÊ”$ ÍÊ”& ÍÊ”+ ÍÊ!”- ÍÊ#”/ ÍÊ%”1 ÍÊ'”7 ÍÊ-”9 ÍÊ/”; ÍÊ1”= ÍÊ3’” Í¸” Í¸’” Íü” Íü
+‘” ÍĞ‘” ÍÒ’” ÍÓ” ÍÓ	–” ÍÓ” ÍÓ	” Í” Í” Í” Í–” ÍÓ” ÍÓ	” Í” Í” Í” Í!—” ÍÓ” ÍÓ	” Í#” Í*” Í+” Í.” Í0–” Í” Í
+” Í” Í”  Í”! Í’” Í” Í”” ÍÙ	” ÍÙ” ÍÙ” ÍÙ“”, ÍÔ”= ÍÔ”ÌD ÍÔ–” ÍÕ”" ÍÕ”$ ÍÕ”( ÍÕ”) ÍÕ”ÌB ÍÕ2™” ÍÖ”& ÍÖ”( ÍÖ”) ÍÖ”, ÍÖ+”. ÍÖ-”2 ÍÖÌW”4 ÍÖÌY”6 ÍÖÌ[—” Í×
+”  Í×”! Í×”: Í×(”= Í×+”ÌA Í×/”ÌB Í×0’” ÍØ” ÍØ	‘” ÍÙ–” ÍÕ”& ÍÕ”( ÍÕ”, ÍÕ”- ÍÕ”ÌF ÍÕ2™” ÍÖ”* ÍÖ”, ÍÖ”- ÍÖ”0 ÍÖ+”2 ÍÖ-”6 ÍÖÌW”8 ÍÖÌY”: ÍÖÌ[—”  Í×
+”$ Í×”% Í×”> Í×(”ÌA Í×+”ÌE Í×/”ÌF Í×0’” ÍØ” ÍØ	’” ÍÚ” ÍÚ’” ÍÛ” ÍÛ’” ÍÚ” ÍÚ–” ÍÛ” ÍÛ” Í” Í” Í” Í’” ÍÚ” ÍÚ–” ÍÛ” ÍÛ” Í	” Í	” Í	”  Í	’” ÍÚ” ÍÚÜ ” ÍÛ” ÍÛ” Í
+”" Í
+”# Í
+”' Í
+”( Í
+”4 Í
+(”8 Í
+,”9 Í
+-”: Í
+.”; Í
+/”< Í
+0”ÌG Í
+;”ÌH Í
+<”ÌI Í
+=”ÌJ Í
+>”ÌO Í
+ÌC”ÌP Í
+ÌD”Ì[ Í
+ÌO’” ÍÚ” ÍÚÜ ” ÍÛ” ÍÛ” Í” Í” Í” Í” Í”. Í"”/ Í#”0 Í$”1 Í%”2 Í&”3 Í'”4 Í(”5 Í)”6 Í*’” ÍÚ” ÍÚ˜” ÍÛ” ÍÛ” Í”! Í”" Í”+ Í”, Í ”/ Í#’” ÍÚ” ÍÚ—” ÍÛ” ÍÛ” Í” Í” Í” Í”  Í–” Í” Í” Í” Í”! Í”" Í’” Í” Í’” ÍÜ” ÍÜÜ ” ÍÜ” ÍÜ” Íê	” Íê” Íê”" Íê”# Íê”/ Íê%”2 Íê(”3 Íê)”4 Íê*”5 Íê+”6 Íê,”Ì@ Íê6”ÌA Íê7”ÌE Íê;”ÌF Íê<”ÌG Íê=”ÌH Íê>”ÌR ÍêÌH”ÌS ÍêÌI”ÌZ ÍêÌP–” ÍÜ” ÍÜ” Íë	” Íë” Íë” ÍëÜ ” ÍÜ” ÍÜ” Íì	” Íì” Íì” Íì” Íì”+ Íì!”0 Íì&”1 Íì'”2 Íì(”3 Íì)”4 Íì*”ÌO ÍìÌE”ÌP ÍìÌF”ÌQ ÍìÌG”ÌR ÍìÌH”ÌW ÍìÌM˜” ÍÜ” ÍÜ” Íí	”! Íí”" Íí”+ Íí!”, Íí"”/ Íí%—” ÍÜ” ÍÜ” Íî	” Íî” Íî” Íî”  Íî—” Íï
+” Íï” Íï”$ Íï”' Íï!”+ Íï%”, Íï&’” Íğ” Íğ	’” Íİ
+” ÍİÜ ” Íİ
+” Íİ” Íã” Íã” Íã” Íã”# Íã”% Íã”& Íã”* Íã"”+ Íã#”4 Íã,”8 Íã0”9 Íã1”= Íã5”> Íã6”ÌG Íã?”ÌH ÍãÌ@”ÌI ÍãÌA”ÌJ ÍãÌB”ÌL ÍãÌD”ÌM ÍãÌE”ÌN ÍãÌF”ÌO ÍãÌG”ÌR ÍãÌJ”ÌT ÍãÌL˜” Íİ
+” Íİ” Íä”" Íä”# Íä”( Íä ”) Íä!”. Íä&•” Íİ
+” Íİ” Íå” Íå”  ÍåÜ ” Íæ” Íæ” Íæ” Íæ” Íæ”+ Íæ'”0 Íæ,”1 Íæ-”2 Íæ.”3 Íæ/”4 Íæ0”6 Íæ2”7 Íæ3”8 Íæ4”9 Íæ5”: Íæ6Ü ” Íç” Íç” Íç” Íç” Íç”* Íç&”/ Íç+”0 Íç,”1 Íç-”2 Íç.”3 Íç/”5 Íç1”6 Íç2”7 Íç3”8 Íç4”9 Íç5‘” Íè’” ÍŞ” ÍŞ •” Íß” Íß” Íß”! Íß%”. Íß'’” Íà” Íà•” Íá” Íá” Íá” Íá”& Íá’” Íİ
+” Íİ’” ÍÜ” ÍÜ’” Íò” Íò–” Íò” Íò” Í	” Í” Í” Í–” Íò” Íò” Í	” Í” Í” Í˜” Íò” Íò” Í	” Í”  Í”% Í”& Í”+ Í$’” Íó
+” Íó–” Íó
+” Íó” Íô” Íô” Íô” Íô–” Íó
+” Íó” Íõ” Íõ” Íõ” Íõ—” Íó
+” Íó” Íö” Íö” Íö” Íö” Íö–” Í÷” Í÷” Í÷”& Í÷$”( Í÷&”) Í÷'’” Íø” Íø˜” Íó
+” Íó” Íù” Íù” Íù”$ Íù ”% Íù!”+ Íù'Ü ” Íó
+” Íó” Íú” Íú” Íú” Íú”  Íú”, Íú(”1 Íú-”2 Íú.”3 Íú/”4 Íú0”5 Íú1”: Íú6”; Íú7”> Íú:”? Íú;”Ì@ Íú<”ÌA Íú=”ÌF ÍúÌB”ÌG ÍúÌC”ÌL ÍúÌH’” Íó
+” Íó’” Íû
+” Íû–” Íû
+” Íû” Íü” Íü” Íü” Íü–” Íû
+” Íû” Íı” Íı” Íı” Íı—” Íû
+” Íû” Íş” Íş” Íş” Íş” Íş–” Íÿ” Íÿ” Íÿ”" Íÿ ”$ Íÿ"”% Íÿ#’” Í ” Í ˜” Íû
+” Íû” Í” Í” Í”$ Í ”% Í!”+ Í'Ü ” Íû
+” Íû” Í” Í” Í” Í”  Í”, Í(”1 Í-”2 Í.”3 Í/”4 Í0”5 Í1”: Í6”; Í7”> Í:”? Í;”Ì@ Í<”ÌA Í=”ÌF ÍÌB”ÌG ÍÌC”ÌL ÍÌH’” Íû
+” Íû’” Íò” Íò’” ÍÚ” ÍÚ’” ÍÛ” ÍÛ’” ÍÓ” ÍÓ	‘” Í–” Í
+” Í” Í” Í"” Í$” Í1” Í” Í” Í	” Í” Í”% Í!”( Í$”, Í(”- Í)”= Í9”> Í:”ÌC Í?”ÌD ÍÌ@”ÌE ÍÌA™” Í” Í” Í	” Í” Í”$ Í ”' Í#”, Í(”- Í)–” Í” Í” Í” Í” Í” Í™” Í” Í
+” Í” Í” Í”) Í#”, Í&”ÌA Í;”ÌB Í<™” Í” Í
+” Í” Í” Í”( Í"”+ Í%”4 Í.”5 Í/‘”	 Í–” Í” Í” Í” Í” Í” Í™” Í” Í
+” Í” Í” Í”) Í#”, Í&”Ì@ Í:”ÌA Í;™” Í” Í
+” Í” Í” Í”( Í"”+ Í%”4 Í.”5 Í/™” Í” Í
+” Í” Í” Í”( Í"”+ Í%”/ Í)”0 Í*‘”	 Í –” Í ” Í ” Í ” Í ” Í ” Í ™” Í!” Í!
+” Í!” Í!” Í!”) Í!#”, Í!&”. Í!(”/ Í!)™” Í"” Í"
+” Í"” Í"” Í"”( Í""”+ Í"%”/ Í")”0 Í"*™” Í#” Í#
+” Í#” Í#” Í#”( Í#"”+ Í#%”4 Í#.”5 Í#/‘”	 Í$‘” Í$™” Í%” Í%
+” Í%” Í%” Í%”) Í%#”, Í%&”. Í%(”/ Í%)™” Í&” Í&
+” Í&” Í&” Í&”( Í&"”+ Í&%”4 Í&.”5 Í&/‘”	 Í'” Í(” Í(” Í(	” Í(” Í(”( Í($”+ Í('”2 Í(.”3 Í(/”ÌH Í(ÌD”ÌJ Í(ÌF”ÌK Í(ÌG”ÌX Í(ÌT”ÌY Í(ÌU’” Í)” Í)”” Í+
+”	 Í+”
+ Í+” Í+–” Í,” Í,
+” Í,” Í,”* Í,&”+ Í,'˜” Í-” Í-” Í-” Í-” Í-”( Í-"”) Í-#”1 Í-+˜” Í.” Í.” Í.” Í.” Í.”( Í."”) Í.#”1 Í.+˜” Í/” Í/” Í/” Í/” Í/”( Í/"”) Í/#”1 Í/+˜” Í0” Í0” Í0” Í0” Í0”* Í0$”+ Í0%”5 Í0/›” Í1” Í1” Í1” Í1” Í1”! Í1”" Í1”& Í1 ”' Í1!”7 Í11”8 Í12˜” Í2” Í2” Í2” Í2” Í2”( Í2"”) Í2#”1 Í2+“”	 Í3”
+ Í3” Í3’” Í4” Í4‘” Í6‘” Í8’” Í9
+” Í9—” Í:” Í:” Í:	” Í:” Í:”# Í:”$ Í: ’” Í;” Í;‘” Í=‘” Í?’” Í@
+” Í@Ü ” ÍA” ÍA” ÍA” ÍA” ÍA” ÍA”! ÍA”" ÍA”- ÍA)”1 ÍA-”5 ÍA1”6 ÍA2”ÌA ÍA=”ÌB ÍA>”ÌO ÍAÌK”ÌT ÍAÌP”Ì] ÍAÌY”Ì_ ÍAÌ[š” ÍB” ÍB” ÍB”" ÍB”& ÍB ”' ÍB!”2 ÍB,”3 ÍB-”Ì@ ÍB:”ÌA ÍB;œ” ÍC” ÍC” ÍC” ÍC” ÍC”  ÍC”+ ÍC%”, ÍC&”7 ÍC1”; ÍC5”= ÍC7”> ÍC8” ÍD” ÍD” ÍD” ÍD”" ÍD”# ÍD”1 ÍD+”3 ÍD-”? ÍD9”ÌA ÍD;”ÌE ÍD?”ÌG ÍDÌA”ÌH ÍDÌB’” ÍF” ÍF–” ÍG” ÍG
+” ÍG” ÍG”$ ÍG”% ÍGÜ ” ÍH” ÍH
+” ÍH” ÍH”  ÍH”# ÍH”$ ÍH”( ÍH"”5 ÍH/”9 ÍH3”: ÍH4”> ÍH8”ÌK ÍHÌE”ÌN ÍHÌH”ÌW ÍHÌQ”ÌX ÍHÌR”Ì^ ÍHÌX”Ì` ÍHÌZ™” ÍI” ÍI”" ÍI”% ÍI”. ÍI&”/ ÍI'”< ÍI4”= ÍI5”> ÍI6™” ÍJ” ÍJ” ÍJ”* ÍJ"”+ ÍJ#”/ ÍJ'”3 ÍJ+”9 ÍJ1”: ÍJ2’” ÍL”" ÍL” ÍM” ÍM”! ÍM”$ ÍM”( ÍM ”) ÍM!”7 ÍM/”9 ÍM1”ÌG ÍM?”ÌI ÍMÌA”ÌM ÍMÌE”ÌO ÍMÌG”ÌP ÍMÌHÜ ” ÍN” ÍN”% ÍN”( ÍN ”3 ÍN+”4 ÍN,”8 ÍN0”9 ÍN1”Ì@ ÍN8”ÌA ÍN9”ÌC ÍN;”ÌD ÍO
+”ÌK ÍO”ÌL ÍO”ÌX ÍO”Ì] ÍO#”Ìi ÍO/”Ìj ÍO0”Ìn ÍO4”Ìo ÍP	”Ìp ÍP
+˜” ÍQ” ÍQ”# ÍQ”' ÍQ”6 ÍQ.”7 ÍQ/”ÌB ÍQ:”ÌD ÍQ<—” ÍR
+” ÍR”" ÍR”1 ÍR'”2 ÍR(”= ÍR3”> ÍR4‘” ÍS	‘” ÍT’” ÍV” ÍVš” ÍW” ÍW” ÍW”  ÍW”# ÍW”' ÍW!”( ÍW"”0 ÍW*”; ÍW5”< ÍW6Ÿ” ÍX” ÍX” ÍX”" ÍX”& ÍX ”' ÍX!”0 ÍX*”1 ÍX+”3 ÍX-”Ì@ ÍX:”ÌB ÍX<”ÌH ÍXÌB”ÌJ ÍXÌD”ÌK ÍXÌE”ÌL ÍXÌFÜ ” ÍY” ÍY
+” ÍY” ÍY” ÍY”  ÍY”! ÍY”, ÍY&”. ÍY(”; ÍY5”< ÍY6”= ÍY7”ÌA ÍY;”ÌB ÍY<”ÌE ÍY?”ÌG ÍYÌA›” ÍZ” ÍZ” ÍZ” ÍZ”! ÍZ”& ÍZ”' ÍZ”( ÍZ ”+ ÍZ#”- ÍZ%”/ ÍZ'”” Í[
+” Í[” Í[” Í[” Í\” Í\” Í\”# Í\”$ Í\”* Í\”, Í\ ”/ Í\#”1 Í\%”ÌV Í\ÌJ”ÌY Í\ÌM”Ì[ Í\ÌO”Ì\ Í\ÌP”Ì] Í\ÌQ‘” Í]‘” Í]” Í^” Í^” Í^”" Í^”# Í^”) Í^”+ Í^”. Í^"”0 Í^$”ÌR Í^ÌF”Ì_ Í^ÌS”Ìa Í^ÌU”Ìb Í^ÌV”Ìc Í^ÌW‘” Í_”” Í`” Í`	” Í`
+” Í`”” Ía” Ía” Ía” Ía	’” Íc”" ÍcÜ ” Íd” Íd” Íd” Íd” Íd” Íd” Íd”" Íd”$ Íe”= Íe!”ÌA Íe%”ÌB Íe&”ÌJ Íe.”Ì] ÍeÌA”Ìj ÍeÌN”Ìv ÍeÌZ”Ì| ÍeÌ`”Ì ÍeÌq”Ì˜ ÍeÌ|”Ìš ÍeÌ~”Ì› ÍeÌ”Ìœ ÍeÌ€Ü ” Íf” Íf” Íf”. Íf(”/ Íf)”3 Íf-”4 Íf.”< Íf6”> Íf8”ÌK ÍfÌE”ÌM ÍfÌG”ÌS ÍfÌM”ÌU ÍfÌO”Ì` ÍfÌZ”Ìa ÍfÌ[”Ìb ÍfÌ\‘”	 Íg’” Íh” Íh‘” Íj‘” Íl’” Ím
+” Ím—” Ín” Ín” Ín	” Ín” Ín”$ Ín ”% Ín!˜” Ío” Ío” Ío	” Ío” Ío” Ío” Ío” Ío’” Íp” Íp’” Ír
+” Ír—” Ís” Ís” Ís	” Ís” Ís” Ís” Ís” Ít” Ít” Ít	” Ít” Ít”# Ít”$ Ít ”2 Ít.”4 Ít0”ÌB Ít>”ÌD ÍtÌ@”ÌH ÍtÌD”ÌJ ÍtÌF”ÌK ÍtÌG–” Íu” Íu” Íu	” Íu” Íu” ÍuÜ ” Ív” Ív	” Ív
+” Ív” Ív” Ív” Ív” Ív”  Ív”7 Ív3”: Ív6”> Ív:”? Ív;”ÌN ÍvÌJ”ÌO ÍvÌK”ÌU ÍvÌQ”ÌV ÍvÌR”ÌW ÍvÌS’” Íx” Íx•” Íy” Íy” Íy” Íy” ÍyÜ ” Íz” Íz
+” Íz” Íz”( Íz"”, Íz&”- Íz'”1 Íz+”5 Íz/”6 Íz0”ÌI ÍzÌC”ÌL ÍzÌF”ÌP ÍzÌJ”ÌQ ÍzÌK”Ì` ÍzÌZ”Ìa ÍzÌ[”Ìg ÍzÌa”Ìi ÍzÌcœ” Í{” Í{” Í{”( Í{ ”) Í{!”6 Í{.”7 Í{/”; Í{3”< Í{4”ÌO Í{ÌG”ÌP Í{ÌH”ÌQ Í{ÌIÜ ” Í|” Í|” Í|” Í|” Í|”! Í|”# Í|”& Í|”( Í| ”ÌE Í|=”ÌH Í|Ì@”ÌL Í|ÌD”ÌM Í|ÌE”Ì` Í|ÌX”Ìa Í|ÌY”Ìb Í|ÌZ‘” Í}–” Í~”	 Í~” Í~” Í~
+” Í~” Í~’” Í” Í’” Í
+” Í—” Í‚” Í‚” Í‚	” Í‚” Í‚” Í‚” Í‚’” Íƒ” Íƒ–” Í…
+”	 Í…”
+ Í…” Í…!” Í…"”' Í…ÌEœ” Í†” Í†
+” Í†” Í†” Í†”! Í†”" Í†”+ Í†'”, Í†(”7 Í†3”8 Í†4”9 Í†5” Í‡” Í‡
+” Í‡” Í‡”" Í‡”# Í‡”; Í‡7”< Í‡8”ÌG Í‡ÌC”ÌH Í‡ÌD”ÌI Í‡ÌE”ÌN Í‡ÌJ”ÌO Í‡ÌKœ” Íˆ” Íˆ” Íˆ	”& Íˆ"”' Íˆ#”0 Íˆ,”1 Íˆ-”> Íˆ:”Ì@ Íˆ<”ÌF ÍˆÌB”ÌG ÍˆÌC”ÌH ÍˆÌD–” Í‰” Í‰” Í‰	” Í‰” Í‰” Í‰’” ÍŠ” ÍŠ–” ÍŒ
+”	 ÍŒ”
+ ÍŒ” ÍŒ” ÍŒ” ÍŒ=Ü ” Í” Í
+” Í” Í” Í” Í ”* Í.”, Í0”ÌB ÍÌF”ÌC ÍÌG”ÌN ÍÌR”ÌO ÍÌS”ÌS ÍÌW”ÌW ÍÌ[”ÌY ÍÌ]”ÌZ ÍÌ^”Ì^ ÍÌb”Ì` ÍÌd”Ìa ÍÌe”” Í” Í” Í” Í’” Í” Í”” Í‘
+” Í‘"” Í‘#”( Í‘ÌFš” Í’” Í’” Í’” Í’”& Í’"”' Í’#”3 Í’/”7 Í’3”9 Í’5”: Í’6” Í“” Í“” Í“” Í“,” Í“0” Í“1”+ Í“?”- Í“ÌA”9 Í“ÌM”; Í“ÌO”? Í“ÌS”ÌA Í“ÌU”ÌB Í“ÌUÜ ” Í•” Í•” Í•” Í•”' Í•#”( Í•$”. Í•*”/ Í•+”3 Í•/”4 Í•0”6 Í•2”7 Í•3”; Í•7”< Í•8”Ì@ Í•<”ÌE Í•ÌA”ÌQ Í•ÌM”ÌR Í•ÌN”ÌS Í•ÌO˜” Í–” Í–” Í–” Í–”" Í–”% Í–!”& Í–"”( Í–$Ü ” Í—” Í—” Í—” Í—” Í—” Í—” Í—”" Í—”$ Í—”ÌL Í—ÌF”ÌN Í—ÌH”Ì] Í—ÌW”Ì^ Í—ÌX”Ì_ Í—ÌY”Ì` Í—ÌZ”Ìa Í—Ì[”Ìb Í—Ì\™” Í˜” Í˜
+” Í˜” Í˜”. Í˜(”/ Í˜)”0 Í˜*”1 Í˜+”2 Í˜,”” Í™” Í™” Í™”  Í™‘”	 Íš˜” Íš” Íš” Íš” Íš”! Íš”$ Íš"”% Íš#”' Íš%Ü ” Í›” Í›” Í›” Í›” Í›” Í›” Í›”" Í›”$ Í›”Ì[ Í›ÌU”Ì] Í›ÌW”Ìf Í›Ì`”Ìg Í›Ìa”Ìh Í›Ìb”Ìi Í›Ìc”Ìj Í›Ìd”Ìk Í›Ìe—” Íœ” Íœ” Íœ” Íœ” Íœ” Íœ”  Íœ‘”	 Í‘” Íœ” Í” Í” Í” Í” Í” Í” Í”" Í”$ Í”ÌU ÍÌO”ÌV ÍÌP”ÌW ÍÌQ’” ÍŸ” ÍŸ”” Í ” Í ” Í ” Í ”” Í¡” Í¡” Í¡” Í¡”” Í¢” Í¢” Í¢” Í¢”” Í£” Í£” Í£” Í£’” Í¤” Í¤‘”	 Í¥’” Í¦” Í¦”” Í¨” Í¨” Í¨”  Í¨&–” Í©” Í©” Í©” Í©”$ Í© ”& Í©"’” Íª”Ìƒ Íª,‘”	 Í«–” Í«” Í«” Í«” Í«”( Í«&”* Í«(’” Í¬”Ìƒ Í¬+‘”	 Í­”” Í®” Í®” Í®” Í®’” Í¯” Í¯”” Í±
+”
+ Í±” Í±” Í±!œ” Í²” Í²” Í²” Í²” Í²” Í²” Í²”' Í²#”) Í²%”/ Í²+”0 Í²,”1 Í²-™” Í³” Í³” Í³” Í³” Í³” Í³”' Í³#”) Í³%”* Í³&Ü +” Í´” Í´” Í´” Í´” Í´” Í´”! Í´”" Í´”) Í´%”* Í´&”+ Í´'”, Í´(”- Í´)”1 Í´-”2 Í´.”3 Í´/”7 Í´3”; Í´7”< Í´8”ÌC Í´?”ÌD Í´Ì@”ÌK Í´ÌG”ÌL Í´ÌH”ÌM Í´ÌI”ÌN Í´ÌJ”ÌO Í´ÌK”ÌS Í´ÌO”ÌT Í´ÌP”ÌU Í´ÌQ”ÌY Í´ÌU”Ì] Í´ÌY”Ì^ Í´ÌZ”Ìe Í´Ìa”Ìf Í´Ìb”Ìm Í´Ìi”Ìn Í´Ìj”Ìo Í´Ìk”Ìp Í´Ìl”Ìq Í´Ìm”Ìu Í´Ìq”Ìv Í´Ìr”Ìw Í´Ìs”Ìx Í´Ìt” Íµ” Íµ	” Íµ
+” Íµ” Íµ” Íµ” Íµ” Íµ”  Íµ”+ Íµ'”. Íµ*”4 Íµ0”5 Íµ1”6 Íµ2”” Í¶” Í¶” Í¶” Í¶’” Í·” Í·”” Í¹
+” Í¹” Í¹” Í¹+’” Íº” Íº›” Í»” Í»
+” Í»” Í»” Í»” Í»”# Í»”$ Í»”, Í»&”- Í»'”. Í»(Ü ” Í¼” Í¼
+” Í¼” Í¼” Í¼” Í¼”" Í¼”# Í¼”+ Í¼%”- Í¼'”/ Í¼)”0 Í¼*”8 Í¼2”9 Í¼3”ÌB Í¼<”ÌC Í¼=”ÌD Í¼>œ” Í½” Í½
+” Í½” Í½” Í½”( Í½"”) Í½#”. Í½(”/ Í½)”3 Í½-”4 Í½.”5 Í½/œ” Í¾” Í¾” Í¾	” Í¾” Í¾” Í¾” Í¾” Í¾”! Í¾”' Í¾!”( Í¾"”) Í¾#˜” Í¿” Í¿” Í¿	” Í¿” Í¿” Í¿” Í¿” Í¿”” ÍÀ” ÍÀ” ÍÀ” ÍÀ‘”	 ÍÁ”” ÍÁ” ÍÁ” ÍÁ” ÍÁÜ ” ÍÂ” ÍÂ” ÍÂ” ÍÂ” ÍÂ” ÍÂ”  ÍÂ”# ÍÂ”% ÍÂ”ÌS ÍÂÌM”ÌU ÍÂÌO”ÌX ÍÂÌR”ÌY ÍÂÌS”Ì` ÍÂÌZ”Ìb ÍÂÌ\”Ìr ÍÂÌl”Ìt ÍÂÌn”Ìw ÍÂÌq”Ìx ÍÂÌr”Ì| ÍÂÌv”Ì} ÍÂÌw”Ì~ ÍÂÌx˜” ÍÃ” ÍÃ” ÍÃ”" ÍÃ”# ÍÃ”$ ÍÃ”% ÍÃ”& ÍÃ ‘”	 ÍÄ’” ÍÅ” ÍÅ‘” ÍÇ‘” ÍÉ’” ÍÊ” ÍÊ‘” ÍÌÔrH–§version¤file§sources®sourcesContent¥names¨mappingsÀ‘À‘ÀÜ‘”    ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”  	 ‘”  
+ ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”    ‘”  ! ‘”  " ‘”  # ‘”  $ ‘”  % ‘”  & ‘”  ' ‘”  ( ‘”  ) ‘”  * ‘”  + ‘”  , ‘”  - ‘”  . ‘”  / ‘”  0 ‘”  1 ‘”  2 ‘”  3 ‘”  4 ‘”  5 ‘”  6 ‘”  7 ‘”  8 ‘”  9 ‘”  : ‘”  ; ‘”  < ‘”  = ‘”  > ‘”  ? ‘”  Ì@ ‘”  ÌA ‘”  ÌB ‘”  ÌC ‘”  ÌD ‘”  ÌE ‘”  ÌF ‘”  ÌG ‘”  ÌH ‘”  ÌI ‘”  ÌJ ‘”  ÌK ‘”  ÌL ‘”  ÌM ‘”  ÌN ‘”  ÌO ‘”  ÌP ‘”  ÌQ ‘”  ÌR ‘”  ÌS ‘”  ÌT ‘”  ÌU ‘”  ÌV ‘”  ÌW ‘”  ÌX ‘”  ÌY ‘”  ÌZ ‘”  Ì[ ‘”  Ì\ ‘”  Ì] ‘”  Ì^ ‘”  Ì_ ‘”  Ì` ‘”  Ìa ‘”  Ìb ‘”  Ìc ‘”  Ìd ‘”  Ìe ‘”  Ìf ‘”  Ìg ‘”  Ìh ‘”  Ìi ‘”  Ìj ‘”  Ìk ‘”  Ìl ‘”  Ìm ‘”  Ìn ‘”  Ìo ‘”  Ìp ‘”  Ìq ‘”  Ìr ‘”  Ìs ‘”  Ìt ‘”  Ìu ‘”  Ìv ‘”  Ìw ‘”  Ìx ‘”  Ìy ‘”  Ìz ‘”  Ì{ ‘”  Ì| ‘”  Ì} ‘”  Ì~ ‘”  Ì ‘”  Ì€ ‘”  Ì ‘”  Ì‚ ‘”  Ìƒ ‘”  Ì„ ‘”  Ì… ‘”  Ì† ‘”  Ì‡ ‘”  Ìˆ ‘”  Ì‰ ‘”  ÌŠ ‘”  Ì‹ ‘”  ÌŒ ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì‘ ‘”  Ì’ ‘”  Ì“ ‘”  Ì” ‘”  Ì• ‘”  Ì– ‘”  Ì— ‘”  Ì˜ ‘”  Ì™ ‘”  Ìš ‘”  Ì› ‘”  Ìœ ‘”  Ì ‘”  Ì ‘”  ÌŸ ‘”  Ì  ‘”  Ì¡ ‘”  Ì¢ ‘”  Ì£ ‘”  Ì¤ ‘”  Ì¥ ‘”  Ì¦ ‘”  Ì§ ‘”  Ì¨ ‘”  Ì© ‘”  Ìª ‘”  Ì« ‘”  Ì¬ ‘”  Ì­ ‘”  Ì® ‘”  Ì¯ ‘”  Ì° ‘”  Ì± ‘”  Ì² ‘”  Ì³ ‘”  Ì´ ‘”  Ìµ ‘”  Ì¶ ‘”  Ì· ‘”  Ì¸ ‘”  Ì¹ ‘”  Ìº ‘”  Ì» ‘”  Ì¼ ‘”  Ì½ ‘”  Ì¾ ‘”  Ì¿ ‘”  ÌÀ ‘”  ÌÁ ‘”  ÌÂ ‘”  ÌÃ ‘”  ÌÄ ‘”  ÌÅ ‘”  ÌÆ ‘”  ÌÇ ‘”  ÌÈ ‘”  ÌÉ ‘”  ÌÊ ‘”  ÌË ‘”  ÌÌ ‘”  ÌÍ ‘”  ÌÎ ‘”  ÌÏ ‘”  ÌĞ ‘”  ÌÑ ‘”  ÌÒ ‘”  ÌÓ ‘”  ÌÔ ‘”  ÌÕ ‘”  ÌÖ ‘”  Ì× ‘”  ÌØ ‘”  ÌÙ ‘”  ÌÚ ‘”  ÌÛ ‘”  ÌÜ ‘”  Ìİ ‘”  ÌŞ ‘”  Ìß ‘”  Ìà ‘”  Ìá ‘”  Ìâ ‘”  Ìã ‘”  Ìä ‘”  Ìå ‘”  Ìæ ‘”  Ìç ‘”  Ìè ‘”  Ìé ‘”  Ìê ‘”  Ìë ‘”  Ìì ‘”  Ìí ‘”  Ìî ‘”  Ìï ‘”  Ìğ ‘”  Ìñ ‘”  Ìò ‘”  Ìó ‘”  Ìô ‘”  Ìõ ‘”  Ìö ‘”  Ì÷ ‘”  Ìø ‘”  Ìù ‘”  Ìú ‘”  Ìû ‘”  Ìü ‘”  Ìı ‘”  Ìş ‘”  Ìÿ ‘”  Í  ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í	 ‘”  Í
+ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í  ‘”  Í! ‘”  Í" ‘”  Í# ‘”  Í$ ‘”  Í% ‘”  Í& ‘”  Í' ‘”  Í( ‘”  Í) ‘”  Í* ‘”  Í+ ‘”  Í, ‘”  Í- ‘”  Í. ‘”  Í/ ‘”  Í0 ‘”  Í1 ‘”  Í2 ‘”  Í3 ‘”  Í4 ‘”  Í5 ‘”  Í6 ‘”  Í7 ‘”  Í8 ‘”  Í9 ‘”  Í: ‘”  Í; ‘”  Í< ‘”  Í= ‘”  Í> ‘”  Í? ‘”  Í@ ‘”  ÍA ‘”  ÍB ‘”  ÍC ‘”  ÍD ‘”  ÍE ‘”  ÍF ‘”  ÍG ‘”  ÍH ‘”  ÍI ‘”  ÍJ ‘”  ÍK ‘”  ÍL ‘”  ÍM ‘”  ÍN ‘”  ÍO ‘”  ÍP ‘”  ÍQ ‘”  ÍR ‘”  ÍS ‘”  ÍT ‘”  ÍU ‘”  ÍV ‘”  ÍW ‘”  ÍX ‘”  ÍY ‘”  ÍZ ‘”  Í[ ‘”  Í\ ‘”  Í] ‘”  Í^ ‘”  Í_ ‘”  Í` ‘”  Ía ‘”  Íb ‘”  Íc ‘”  Íd ‘”  Íe ‘”  Íf ‘”  Íg ‘”  Íh ‘”  Íi ‘”  Íj ‘”  Ík ‘”  Íl ‘”  Ím ‘”  Ín ‘”  Ío ‘”  Íp ‘”  Íq ‘”  Ír ‘”  Ís ‘”  Ít ‘”  Íu ‘”  Ív ‘”  Íw ‘”  Íx ‘”  Íy ‘”  Íz ‘”  Í{ ‘”  Í| ‘”  Í} ‘”  Í~ ‘”  Í ‘”  Í€ ‘”  Í ‘”  Í‚ ‘”  Íƒ ‘”  Í„ ‘”  Í… ‘”  Í† ‘”  Í‡ ‘”  Íˆ ‘”  Í‰ ‘”  ÍŠ ‘”  Í‹ ‘”  ÍŒ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í‘ ‘”  Í’ ‘”  Í“ ‘”  Í” ‘”  Í• ‘”  Í– ‘”  Í— ‘”  Í˜ ‘”  Í™ ‘”  Íš ‘”  Í› ‘”  Íœ ‘”  Í ‘”  Í ‘”  ÍŸ ‘”  Í  ‘”  Í¡ ‘”  Í¢ ‘”  Í£ ‘”  Í¤ ‘”  Í¥ ‘”  Í¦ ‘”  Í§ ‘”  Í¨ ‘”  Í© ‘”  Íª ‘”  Í« ‘”  Í¬ ‘”  Í­ ‘”  Í® ‘”  Í¯ ‘”  Í° ‘”  Í± ‘”  Í² ‘”  Í³ ‘”  Í´ ‘”  Íµ ‘”  Í¶ ‘”  Í· ‘”  Í¸ ‘”  Í¹ ‘”  Íº ‘”  Í» ‘”  Í¼ ‘”  Í½ ‘”  Í¾ ‘”  Í¿ ‘”  ÍÀ ‘”  ÍÁ ‘”  ÍÂ ‘”  ÍÃ ‘”  ÍÄ ‘”  ÍÅ ‘”  ÍÆ ‘”  ÍÇ ‘”  ÍÈ ‘”  ÍÉ ‘”  ÍÊ ‘”  ÍË ‘”  ÍÌ ‘”  ÍÍ ‘”  ÍÎ ‘”  ÍÏ ‘”  ÍĞ ‘”  ÍÑ ‘”  ÍÒ ‘”  ÍÓ ‘”  ÍÔ ‘”  ÍÕ ‘”  ÍÖ ‘”  Í× ‘”  ÍØ ‘”  ÍÙ ‘”  ÍÚ ‘”  ÍÛ ‘”  ÍÜ ‘”  Íİ ‘”  ÍŞ ‘”  Íß ‘”  Íà ‘”  Íá ‘”  Íâ ‘”  Íã ‘”  Íä ‘”  Íå ‘”  Íæ ‘”  Íç ‘”  Íè ‘”  Íé ‘”  Íê ‘”  Íë ‘”  Íì ‘”  Íí ‘”  Íî ‘”  Íï ‘”  Íğ ‘”  Íñ ‘”  Íò ‘”  Íó ‘”  Íô ‘”  Íõ ‘”  Íö ‘”  Í÷ ‘”  Íø ‘”  Íù ‘”  Íú ‘”  Íû ‘”  Íü ‘”  Íı ‘”  Íş ‘”  Íÿ ‘”  Í  ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í	 ‘”  Í
+ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í  ‘”  Í! ‘”  Í" ‘”  Í# ‘”  Í$ ‘”  Í% ‘”  Í& ‘”  Í' ‘”  Í( ‘”  Í) ‘”  Í* ‘”  Í+ ‘”  Í, ‘”  Í- ‘”  Í. ‘”  Í/ ‘”  Í0 ‘”  Í1 ‘”  Í2 ‘”  Í3 ‘”  Í4 ‘”  Í5 ‘”  Í6 ‘”  Í7 ‘”  Í8 ‘”  Í9 ‘”  Í: ‘”  Í; ‘”  Í< ‘”  Í= ‘”  Í> ‘”  Í? ‘”  Í@ ‘”  ÍA ‘”  ÍB ‘”  ÍC ‘”  ÍD ‘”  ÍE ‘”  ÍF ‘”  ÍG ‘”  ÍH ‘”  ÍI ‘”  ÍJ ‘”  ÍK ‘”  ÍL ‘”  ÍM ‘”  ÍN ‘”  ÍO ‘”  ÍP ‘”  ÍQ ‘”  ÍR ‘”  ÍS ‘”  ÍT ‘”  ÍU ‘”  ÍV ‘”  ÍW ‘”  ÍX ‘”  ÍY ‘”  ÍZ ‘”  Í[ ‘”  Í\ ‘”  Í] ‘”  Í^ ‘”  Í_ ‘”  Í` ‘”  Ía ‘”  Íb ‘”  Íc ‘”  Íd ‘”  Íe ‘”  Íf ‘”  Íg ‘”  Íh ‘”  Íi ‘”  Íj ‘”  Ík ‘”  Íl ‘”  Ím ‘”  Ín ‘”  Ío ‘”  Íp ‘”  Íq ‘”  Ír ‘”  Ís ‘”  Ít ‘”  Íu ‘”  Ív ‘”  Íw ‘”  Íx ‘”  Íy ‘”  Íz ‘”  Í{ ‘”  Í| ‘”  Í} ‘”  Í~ ‘”  Í ‘”  Í€ ‘”  Í ‘”  Í‚ ‘”  Íƒ ‘”  Í„ ‘”  Í… ‘”  Í† ‘”  Í‡ ‘”  Íˆ ‘”  Í‰ ‘”  ÍŠ ‘”  Í‹ ‘”  ÍŒ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í‘ ‘”  Í’ ‘”  Í“ ‘”  Í” ‘”  Í• ‘”  Í– ‘”  Í— ‘”  Í˜ ‘”  Í™ ‘”  Íš ‘”  Í› ‘”  Íœ ‘”  Í ‘”  Í ‘”  ÍŸ ‘”  Í  ‘”  Í¡ ‘”  Í¢ ‘”  Í£ ‘”  Í¤ ‘”  Í¥ ‘”  Í¦ ‘”  Í§ ‘”  Í¨ ‘”  Í© ‘”  Íª ‘”  Í« ‘”  Í¬ ‘”  Í­ ‘”  Í® ‘”  Í¯ ‘”  Í° ‘”  Í± ‘”  Í² ‘”  Í³ ‘”  Í´ ‘”  Íµ ‘”  Í¶ ‘”  Í· ‘”  Í¸ ‘”  Í¹ ‘”  Íº ‘”  Í» ‘”  Í¼ ‘”  Í½ ‘”  Í¾ ‘”  Í¿ ‘”  ÍÀ ‘”  ÍÁ ‘”  ÍÂ ‘”  ÍÃ ‘”  ÍÄ ‘”  ÍÅ ‘”  ÍÆ ‘”  ÍÇ ‘”  ÍÈ ‘”  ÍÉ ‘”  ÍÊ ‘”  ÍË ‘”  ÍÌ ‘”  ÍÍ ‘”  ÍÎ ‘”  ÍÏ ‘”  ÍĞ ‘”  ÍÑ ‘”  ÍÒ ‘”  ÍÓ ‘”  ÍÔ ‘”  ÍÕ ‘”  ÍÖ ‘”  Í× ‘”  ÍØ ‘”  ÍÙ ‘”  ÍÚ ‘”  ÍÛ ‘”  ÍÜ ‘”  Íİ ‘”  ÍŞ ‘”  Íß ‘”  Íà ‘”  Íá ‘”  Íâ ‘”  Íã ‘”  Íä ‘”  Íå ‘”  Íæ ‘”  Íç ‘”  Íè ‘”  Íé ‘”  Íê ‘”  Íë ‘”  Íì ‘”  Íí ‘”  Íî ‘”  Íï ‘”  Íğ ‘”  Íñ ‘”  Íò ‘”  Íó ‘”  Íô ‘”  Íõ ‘”  Íö ‘”  Í÷ ‘”  Íø ‘”  Íù ‘”  Íú ‘”  Íû ‘”  Íü ‘”  Íı ‘”  Íş ‘”  Íÿ ‘”  Í  ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í	 ‘”  Í
+ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í  ‘”  Í! ‘”  Í" ‘”  Í# ‘”  Í$ ‘”  Í% ‘”  Í& ‘”  Í' ‘”  Í( ‘”  Í) ‘”  Í* ‘”  Í+ ‘”  Í, ‘”  Í- ‘”  Í. ‘”  Í/ ‘”  Í0 ‘”  Í1 ‘”  Í2 ‘”  Í3 ‘”  Í4 ‘”  Í5 ‘”  Í6 ‘”  Í7 ‘”  Í8 ‘”  Í9 ‘”  Í: ‘”  Í; ‘”  Í< ‘”  Í= ‘”  Í> ‘”  Í? ‘”  Í@ ‘”  ÍA ‘”  ÍB ‘”  ÍC ‘”  ÍD ‘”  ÍE ‘”  ÍF ‘”  ÍG ‘”  ÍH ‘”  ÍI ‘”  ÍJ ‘”  ÍK ‘”  ÍL ‘”  ÍM ‘”  ÍN ‘”  ÍO ‘”  ÍP ‘”  ÍQ ‘”  ÍR ‘”  ÍS ‘”  ÍT ‘”  ÍU ‘”  ÍV ‘”  ÍW ‘”  ÍX ‘”  ÍY ‘”  ÍZ ‘”  Í[ ‘”  Í\ ‘”  Í] ‘”  Í^ ‘”  Í_ ‘”  Í` ‘”  Ía ‘”  Íb ‘”  Íc ‘”  Íd ‘”  Íe ‘”  Íf ‘”  Íg ‘”  Íh ‘”  Íi ‘”  Íj ‘”  Ík ‘”  Íl ‘”  Ím ‘”  Ín ‘”  Ío ‘”  Íp ‘”  Íq ‘”  Ír ‘”  Ís ‘”  Ít ‘”  Íu ‘”  Ív ‘”  Íw ‘”  Íx ‘”  Íy ‘”  Íz ‘”  Í{ ‘”  Í| ‘”  Í} ‘”  Í~ ‘”  Í ‘”  Í€ ‘”  Í ‘”  Í‚ ‘”  Íƒ ‘”  Í„ ‘”  Í… ‘”  Í† ‘”  Í‡ ‘”  Íˆ ‘”  Í‰ ‘”  ÍŠ ‘”  Í‹ ‘”  ÍŒ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í‘ ‘”  Í’ ‘”  Í“ ‘”  Í” ‘”  Í• ‘”  Í– ‘”  Í— ‘”  Í˜ ‘”  Í™ ‘”  Íš ‘”  Í› ‘”  Íœ ‘”  Í ‘”  Í ‘”  ÍŸ ‘”  Í  ‘”  Í¡ ‘”  Í¢ ‘”  Í£ ‘”  Í¤ ‘”  Í¥ ‘”  Í¦ ‘”  Í§ ‘”  Í¨ ‘”  Í© ‘”  Íª ‘”  Í« ‘”  Í¬ ‘”  Í­ ‘”  Í® ‘”  Í¯ ‘”  Í° ‘”  Í± ‘”  Í² ‘”  Í³ ‘”  Í´ ‘”  Íµ ‘”  Í¶ ‘”  Í· ‘”  Í¸ ‘”  Í¹ ‘”  Íº ‘”  Í» ‘”  Í¼ ‘”  Í½ ‘”  Í¾ ‘”  Í¿ ‘”  ÍÀ ‘”  ÍÁ ‘”  ÍÂ ‘”  ÍÃ ‘”  ÍÄ ‘”  ÍÅ ‘”  ÍÆ ‘”  ÍÇ ‘”  ÍÈ ‘”  ÍÉ ‘”  ÍÊ ‘”  ÍË ‘”  ÍÌ ‘”  ÍÍ ‘”  ÍÎ ‘”  ÍÏ ‘”  ÍĞ ‘”  ÍÑ ‘”  ÍÒ ‘”  ÍÓ ‘”  ÍÔ ‘”  ÍÕ ‘”  ÍÖ ‘”  Í× ‘”  ÍØ ‘”  ÍÙ ‘”  ÍÚ ‘”  ÍÛ ‘”  ÍÜ ‘”  Íİ ‘”  ÍŞ ‘”  Íß ‘”  Íà ‘”  Íá ‘”  Íâ ‘”  Íã ‘”  Íä ‘”  Íå ‘”  Íæ ‘”  Íç ‘”  Íè ‘”  Íé ‘”  Íê ‘”  Íë ‘”  Íì ‘”  Íí ‘”  Íî ‘”  Íï ‘”  Íğ ‘”  Íñ ‘”  Íò ‘”  Íó ‘”  Íô ‘”  Íõ ‘”  Íö ‘”  Í÷ ‘”  Íø ‘”  Íù ‘”  Íú ‘”  Íû ‘”  Íü ‘”  Íı ‘”  Íş ‘”  Íÿ ‘”  Í  ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í	 ‘”  Í
+ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í  ‘”  Í! ‘”  Í" ‘”  Í# ‘”  Í$ ‘”  Í% ‘”  Í& ‘”  Í' ‘”  Í( ‘”  Í) ‘”  Í* ‘”  Í+ ‘”  Í, ‘”  Í- ‘”  Í. ‘”  Í/ ‘”  Í0 ‘”  Í1 ‘”  Í2 ‘”  Í3 ‘”  Í4 ‘”  Í5 ‘”  Í6 ‘”  Í7 ‘”  Í8 ‘”  Í9 ‘”  Í: ‘”  Í; ‘”  Í< ‘”  Í= ‘”  Í> ‘”  Í? ‘”  Í@ ‘”  ÍA ‘”  ÍB ‘”  ÍC ‘”  ÍD ‘”  ÍE ‘”  ÍF ‘”  ÍG ‘”  ÍH ‘”  ÍI ‘”  ÍJ ‘”  ÍK ‘”  ÍL ‘”  ÍM ‘”  ÍN ‘”  ÍO ‘”  ÍP ‘”  ÍQ ‘”  ÍR ‘”  ÍS ‘”  ÍT ‘”  ÍU ‘”  ÍV ‘”  ÍW ‘”  ÍX ‘”  ÍY ‘”  ÍZ ‘”  Í[ ‘”  Í\ ‘”  Í] ‘”  Í^ ‘”  Í_ ‘”  Í` ‘”  Ía ‘”  Íb ‘”  Íc ‘”  Íd ‘”  Íe ‘”  Íf ‘”  Íg ‘”  Íh ‘”  Íi ‘”  Íj ‘”  Ík ‘”  Íl ‘”  Ím ‘”  Ín ‘”  Ío ‘”  Íp ‘”  Íq ‘”  Ír ‘”  Ís ‘”  Ít ‘”  Íu ‘”  Ív ‘”  Íw ‘”  Íx ‘”  Íy ‘”  Íz ‘”  Í{ ‘”  Í| ‘”  Í} ‘”  Í~ ‘”  Í ‘”  Í€ ‘”  Í ‘”  Í‚ ‘”  Íƒ ‘”  Í„ ‘”  Í… ‘”  Í† ‘”  Í‡ ‘”  Íˆ ‘”  Í‰ ‘”  ÍŠ ‘”  Í‹ ‘”  ÍŒ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í‘ ‘”  Í’ ‘”  Í“ ‘”  Í” ‘”  Í• ‘”  Í– ‘”  Í— ‘”  Í˜ ‘”  Í™ ‘”  Íš ‘”  Í› ‘”  Íœ ‘”  Í ‘”  Í ‘”  ÍŸ ‘”  Í  ‘”  Í¡ ‘”  Í¢ ‘”  Í£ ‘”  Í¤ ‘”  Í¥ ‘”  Í¦ ‘”  Í§ ‘”  Í¨ ‘”  Í© ‘”  Íª ‘”  Í« ‘”  Í¬ ‘”  Í­ ‘”  Í® ‘”  Í¯ ‘”  Í° ‘”  Í± ‘”  Í² ‘”  Í³ ‘”  Í´ ‘”  Íµ ‘”  Í¶ ‘”  Í· ‘”  Í¸ ‘”  Í¹ ‘”  Íº ‘”  Í» ‘”  Í¼ ‘”  Í½ ‘”  Í¾ ‘”  Í¿ ‘”  ÍÀ ‘”  ÍÁ ‘”  ÍÂ ‘”  ÍÃ ‘”  ÍÄ ‘”  ÍÅ ‘”  ÍÆ ‘”  ÍÇ ‘”  ÍÈ ‘”  ÍÉ ‘”  ÍÊ ‘”  ÍË ‘”  ÍÌ ‘”  ÍÍ ‘”  ÍÎ ‘”  ÍÏ ‘”  ÍĞ ‘”  ÍÑ ‘”  ÍÒ ‘”  ÍÓ ‘”  ÍÔ ‘”  ÍÕ ‘”  ÍÖ ‘”  Í× ‘”  ÍØ ‘”  ÍÙ ‘”  ÍÚ ‘”  ÍÛ ‘”  ÍÜ ‘”  Íİ ‘”  ÍŞ ‘”  Íß ‘”  Íà ‘”  Íá ‘”  Íâ ‘”  Íã ‘”  Íä ‘”  Íå ‘”  Íæ ‘”  Íç ‘”  Íè ‘”  Íé ‘”  Íê ‘”  Íë ‘”  Íì ‘”  Íí ‘”  Íî ‘”  Íï ‘”  Íğ ‘”  Íñ ‘”  Íò ‘”  Íó ‘”  Íô ‘”  Íõ ‘”  Íö ‘”  Í÷ ‘”  Íø ‘”  Íù ‘”  Íú ‘”  Íû ‘”  Íü ‘”  Íı ‘”  Íş ‘”  Íÿ ‘”  Í  ÔrI’§missing¦pluginÃ¦genAbcÂÔ  ÔrJ”²dynamicImportCache¹exportAllDeclarationCache»exportNamedDeclarationCache«importCacheÔrK•¤type¥start£endªspecifiers¦source±ImportDeclarationÍîÍ,‘ÔrL•¤type¥start£end¨imported¥local¯ImportSpecifierÍ÷ÍÔrM”¤type¥start£end¤nameªIdentifierÍ÷Í­WindowAbilityMªIdentifierÍ÷Í­WindowAbilityÔrN•¤type¥start£end¥value£raw§LiteralÍÍ+½../entryability/WindowAbility¿'../entryability/WindowAbility'K±ImportDeclarationÍ.ÍR‘ÔrO”¤type¥start£end¥local¶ImportDefaultSpecifierÍ5Í<MªIdentifierÍ5Í<§displayN§LiteralÍBÍQ­@ohos.display¯"@ohos.display"K±ImportDeclarationÍTÍs‘O¶ImportDefaultSpecifierÍ[Í]MªIdentifierÍ[Í]¢fsN§LiteralÍcÍr­@ohos.file.fs¯"@ohos.file.fs"K±ImportDeclarationÍuÍ ‘O¶ImportDefaultSpecifierÍ|ÍMªIdentifierÍ|Í¥imageN§LiteralÍ‡ÍŸ¶@ohos.multimedia.image¸"@ohos.multimedia.image"K±ImportDeclarationÍ¢ÍØ‘L¯ImportSpecifierÍ«Í·MªIdentifierÍ«Í·¬FontFileInfoMªIdentifierÍ«Í·¬FontFileInfoN§LiteralÍ¿Í×¶../common/FontFileInfo¸'../common/FontFileInfo'K±ImportDeclarationÍÚÍú‘O¶ImportDefaultSpecifierÍáÍæMªIdentifierÍáÍæ¥hilogN§LiteralÍìÍù«@ohos.hilog­'@ohos.hilog'K±ImportDeclarationÍüÍ7‘L¯ImportSpecifierÍÍMªIdentifierÍÍ¯bookDataManagerMªIdentifierÍÍ¯bookDataManagerN§LiteralÍÍ6¸../utils/BookDataManagerº'../utils/BookDataManager'K±ImportDeclarationÍ9Ít‘L¯ImportSpecifierÍBÍQMªIdentifierÍBÍQ¯settingsManagerMªIdentifierÍBÍQ¯settingsManagerN§LiteralÍYÍs¸../utils/SettingsManagerº'../utils/SettingsManager'K±ImportDeclarationÍvÍ§‘O¶ImportDefaultSpecifierÍ}ÍˆMªIdentifierÍ}Íˆ«preferencesN§LiteralÍÍ¦¶@ohos.data.preferences¸"@ohos.data.preferences"K±ImportDeclarationÍ©Í
+‘L¯ImportSpecifierÍ²ÍØMªIdentifierÍ²ÍÃ±ReadPageComponentMªIdentifierÍÇÍØ±ReadPageComponentN§LiteralÍàÍ	Ù'@hms.core.readerservice.readerComponentÙ)"@hms.core.readerservice.readerComponent"K±ImportDeclarationÍÍ_‘L¯ImportSpecifierÍÍ-MªIdentifierÍÍªreaderCoreMªIdentifierÍ#Í-ªreaderCoreN§LiteralÍ5Í^Ù'@hms.core.readerservice.readerComponentÙ)"@hms.core.readerservice.readerComponent"K±ImportDeclarationÍaÍ¯‘L¯ImportSpecifierÍjÍ‚MªIdentifierÍjÍtªbookParserMªIdentifierÍxÍ‚ªbookParserN§LiteralÍŠÍ®Ù"@hms.core.readerservice.bookParserÙ$"@hms.core.readerservice.bookParser"K±ImportDeclarationÍ±Íı‘O¶ImportDefaultSpecifierÍ¸ÍÍMªIdentifierÍ¸ÍÍµConfigurationConstantN§LiteralÍÓÍüÙ'@ohos.app.ability.ConfigurationConstantÙ)"@ohos.app.ability.ConfigurationConstant"

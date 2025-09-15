@@ -1,0 +1,49 @@
+{
+  "runtimeOS": "HarmonyOS",
+  "sdkInfo": "false:17:5.0.5.165:Release",
+  "fileList": {
+    "D:\\Program Files\\Huawei\\DevEco Studio\\sdk\\default\\openharmony\\ets\\api\\@ohos.net.http.d.ts": {
+      "mtimeMs": 1750164280000,
+      "children": [],
+      "parent": [
+        "D:\\ST\\ReaderKitDemo\\entry\\src\\main\\ets\\pages\\RecommendPage.ets"
+      ],
+      "error": false
+    },
+    "D:\\Program Files\\Huawei\\DevEco Studio\\sdk\\default\\openharmony\\ets\\api\\@ohos.hilog.d.ts": {
+      "mtimeMs": 1750164280000,
+      "children": [],
+      "parent": [
+        "D:\\ST\\ReaderKitDemo\\entry\\src\\main\\ets\\pages\\RecommendPage.ets"
+      ],
+      "error": false
+    },
+    "D:\\Program Files\\Huawei\\DevEco Studio\\sdk\\default\\openharmony\\ets\\api\\@ohos.app.ability.common.d.ts": {
+      "mtimeMs": 1750164280000,
+      "children": [],
+      "parent": [
+        "D:\\ST\\ReaderKitDemo\\entry\\src\\main\\ets\\pages\\RecommendPage.ets"
+      ],
+      "error": false
+    },
+    "D:\\Program Files\\Huawei\\DevEco Studio\\sdk\\default\\openharmony\\ets\\api\\@ohos.app.ability.Want.d.ts": {
+      "mtimeMs": 1750164280000,
+      "children": [],
+      "parent": [
+        "D:\\ST\\ReaderKitDemo\\entry\\src\\main\\ets\\pages\\RecommendPage.ets"
+      ],
+      "error": false
+    },
+    "D:\\ST\\ReaderKitDemo\\entry\\src\\main\\ets\\pages\\RecommendPage.ets": {
+      "mtimeMs": 1757863033364.2876,
+      "children": [
+        "D:\\Program Files\\Huawei\\DevEco Studio\\sdk\\default\\openharmony\\ets\\api\\@ohos.net.http.d.ts",
+        "D:\\Program Files\\Huawei\\DevEco Studio\\sdk\\default\\openharmony\\ets\\api\\@ohos.hilog.d.ts",
+        "D:\\Program Files\\Huawei\\DevEco Studio\\sdk\\default\\openharmony\\ets\\api\\@ohos.app.ability.common.d.ts",
+        "D:\\Program Files\\Huawei\\DevEco Studio\\sdk\\default\\openharmony\\ets\\api\\@ohos.app.ability.Want.d.ts"
+      ],
+      "parent": [],
+      "error": false
+    }
+  }
+}

@@ -1,0 +1,153 @@
+{
+  "ohos-module-entry": {
+    "SELECT_TARGET": "default",
+    "MODULE_BUILD_DIR": "D:\\ST\\ReaderKitDemo\\entry\\build",
+    "DEPENDENCY_INFO": {},
+    "TARGETS": {
+      "default": {
+        "SOURCE_ROOT": "D:\\ST\\ReaderKitDemo\\entry\\src\\main",
+        "RESOURCES_PATH": [
+          "D:\\ST\\ReaderKitDemo\\entry\\src\\main\\resources"
+        ],
+        "BUILD_PATH": {
+          "OUTPUT_PATH": "D:\\ST\\ReaderKitDemo\\entry\\build\\default\\outputs\\default",
+          "INTERMEDIA_PATH": "D:\\ST\\ReaderKitDemo\\entry\\build\\default\\intermediates",
+          "JS_ASSETS_PATH": "D:\\ST\\ReaderKitDemo\\entry\\build\\default\\intermediates\\loader_out\\default",
+          "JS_LITE_ASSETS_PATH": "D:\\ST\\ReaderKitDemo\\entry\\build\\default\\intermediates\\loader_out_lite\\default",
+          "RES_PATH": "D:\\ST\\ReaderKitDemo\\entry\\build\\default\\intermediates\\res\\default",
+          "RES_PROFILE_PATH": "D:\\ST\\ReaderKitDemo\\entry\\build\\default\\intermediates\\res\\default\\resources\\base\\profile",
+          "ETS_SUPER_VISUAL_PATH": "D:\\ST\\ReaderKitDemo\\entry\\build\\default\\cache\\default\\default@CompileArkTS\\esmodule",
+          "JS_SUPER_VISUAL_PATH": "D:\\ST\\ReaderKitDemo\\entry\\build\\default\\cache\\default\\default@CompileJS\\jsbundle",
+          "WORKER_LOADER": "D:\\ST\\ReaderKitDemo\\entry\\build\\default\\intermediates\\loader\\default\\loader.json",
+          "MANIFEST_JSON": "D:\\ST\\ReaderKitDemo\\entry\\build\\default\\intermediates\\manifest\\default",
+          "OUTPUT_METADATA_JSON": "D:\\ST\\ReaderKitDemo\\entry\\build\\default\\intermediates\\hap_metadata\\default\\output_metadata.json",
+          "SOURCE_MAP_DIR": "D:\\ST\\ReaderKitDemo\\entry\\build\\default\\intermediates\\source_map\\default"
+        },
+        "BUILD_OPTION": {
+          "debuggable": true
+        }
+      }
+    },
+    "BUILD_OPTION": {
+      "default-default": {
+        "debuggable": true,
+        "copyFrom": "default",
+        "name": "debug"
+      }
+    },
+    "BUILD_PROFILE_OPT": {
+      "apiType": "stageMode",
+      "buildOption": {},
+      "buildOptionSet": [
+        {
+          "name": "release",
+          "arkOptions": {
+            "obfuscation": {
+              "ruleOptions": {
+                "enable": false,
+                "files": [
+                  "./obfuscation-rules.txt"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "name": "default"
+        },
+        {
+          "name": "debug"
+        }
+      ],
+      "targets": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    "BUILD_CACHE_DIR": ""
+  },
+  "ohos-project": {
+    "SELECT_PRODUCT_NAME": "default",
+    "MODULE_BUILD_DIR": "D:\\ST\\ReaderKitDemo\\build",
+    "BUNDLE_NAME": "com.example.readerkitdemo",
+    "BUILD_PATH": {
+      "OUTPUT_PATH": "D:\\ST\\ReaderKitDemo\\build\\outputs\\default"
+    },
+    "MODULES": [
+      {
+        "name": "entry",
+        "srcPath": "D:\\ST\\ReaderKitDemo\\entry",
+        "targets": [
+          {
+            "name": "default",
+            "applyToProducts": [
+              "default"
+            ]
+          }
+        ],
+        "belongProjectPath": "D:\\ST\\ReaderKitDemo"
+      }
+    ],
+    "PROFILE_OPT": {
+      "app": {
+        "signingConfigs": [
+          {
+            "name": "default",
+            "type": "HarmonyOS",
+            "material": {
+              "certpath": "C:\\Users\\47539\\.ohos\\config\\default_ReaderKitDemo_DNbl65FIr4sI3mid5L1SCdGyTrRcXHw-iTunKIy_zgo=.cer",
+              "keyAlias": "debugKey",
+              "keyPassword": "0000001B3B8167E03AEB651B1EB1168F84CDA3912F9FC509294A278371FC6DC76F93B7DDF8F831BBDAE40D",
+              "profile": "C:\\Users\\47539\\.ohos\\config\\default_ReaderKitDemo_DNbl65FIr4sI3mid5L1SCdGyTrRcXHw-iTunKIy_zgo=.p7b",
+              "signAlg": "SHA256withECDSA",
+              "storeFile": "C:\\Users\\47539\\.ohos\\config\\default_ReaderKitDemo_DNbl65FIr4sI3mid5L1SCdGyTrRcXHw-iTunKIy_zgo=.p12",
+              "storePassword": "0000001B5171A2DCD49BC21365B183838666D49E7ED554A899697957E8801411B9D92DA6D56D7F56CE528C"
+            }
+          }
+        ],
+        "products": [
+          {
+            "name": "default",
+            "signingConfig": "default",
+            "compatibleSdkVersion": "5.0.4(16)",
+            "runtimeOS": "HarmonyOS",
+            "buildOption": {}
+          }
+        ],
+        "buildModeSet": [
+          {
+            "name": "debug"
+          },
+          {
+            "name": "release"
+          }
+        ]
+      },
+      "modules": [
+        {
+          "name": "entry",
+          "srcPath": "./entry",
+          "targets": [
+            {
+              "name": "default",
+              "applyToProducts": [
+                "default"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "CONFIG_PROPERTIES": {
+      "enableSignTask": true,
+      "skipNativeIncremental": false,
+      "hvigor.keepDependency": true
+    },
+    "OVERALL_PROJECT_PATHS": [
+      "D:\\ST\\ReaderKitDemo"
+    ],
+    "BUILD_CACHE_DIR": ""
+  },
+  "version": 1
+}

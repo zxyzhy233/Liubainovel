@@ -1,0 +1,2171 @@
+Ôr@Ÿªassertions¤code´customTransformCache¬dependencies¢id¤meta±moduleSideEffects¬originalCode±originalSourcemap«resolvedIds®sourcemapChainµsyntheticNamedExportsµtransformDependencies®transformFiles¨cacheAstÔrAÚîif (!("finalizeConstruction" in ViewPU.prototype)) {
+    Reflect.set(ViewPU.prototype, "finalizeConstruction", () => { });
+}
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+import picker from "@ohos.file.picker";
+import { WindowAbility } from '../entryability/WindowAbility';
+import { LocalBookImporter } from '../common/LocalBookImporter';
+import { bookParser as bookParser } from "@hms.core.readerservice.bookParser";
+import hilog from "@ohos.hilog";
+import { BookUtils } from '../utils/BookUtils';
+import { bookDataManager } from '../utils/BookDataManager';
+import { BookInfo } from '../common/BookInfo';
+import router from "@ohos.router";
+import { bookSourceManager } from '../managers/BookSourceManager';
+const TAG = 'IndexPage';
+class Index extends ViewPU {
+    constructor(parent, params, __localStorage, elmtId = -1, paramsLambda = undefined, extraInfo) {
+        super(parent, __localStorage, elmtId, extraInfo);
+        if (typeof paramsLambda === "function") {
+            this.paramsGenerator_ = paramsLambda;
+        }
+        this.__isShow = new ObservedPropertySimplePU(false, this, "isShow");
+        this.__books = new ObservedPropertyObjectPU([], this, "books");
+        this.__searchText = new ObservedPropertySimplePU('', this, "searchText");
+        this.__isEditMode = new ObservedPropertySimplePU(false, this, "isEditMode");
+        this.__selectedBooks = new ObservedPropertyObjectPU([], this, "selectedBooks");
+        this.__isGridView = new ObservedPropertySimplePU(true, this, "isGridView");
+        this.__searchKeyword = new ObservedPropertySimplePU('', this, "searchKeyword");
+        this.__showSearchSheet = new ObservedPropertySimplePU(false, this, "showSearchSheet");
+        this.__onlineSearchResults = new ObservedPropertyObjectPU([], this, "onlineSearchResults");
+        this.__isSearching = new ObservedPropertySimplePU(false, this, "isSearching");
+        this.__searchErrorMessage = new ObservedPropertySimplePU('', this, "searchErrorMessage");
+        this.__showSearchResults = new ObservedPropertySimplePU(false, this, "showSearchResults");
+        this.__isDensityChange = this.createStorageLink('isDensityChange', false, "isDensityChange");
+        this.setInitiallyProvidedValue(params);
+        this.finalizeConstruction();
+    }
+    setInitiallyProvidedValue(params) {
+        if (params.isShow !== undefined) {
+            this.isShow = params.isShow;
+        }
+        if (params.books !== undefined) {
+            this.books = params.books;
+        }
+        if (params.searchText !== undefined) {
+            this.searchText = params.searchText;
+        }
+        if (params.isEditMode !== undefined) {
+            this.isEditMode = params.isEditMode;
+        }
+        if (params.selectedBooks !== undefined) {
+            this.selectedBooks = params.selectedBooks;
+        }
+        if (params.isGridView !== undefined) {
+            this.isGridView = params.isGridView;
+        }
+        if (params.searchKeyword !== undefined) {
+            this.searchKeyword = params.searchKeyword;
+        }
+        if (params.showSearchSheet !== undefined) {
+            this.showSearchSheet = params.showSearchSheet;
+        }
+        if (params.onlineSearchResults !== undefined) {
+            this.onlineSearchResults = params.onlineSearchResults;
+        }
+        if (params.isSearching !== undefined) {
+            this.isSearching = params.isSearching;
+        }
+        if (params.searchErrorMessage !== undefined) {
+            this.searchErrorMessage = params.searchErrorMessage;
+        }
+        if (params.showSearchResults !== undefined) {
+            this.showSearchResults = params.showSearchResults;
+        }
+    }
+    updateStateVars(params) {
+    }
+    purgeVariableDependenciesOnElmtId(rmElmtId) {
+        this.__isShow.purgeDependencyOnElmtId(rmElmtId);
+        this.__books.purgeDependencyOnElmtId(rmElmtId);
+        this.__searchText.purgeDependencyOnElmtId(rmElmtId);
+        this.__isEditMode.purgeDependencyOnElmtId(rmElmtId);
+        this.__selectedBooks.purgeDependencyOnElmtId(rmElmtId);
+        this.__isGridView.purgeDependencyOnElmtId(rmElmtId);
+        this.__searchKeyword.purgeDependencyOnElmtId(rmElmtId);
+        this.__showSearchSheet.purgeDependencyOnElmtId(rmElmtId);
+        this.__onlineSearchResults.purgeDependencyOnElmtId(rmElmtId);
+        this.__isSearching.purgeDependencyOnElmtId(rmElmtId);
+        this.__searchErrorMessage.purgeDependencyOnElmtId(rmElmtId);
+        this.__showSearchResults.purgeDependencyOnElmtId(rmElmtId);
+        this.__isDensityChange.purgeDependencyOnElmtId(rmElmtId);
+    }
+    aboutToBeDeleted() {
+        this.__isShow.aboutToBeDeleted();
+        this.__books.aboutToBeDeleted();
+        this.__searchText.aboutToBeDeleted();
+        this.__isEditMode.aboutToBeDeleted();
+        this.__selectedBooks.aboutToBeDeleted();
+        this.__isGridView.aboutToBeDeleted();
+        this.__searchKeyword.aboutToBeDeleted();
+        this.__showSearchSheet.aboutToBeDeleted();
+        this.__onlineSearchResults.aboutToBeDeleted();
+        this.__isSearching.aboutToBeDeleted();
+        this.__searchErrorMessage.aboutToBeDeleted();
+        this.__showSearchResults.aboutToBeDeleted();
+        this.__isDensityChange.aboutToBeDeleted();
+        SubscriberManager.Get().delete(this.id__());
+        this.aboutToBeDeletedInternal();
+    }
+    get isShow() {
+        return this.__isShow.get();
+    }
+    set isShow(newValue) {
+        this.__isShow.set(newValue);
+    }
+    get books() {
+        return this.__books.get();
+    }
+    set books(newValue) {
+        this.__books.set(newValue);
+    }
+    get searchText() {
+        return this.__searchText.get();
+    }
+    set searchText(newValue) {
+        this.__searchText.set(newValue);
+    }
+    get isEditMode() {
+        return this.__isEditMode.get();
+    }
+    set isEditMode(newValue) {
+        this.__isEditMode.set(newValue);
+    }
+    get selectedBooks() {
+        return this.__selectedBooks.get();
+    }
+    set selectedBooks(newValue) {
+        this.__selectedBooks.set(newValue);
+    }
+    get isGridView() {
+        return this.__isGridView.get();
+    }
+    set isGridView(newValue) {
+        this.__isGridView.set(newValue);
+    }
+    get searchKeyword() {
+        return this.__searchKeyword.get();
+    }
+    set searchKeyword(newValue) {
+        this.__searchKeyword.set(newValue);
+    }
+    get showSearchSheet() {
+        return this.__showSearchSheet.get();
+    }
+    set showSearchSheet(newValue) {
+        this.__showSearchSheet.set(newValue);
+    }
+    get onlineSearchResults() {
+        return this.__onlineSearchResults.get();
+    }
+    set onlineSearchResults(newValue) {
+        this.__onlineSearchResults.set(newValue);
+    }
+    get isSearching() {
+        return this.__isSearching.get();
+    }
+    set isSearching(newValue) {
+        this.__isSearching.set(newValue);
+    }
+    get searchErrorMessage() {
+        return this.__searchErrorMessage.get();
+    }
+    set searchErrorMessage(newValue) {
+        this.__searchErrorMessage.set(newValue);
+    }
+    get showSearchResults() {
+        return this.__showSearchResults.get();
+    }
+    set showSearchResults(newValue) {
+        this.__showSearchResults.set(newValue);
+    }
+    get isDensityChange() {
+        return this.__isDensityChange.get();
+    }
+    set isDensityChange(newValue) {
+        this.__isDensityChange.set(newValue);
+    }
+    async aboutToAppear() {
+        hilog.info(0x0000, TAG, 'aboutToAppear');
+        WindowAbility.getInstance().toggleWindowSystemBar(['status', 'navigation'], this.getUIContext().getHostContext());
+        await bookDataManager.init(this.getUIContext().getHostContext());
+        this.loadBooksFromDB();
+    }
+    async loadBooksFromDB() {
+        this.books = await bookDataManager.queryAllBooks();
+    }
+    onPageShow() {
+        this.loadBooksFromDB(); // Refresh bookshelf data when returning to the page
+        WindowAbility.getInstance().toggleWindowSystemBar(['status', 'navigation'], this.getUIContext().getHostContext());
+        if (this.isDensityChange) {
+            // Restart the reader page
+            if (this.books.length > 0) {
+                this.jumper(this.books[0]);
+            }
+            AppStorage.setOrCreate('isDensityChange', false);
+        }
+    }
+    async loadBook() {
+        try {
+            // Initialize file selector
+            let documentSelectOptions = new picker.DocumentSelectOptions();
+            // Set file type selection
+            documentSelectOptions.fileSuffixFilters = ['.epub', '.txt', '.mobi', '.azw', '.azw3'];
+            let documentPicker = new picker.DocumentViewPicker();
+            let documentSelectResult = await documentPicker.select(documentSelectOptions);
+            if (!documentSelectResult || documentSelectResult.length <= 0) {
+                hilog.error(0x0000, TAG, 'loadBook failed');
+                return;
+            }
+            // get book file path
+            let srcFile = decodeURI(documentSelectResult[0]);
+            hilog.info(0x0000, TAG, 'loadBook decodeURI succeeded. ' + srcFile);
+            let importer = new LocalBookImporter();
+            let context = this.getUIContext().getHostContext();
+            let bookParserInfo = await importer.importLocalBookToCache(srcFile, BookUtils.getBookFileLocalBookPath(context.filesDir));
+            const newBook = new BookInfo();
+            newBook.filePath = bookParserInfo.getFilePath();
+            newBook.bookName = bookParserInfo.getBookName();
+            try {
+                let defaultHandler = await bookParser.getDefaultHandler(newBook.filePath);
+                let bookInfo = defaultHandler.getBookInfo();
+                newBook.author = bookInfo?.bookCreator || 'æœªçŸ¥';
+            }
+            catch (e) {
+                hilog.error(0x0000, TAG, 'get book author failed', e);
+            }
+            newBook.coverPath = ''; // Temporarily empty
+            newBook.lastReadTime = new Date().getTime();
+            await bookDataManager.insertBook(newBook);
+            await this.loadBooksFromDB(); // Refresh the bookshelf
+            hilog.info(0x0000, TAG, 'loadBook bookParserInfo parse succeeded,dest path is: ' + newBook.filePath);
+            this.getUIContext()
+                .getPromptAction()
+                .showToast({ message: { "id": 16777227, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" }, duration: 2000 });
+        }
+        catch (err) {
+            hilog.error(0x0000, TAG, 'loadBook failed, error is: ' + err);
+        }
+    }
+    /**
+     * æž„å»ºæœç´¢å¼¹çª—
+     */
+    buildSearchSheet(parent = null) {
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Column.create();
+            Column.padding(20);
+            Column.backgroundColor(Color.White);
+            Column.borderRadius({ topLeft: 16, topRight: 16 });
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // å¼¹çª—æ ‡é¢˜
+            Row.create();
+            // å¼¹çª—æ ‡é¢˜
+            Row.width('100%');
+            // å¼¹çª—æ ‡é¢˜
+            Row.margin({ bottom: 20 });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create('æœç´¢å°è¯´');
+            Text.fontSize(18);
+            Text.fontWeight(FontWeight.Medium);
+            Text.fontColor('#2D3748');
+        }, Text);
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Blank.create();
+        }, Blank);
+        Blank.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Button.createWithLabel('Ã—');
+            Button.fontSize(20);
+            Button.fontColor('#718096');
+            Button.backgroundColor(Color.Transparent);
+            Button.onClick(() => {
+                this.showSearchSheet = false;
+            });
+        }, Button);
+        Button.pop();
+        // å¼¹çª—æ ‡é¢˜
+        Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // æœç´¢è¾“å…¥æ¡†
+            TextInput.create({ placeholder: 'è¯·è¾“å…¥ä¹¦åã€ä½œè€…æˆ–ä¸»è§’å', text: { value: this.searchKeyword, changeEvent: newValue => { this.searchKeyword = newValue; } } });
+            // æœç´¢è¾“å…¥æ¡†
+            TextInput.fontSize(16);
+            // æœç´¢è¾“å…¥æ¡†
+            TextInput.backgroundColor('#F7FAFC');
+            // æœç´¢è¾“å…¥æ¡†
+            TextInput.borderRadius(8);
+            // æœç´¢è¾“å…¥æ¡†
+            TextInput.padding({ left: 12, right: 12, top: 12, bottom: 12 });
+            // æœç´¢è¾“å…¥æ¡†
+            TextInput.margin({ bottom: 20 });
+            // æœç´¢è¾“å…¥æ¡†
+            TextInput.onSubmit(() => {
+                this.performOnlineSearch();
+            });
+        }, TextInput);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // æœç´¢æŒ‰é’®
+            Button.createWithLabel('æœç´¢');
+            // æœç´¢æŒ‰é’®
+            Button.fontSize(16);
+            // æœç´¢æŒ‰é’®
+            Button.fontColor(Color.White);
+            // æœç´¢æŒ‰é’®
+            Button.backgroundColor('#E53E3E');
+            // æœç´¢æŒ‰é’®
+            Button.borderRadius(8);
+            // æœç´¢æŒ‰é’®
+            Button.width('100%');
+            // æœç´¢æŒ‰é’®
+            Button.height(44);
+            // æœç´¢æŒ‰é’®
+            Button.onClick(() => {
+                this.performOnlineSearch();
+            });
+        }, Button);
+        // æœç´¢æŒ‰é’®
+        Button.pop();
+        Column.pop();
+    }
+    /**
+     * æž„å»ºæœç´¢ç»“æžœé¡µé¢
+     */
+    buildSearchResultsPage(parent = null) {
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Column.create();
+            Column.width('100%');
+            Column.height('100%');
+            Column.backgroundColor('#F7FAFC');
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // æœç´¢ç»“æžœé¡µé¢æ ‡é¢˜æ 
+            Row.create();
+            // æœç´¢ç»“æžœé¡µé¢æ ‡é¢˜æ 
+            Row.width('100%');
+            // æœç´¢ç»“æžœé¡µé¢æ ‡é¢˜æ 
+            Row.height(56);
+            // æœç´¢ç»“æžœé¡µé¢æ ‡é¢˜æ 
+            Row.padding({ left: 16, right: 16 });
+            // æœç´¢ç»“æžœé¡µé¢æ ‡é¢˜æ 
+            Row.margin({ top: 44 });
+            // æœç´¢ç»“æžœé¡µé¢æ ‡é¢˜æ 
+            Row.backgroundColor(Color.White);
+            // æœç´¢ç»“æžœé¡µé¢æ ‡é¢˜æ 
+            Row.shadow({
+                radius: 2,
+                color: '#10000000',
+                offsetY: 1
+            });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Button.createWithChild();
+            Button.width(40);
+            Button.height(40);
+            Button.backgroundColor(Color.Transparent);
+            Button.onClick(() => {
+                this.backToBookshelf();
+            });
+        }, Button);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create('â€¹');
+            Text.fontSize(24);
+            Text.fontColor('#2D3748');
+            Text.fontWeight(FontWeight.Bold);
+        }, Text);
+        Text.pop();
+        Button.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create(`æœç´¢ç»“æžœ: ${this.searchKeyword}`);
+            Text.fontSize(18);
+            Text.fontWeight(FontWeight.Medium);
+            Text.fontColor('#2D3748');
+            Text.layoutWeight(1);
+            Text.textAlign(TextAlign.Center);
+            Text.maxLines(1);
+            Text.textOverflow({ overflow: TextOverflow.Ellipsis });
+        }, Text);
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Button.createWithLabel();
+            Button.width(40);
+            Button.height(40);
+            Button.backgroundColor(Color.Transparent);
+        }, Button);
+        Button.pop();
+        // æœç´¢ç»“æžœé¡µé¢æ ‡é¢˜æ 
+        Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            If.create();
+            // æœç´¢ç»“æžœå†…å®¹
+            if (this.isSearching) {
+                this.ifElseBranchUpdateFunction(0, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        // æœç´¢ä¸­çŠ¶æ€
+                        Column.create();
+                        // æœç´¢ä¸­çŠ¶æ€
+                        Column.width('100%');
+                        // æœç´¢ä¸­çŠ¶æ€
+                        Column.layoutWeight(1);
+                        // æœç´¢ä¸­çŠ¶æ€
+                        Column.justifyContent(FlexAlign.Center);
+                        // æœç´¢ä¸­çŠ¶æ€
+                        Column.backgroundColor('#F7FAFC');
+                    }, Column);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Progress.create({ type: ProgressType.Ring, value: 0 });
+                        Progress.width(40);
+                        Progress.height(40);
+                        Progress.color('#E53E3E');
+                    }, Progress);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create('æ­£åœ¨æœç´¢å°è¯´...');
+                        Text.fontSize(14);
+                        Text.fontColor('#718096');
+                        Text.margin({ top: 12 });
+                    }, Text);
+                    Text.pop();
+                    // æœç´¢ä¸­çŠ¶æ€
+                    Column.pop();
+                });
+            }
+            else if (this.searchErrorMessage) {
+                this.ifElseBranchUpdateFunction(1, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        // æœç´¢é”™è¯¯çŠ¶æ€
+                        Column.create();
+                        // æœç´¢é”™è¯¯çŠ¶æ€
+                        Column.width('100%');
+                        // æœç´¢é”™è¯¯çŠ¶æ€
+                        Column.layoutWeight(1);
+                        // æœç´¢é”™è¯¯çŠ¶æ€
+                        Column.justifyContent(FlexAlign.Center);
+                        // æœç´¢é”™è¯¯çŠ¶æ€
+                        Column.backgroundColor('#F7FAFC');
+                    }, Column);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create('ðŸ˜”');
+                        Text.fontSize(48);
+                        Text.margin({ bottom: 12 });
+                    }, Text);
+                    Text.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create(this.searchErrorMessage);
+                        Text.fontSize(14);
+                        Text.fontColor('#E53E3E');
+                        Text.margin({ bottom: 16 });
+                    }, Text);
+                    Text.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Button.createWithLabel('é‡æ–°æœç´¢');
+                        Button.fontSize(14);
+                        Button.fontColor(Color.White);
+                        Button.backgroundColor('#E53E3E');
+                        Button.borderRadius(20);
+                        Button.padding({ left: 20, right: 20, top: 8, bottom: 8 });
+                        Button.onClick(() => {
+                            this.performOnlineSearch();
+                        });
+                    }, Button);
+                    Button.pop();
+                    // æœç´¢é”™è¯¯çŠ¶æ€
+                    Column.pop();
+                });
+            }
+            else if (this.onlineSearchResults.length === 0) {
+                this.ifElseBranchUpdateFunction(2, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        // æ— æœç´¢ç»“æžœçŠ¶æ€
+                        Column.create();
+                        // æ— æœç´¢ç»“æžœçŠ¶æ€
+                        Column.width('100%');
+                        // æ— æœç´¢ç»“æžœçŠ¶æ€
+                        Column.layoutWeight(1);
+                        // æ— æœç´¢ç»“æžœçŠ¶æ€
+                        Column.justifyContent(FlexAlign.Center);
+                        // æ— æœç´¢ç»“æžœçŠ¶æ€
+                        Column.backgroundColor('#F7FAFC');
+                    }, Column);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create('ðŸ“š');
+                        Text.fontSize(48);
+                        Text.margin({ bottom: 12 });
+                    }, Text);
+                    Text.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create('æœªæ‰¾åˆ°ç›¸å…³å°è¯´');
+                        Text.fontSize(14);
+                        Text.fontColor('#718096');
+                        Text.margin({ bottom: 16 });
+                    }, Text);
+                    Text.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Button.createWithLabel('é‡æ–°æœç´¢');
+                        Button.fontSize(14);
+                        Button.fontColor('#3182CE');
+                        Button.backgroundColor('#EBF8FF');
+                        Button.borderRadius(20);
+                        Button.padding({ left: 20, right: 20, top: 8, bottom: 8 });
+                        Button.onClick(() => {
+                            this.showSearchSheet = true;
+                        });
+                    }, Button);
+                    Button.pop();
+                    // æ— æœç´¢ç»“æžœçŠ¶æ€
+                    Column.pop();
+                });
+            }
+            else {
+                this.ifElseBranchUpdateFunction(3, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        // æœç´¢ç»“æžœåˆ—è¡¨
+                        Scroll.create();
+                        // æœç´¢ç»“æžœåˆ—è¡¨
+                        Scroll.layoutWeight(1);
+                        // æœç´¢ç»“æžœåˆ—è¡¨
+                        Scroll.scrollBar(BarState.Off);
+                        // æœç´¢ç»“æžœåˆ—è¡¨
+                        Scroll.backgroundColor('#F7FAFC');
+                    }, Scroll);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Column.create();
+                    }, Column);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        // ç»“æžœç»Ÿè®¡
+                        Text.create(`æ‰¾åˆ° ${this.onlineSearchResults.length} æœ¬ç›¸å…³å°è¯´`);
+                        // ç»“æžœç»Ÿè®¡
+                        Text.fontSize(14);
+                        // ç»“æžœç»Ÿè®¡
+                        Text.fontColor('#718096');
+                        // ç»“æžœç»Ÿè®¡
+                        Text.width('100%');
+                        // ç»“æžœç»Ÿè®¡
+                        Text.textAlign(TextAlign.Center);
+                        // ç»“æžœç»Ÿè®¡
+                        Text.margin({ top: 16, bottom: 16 });
+                    }, Text);
+                    // ç»“æžœç»Ÿè®¡
+                    Text.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        // å°è¯´åˆ—è¡¨
+                        ForEach.create();
+                        const forEachItemGenFunction = (_item, index) => {
+                            const novel = _item;
+                            this.buildNovelCard.bind(this)(novel);
+                        };
+                        this.forEachUpdateFunction(elmtId, this.onlineSearchResults, forEachItemGenFunction, undefined, true, false);
+                    }, ForEach);
+                    // å°è¯´åˆ—è¡¨
+                    ForEach.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        // åº•éƒ¨æç¤º
+                        Text.create('å·²æ˜¾ç¤ºå…¨éƒ¨æœç´¢ç»“æžœ');
+                        // åº•éƒ¨æç¤º
+                        Text.fontSize(12);
+                        // åº•éƒ¨æç¤º
+                        Text.fontColor('#A0AEC0');
+                        // åº•éƒ¨æç¤º
+                        Text.margin({ top: 20, bottom: 20 });
+                    }, Text);
+                    // åº•éƒ¨æç¤º
+                    Text.pop();
+                    Column.pop();
+                    // æœç´¢ç»“æžœåˆ—è¡¨
+                    Scroll.pop();
+                });
+            }
+        }, If);
+        If.pop();
+        Column.pop();
+    }
+    /**
+     * æž„å»ºå°è¯´å¡ç‰‡
+     */
+    buildNovelCard(novel, parent = null) {
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Row.create();
+            Row.width('100%');
+            Row.padding(12);
+            Row.backgroundColor(Color.White);
+            Row.borderRadius(8);
+            Row.margin({ left: 16, right: 16, bottom: 12 });
+            Row.shadow({
+                radius: 2,
+                color: '#10000000',
+                offsetY: 1
+            });
+            Row.onClick(() => {
+                this.openNovelDetail(novel);
+            });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // å°è¯´å°é¢
+            Image.create(novel.cover);
+            // å°è¯´å°é¢
+            Image.width(60);
+            // å°è¯´å°é¢
+            Image.height(80);
+            // å°è¯´å°é¢
+            Image.objectFit(ImageFit.Cover);
+            // å°è¯´å°é¢
+            Image.borderRadius(6);
+            // å°è¯´å°é¢
+            Image.shadow({
+                radius: 4,
+                color: '#20000000',
+                offsetY: 2
+            });
+        }, Image);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // å°è¯´ä¿¡æ¯
+            Column.create();
+            // å°è¯´ä¿¡æ¯
+            Column.layoutWeight(1);
+            // å°è¯´ä¿¡æ¯
+            Column.margin({ left: 12 });
+            // å°è¯´ä¿¡æ¯
+            Column.alignItems(HorizontalAlign.Start);
+            // å°è¯´ä¿¡æ¯
+            Column.justifyContent(FlexAlign.SpaceBetween);
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // æ ‡é¢˜
+            Text.create(novel.title);
+            // æ ‡é¢˜
+            Text.fontSize(16);
+            // æ ‡é¢˜
+            Text.fontWeight(FontWeight.Medium);
+            // æ ‡é¢˜
+            Text.fontColor('#2D3748');
+            // æ ‡é¢˜
+            Text.maxLines(1);
+            // æ ‡é¢˜
+            Text.textOverflow({ overflow: TextOverflow.Ellipsis });
+            // æ ‡é¢˜
+            Text.width('100%');
+            // æ ‡é¢˜
+            Text.textAlign(TextAlign.Start);
+        }, Text);
+        // æ ‡é¢˜
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // ä½œè€…ä¿¡æ¯
+            Text.create(novel.author);
+            // ä½œè€…ä¿¡æ¯
+            Text.fontSize(12);
+            // ä½œè€…ä¿¡æ¯
+            Text.fontColor('#718096');
+            // ä½œè€…ä¿¡æ¯
+            Text.margin({ top: 4, bottom: 6 });
+            // ä½œè€…ä¿¡æ¯
+            Text.width('100%');
+            // ä½œè€…ä¿¡æ¯
+            Text.textAlign(TextAlign.Start);
+        }, Text);
+        // ä½œè€…ä¿¡æ¯
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // ç®€ä»‹
+            Text.create(novel.description);
+            // ç®€ä»‹
+            Text.fontSize(13);
+            // ç®€ä»‹
+            Text.fontColor('#4A5568');
+            // ç®€ä»‹
+            Text.maxLines(2);
+            // ç®€ä»‹
+            Text.textOverflow({ overflow: TextOverflow.Ellipsis });
+            // ç®€ä»‹
+            Text.lineHeight(18);
+            // ç®€ä»‹
+            Text.width('100%');
+            // ç®€ä»‹
+            Text.textAlign(TextAlign.Start);
+        }, Text);
+        // ç®€ä»‹
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // çƒ­åº¦å’Œåˆ†ç±»
+            Row.create();
+            // çƒ­åº¦å’Œåˆ†ç±»
+            Row.margin({ top: 6 });
+            // çƒ­åº¦å’Œåˆ†ç±»
+            Row.width('100%');
+            // çƒ­åº¦å’Œåˆ†ç±»
+            Row.justifyContent(FlexAlign.Start);
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create(novel.hotValue || 'çƒ­åº¦æœªçŸ¥');
+            Text.fontSize(11);
+            Text.fontColor('#E53E3E');
+            Text.backgroundColor('#FED7D7');
+            Text.padding({ left: 6, right: 6, top: 2, bottom: 2 });
+            Text.borderRadius(10);
+        }, Text);
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            If.create();
+            if (novel.category) {
+                this.ifElseBranchUpdateFunction(0, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create(novel.category);
+                        Text.fontSize(11);
+                        Text.fontColor('#3182CE');
+                        Text.backgroundColor('#BEE3F8');
+                        Text.padding({ left: 6, right: 6, top: 2, bottom: 2 });
+                        Text.borderRadius(10);
+                        Text.margin({ left: 8 });
+                    }, Text);
+                    Text.pop();
+                });
+            }
+            else {
+                this.ifElseBranchUpdateFunction(1, () => {
+                });
+            }
+        }, If);
+        If.pop();
+        // çƒ­åº¦å’Œåˆ†ç±»
+        Row.pop();
+        // å°è¯´ä¿¡æ¯
+        Column.pop();
+        Row.pop();
+    }
+    initialRender() {
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            If.create();
+            // å¦‚æžœæ˜¾ç¤ºæœç´¢ç»“æžœé¡µé¢ï¼Œåˆ™æ˜¾ç¤ºæœç´¢ç»“æžœ
+            if (this.showSearchResults) {
+                this.ifElseBranchUpdateFunction(0, () => {
+                    this.buildSearchResultsPage.bind(this)();
+                });
+            }
+            else {
+                this.ifElseBranchUpdateFunction(1, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        // å¦åˆ™æ˜¾ç¤ºä¹¦æž¶é¡µé¢
+                        Column.create();
+                        // å¦åˆ™æ˜¾ç¤ºä¹¦æž¶é¡µé¢
+                        Column.height('100%');
+                        // å¦åˆ™æ˜¾ç¤ºä¹¦æž¶é¡µé¢
+                        Column.width('100%');
+                        // å¦åˆ™æ˜¾ç¤ºä¹¦æž¶é¡µé¢
+                        Column.backgroundColor({ "id": 16777258, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                        // å¦åˆ™æ˜¾ç¤ºä¹¦æž¶é¡µé¢
+                        Column.padding({ left: 16, right: 16 });
+                        // å¦åˆ™æ˜¾ç¤ºä¹¦æž¶é¡µé¢
+                        Column.bindSheet({ value: this.showSearchSheet, changeEvent: newValue => { this.showSearchSheet = newValue; } }, { builder: () => {
+                                this.buildSearchSheet.call(this);
+                            } }, {
+                            height: 300,
+                            dragBar: true,
+                            backgroundColor: Color.White,
+                            onAppear: () => {
+                                hilog.info(0x0000, TAG, 'æœç´¢å¼¹çª—å‡ºçŽ°');
+                            },
+                            onDisappear: () => {
+                                hilog.info(0x0000, TAG, 'æœç´¢å¼¹çª—æ¶ˆå¤±');
+                            }
+                        });
+                    }, Column);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Row.create();
+                        Row.width('100%');
+                        Row.height(56);
+                        Row.padding({ left: 16, right: 16 });
+                        Row.margin({ top: 44 });
+                        Row.justifyContent(FlexAlign.End);
+                        Row.alignItems(VerticalAlign.Center);
+                    }, Row);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Row.create({ space: 16 });
+                    }, Row);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Image.create({ "id": 16777290, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                        Image.width(32);
+                        Image.height(32);
+                        Image.onClick(() => {
+                            this.getUIContext().getRouter().pushUrl({ url: 'pages/SearchPage' });
+                        });
+                    }, Image);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Image.create({ "id": 16777298, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                        Image.width(32);
+                        Image.height(32);
+                        Image.onClick(() => {
+                            this.isShow = !this.isShow;
+                        });
+                        Image.bindPopup(this.isShow, {
+                            builder: { builder: () => {
+                                    this.popupWithButtonBuilder.call(this);
+                                } },
+                            placement: Placement.Bottom,
+                            onStateChange: (e) => {
+                                if (!e.isVisible) {
+                                    this.isShow = false;
+                                }
+                            }
+                        });
+                    }, Image);
+                    Row.pop();
+                    Row.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        If.create();
+                        if (this.isEditMode) {
+                            this.ifElseBranchUpdateFunction(0, () => {
+                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                    Row.create();
+                                    Row.width('100%');
+                                    Row.height(56);
+                                    Row.padding({ left: 16, right: 16 });
+                                    Row.justifyContent(FlexAlign.SpaceBetween);
+                                }, Row);
+                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                    Text.create('åˆ é™¤');
+                                    Text.fontColor(Color.Red);
+                                    Text.onClick(async () => {
+                                        await bookDataManager.deleteBooksByIds(ObservedObject.GetRawObject(this.selectedBooks));
+                                        this.selectedBooks = [];
+                                        this.isEditMode = false;
+                                        await this.loadBooksFromDB();
+                                    });
+                                }, Text);
+                                Text.pop();
+                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                    Blank.create();
+                                }, Blank);
+                                Blank.pop();
+                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                    Text.create('å–æ¶ˆ');
+                                    Text.onClick(() => {
+                                        this.selectedBooks = [];
+                                        this.isEditMode = false;
+                                    });
+                                }, Text);
+                                Text.pop();
+                                Row.pop();
+                            });
+                        }
+                        else {
+                            this.ifElseBranchUpdateFunction(1, () => {
+                            });
+                        }
+                    }, If);
+                    If.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        If.create();
+                        if (this.isGridView) {
+                            this.ifElseBranchUpdateFunction(0, () => {
+                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                    Grid.create();
+                                    Grid.columnsTemplate('1fr 1fr 1fr');
+                                    Grid.columnsGap(16);
+                                    Grid.rowsGap(16);
+                                    Grid.layoutWeight(1);
+                                    Grid.padding({ top: 20 });
+                                }, Grid);
+                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                    ForEach.create();
+                                    const forEachItemGenFunction = _item => {
+                                        const book = _item;
+                                        {
+                                            const itemCreation2 = (elmtId, isInitialRender) => {
+                                                GridItem.create(() => { }, false);
+                                            };
+                                            const observedDeepRender = () => {
+                                                this.observeComponentCreation2(itemCreation2, GridItem);
+                                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                                    Column.create({ space: 8 });
+                                                    Column.padding(8);
+                                                    Column.onClick(() => {
+                                                        if (this.isEditMode) {
+                                                            const index = this.selectedBooks.indexOf(book.id);
+                                                            if (index > -1) {
+                                                                this.selectedBooks.splice(index, 1);
+                                                            }
+                                                            else {
+                                                                this.selectedBooks.push(book.id);
+                                                            }
+                                                        }
+                                                        else {
+                                                            this.jumper(book);
+                                                        }
+                                                    });
+                                                }, Column);
+                                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                                    Stack.create({ alignContent: Alignment.TopEnd });
+                                                }, Stack);
+                                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                                    Image.create(book.coverPath || { "id": 16777299, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                                                    Image.width('100%');
+                                                    Image.aspectRatio(0.75);
+                                                    Image.borderRadius(8);
+                                                    Image.backgroundColor({ "id": 16777236, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                                                }, Image);
+                                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                                    If.create();
+                                                    if (this.isEditMode) {
+                                                        this.ifElseBranchUpdateFunction(0, () => {
+                                                            this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                                                Image.create(this.selectedBooks.includes(book.id) ? { "id": 16777262, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" } : { "id": 16777263, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                                                                Image.width(24);
+                                                                Image.height(24);
+                                                                Image.margin({ top: 4, right: 4 });
+                                                            }, Image);
+                                                        });
+                                                    }
+                                                    else {
+                                                        this.ifElseBranchUpdateFunction(1, () => {
+                                                        });
+                                                    }
+                                                }, If);
+                                                If.pop();
+                                                Stack.pop();
+                                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                                    Text.create(book.bookName);
+                                                    Text.fontSize(14);
+                                                    Text.maxLines(2);
+                                                    Text.textOverflow({ overflow: TextOverflow.Ellipsis });
+                                                }, Text);
+                                                Text.pop();
+                                                Column.pop();
+                                                GridItem.pop();
+                                            };
+                                            observedDeepRender();
+                                        }
+                                    };
+                                    this.forEachUpdateFunction(elmtId, this.books, forEachItemGenFunction);
+                                }, ForEach);
+                                ForEach.pop();
+                                Grid.pop();
+                            });
+                        }
+                        else {
+                            this.ifElseBranchUpdateFunction(1, () => {
+                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                    // Listå¸ƒå±€
+                                    List.create({ space: 12 });
+                                    // Listå¸ƒå±€
+                                    List.layoutWeight(1);
+                                    // Listå¸ƒå±€
+                                    List.padding({ top: 20 });
+                                }, List);
+                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                    ForEach.create();
+                                    const forEachItemGenFunction = _item => {
+                                        const book = _item;
+                                        {
+                                            const itemCreation = (elmtId, isInitialRender) => {
+                                                ViewStackProcessor.StartGetAccessRecordingFor(elmtId);
+                                                itemCreation2(elmtId, isInitialRender);
+                                                if (!isInitialRender) {
+                                                    ListItem.pop();
+                                                }
+                                                ViewStackProcessor.StopGetAccessRecording();
+                                            };
+                                            const itemCreation2 = (elmtId, isInitialRender) => {
+                                                ListItem.create(deepRenderFunction, true);
+                                            };
+                                            const deepRenderFunction = (elmtId, isInitialRender) => {
+                                                itemCreation(elmtId, isInitialRender);
+                                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                                    Row.create({ space: 12 });
+                                                    Row.padding({ top: 8, bottom: 8 });
+                                                    Row.onClick(() => {
+                                                        this.jumper(book);
+                                                    });
+                                                }, Row);
+                                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                                    Image.create(book.coverPath || { "id": 16777299, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                                                    Image.width(60);
+                                                    Image.aspectRatio(0.75);
+                                                    Image.borderRadius(4);
+                                                    Image.backgroundColor({ "id": 16777236, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                                                }, Image);
+                                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                                    Column.create({ space: 4 });
+                                                    Column.alignItems(HorizontalAlign.Start);
+                                                    Column.layoutWeight(1);
+                                                }, Column);
+                                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                                    Text.create(book.bookName);
+                                                    Text.fontSize(16);
+                                                    Text.fontWeight(FontWeight.Bold);
+                                                    Text.maxLines(1);
+                                                    Text.textOverflow({ overflow: TextOverflow.Ellipsis });
+                                                }, Text);
+                                                Text.pop();
+                                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                                    Text.create(book.author || 'æœªçŸ¥');
+                                                    Text.fontSize(14);
+                                                    Text.fontColor({ "id": 16777237, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                                                    Text.maxLines(1);
+                                                    Text.textOverflow({ overflow: TextOverflow.Ellipsis });
+                                                }, Text);
+                                                Text.pop();
+                                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                                    Text.create(`å·²è¯»: ${book.progress}`);
+                                                    Text.fontSize(12);
+                                                    Text.fontColor({ "id": 16777237, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                                                }, Text);
+                                                Text.pop();
+                                                Column.pop();
+                                                Row.pop();
+                                                ListItem.pop();
+                                            };
+                                            this.observeComponentCreation2(itemCreation2, ListItem);
+                                            ListItem.pop();
+                                        }
+                                    };
+                                    this.forEachUpdateFunction(elmtId, this.books, forEachItemGenFunction);
+                                }, ForEach);
+                                ForEach.pop();
+                                // Listå¸ƒå±€
+                                List.pop();
+                            });
+                        }
+                    }, If);
+                    If.pop();
+                    // å¦åˆ™æ˜¾ç¤ºä¹¦æž¶é¡µé¢
+                    Column.pop();
+                });
+            }
+        }, If);
+        If.pop();
+    }
+    popupWithButtonBuilder(parent = null) {
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Column.create();
+            Column.width(160);
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Row.create({ space: 16 });
+            Row.height(50);
+            Row.width('100%');
+            Row.onClick(() => {
+                this.isShow = false;
+                this.showSearchSheet = true;
+            });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Image.create({ "id": 16777290, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.width(20);
+            Image.height(20);
+        }, Image);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create('åœ¨çº¿æœç´¢');
+            Text.fontSize(18);
+        }, Text);
+        Text.pop();
+        Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Row.create({ space: 16 });
+            Row.height(50);
+            Row.width('100%');
+            Row.onClick(() => {
+                this.isGridView = !this.isGridView;
+                this.isShow = false;
+            });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Image.create({ "id": 16777277, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.width(20);
+            Image.height(20);
+        }, Image);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create('åˆ‡æ¢æ˜¾ç¤ºæ¨¡å¼');
+            Text.fontSize(18);
+        }, Text);
+        Text.pop();
+        Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Row.create({ space: 16 });
+            Row.height(50);
+            Row.width('100%');
+            Row.onClick(() => {
+                this.isShow = false;
+                this.loadBook();
+            });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Image.create({ "id": 16777264, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.width(20);
+            Image.height(20);
+        }, Image);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create('æ·»åŠ æœ¬åœ°');
+            Text.fontSize(18);
+        }, Text);
+        Text.pop();
+        Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Row.create({ space: 16 });
+            Row.height(50);
+            Row.width('100%');
+            Row.onClick(() => {
+                this.isShow = false;
+                this.isEditMode = true;
+                // è‡ªåŠ¨åˆ‡æ¢åˆ°å›¾ç‰‡åˆ—è¡¨æ¡†æ¨¡å¼ä»¥ä¾¿æ˜¾ç¤ºé€‰æ‹©æ¡†
+                if (!this.isGridView) {
+                    this.isGridView = true;
+                }
+            });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Image.create({ "id": 16777268, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.width(20);
+            Image.height(20);
+        }, Image);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create('ä¹¦æž¶ç®¡ç†');
+            Text.fontSize(18);
+        }, Text);
+        Text.pop();
+        Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Row.create({ space: 16 });
+            Row.height(50);
+            Row.width('100%');
+            Row.onClick(() => {
+                this.isShow = false;
+            });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Image.create({ "id": 16777267, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.width(20);
+            Image.height(20);
+        }, Image);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create('å¯¼å‡ºä¹¦å•');
+            Text.fontSize(18);
+        }, Text);
+        Text.pop();
+        Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Row.create({ space: 16 });
+            Row.height(50);
+            Row.width('100%');
+            Row.onClick(() => {
+                this.isShow = false;
+            });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Image.create({ "id": 16777266, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.width(20);
+            Image.height(20);
+        }, Image);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create('å¯¼å…¥ä¹¦å•');
+            Text.fontSize(18);
+        }, Text);
+        Text.pop();
+        Row.pop();
+        Column.pop();
+    }
+    /**
+     * æ‰§è¡Œåœ¨çº¿æœç´¢
+     */
+    async performOnlineSearch() {
+        if (this.searchKeyword.trim()) {
+            hilog.info(0x0000, TAG, 'åœ¨çº¿æœç´¢å…³é”®è¯: ' + this.searchKeyword);
+            this.showSearchSheet = false;
+            try {
+                this.isSearching = true;
+                this.searchErrorMessage = '';
+                // ä½¿ç”¨ä¹¦æºç®¡ç†å™¨æœç´¢å°è¯´
+                const result = await bookSourceManager.searchNovels(this.searchKeyword.trim());
+                if (result.success && result.data) {
+                    this.onlineSearchResults = result.data;
+                    this.showSearchResults = true;
+                    hilog.info(0x0000, TAG, `åœ¨çº¿æœç´¢æˆåŠŸï¼Œæ‰¾åˆ° ${result.data.length} æœ¬å°è¯´`);
+                }
+                else {
+                    this.searchErrorMessage = result.error || 'æœç´¢å¤±è´¥';
+                    hilog.error(0x0000, TAG, 'åœ¨çº¿æœç´¢å¤±è´¥: ' + this.searchErrorMessage);
+                }
+            }
+            catch (error) {
+                hilog.error(0x0000, TAG, 'åœ¨çº¿æœç´¢å‡ºé”™: ' + JSON.stringify(error));
+                this.searchErrorMessage = 'æœç´¢å‡ºé”™ï¼Œè¯·é‡è¯•';
+            }
+            finally {
+                this.isSearching = false;
+            }
+        }
+    }
+    /**
+     * æ‰“å¼€å°è¯´è¯¦æƒ…
+     * @param novel å°è¯´ä¿¡æ¯
+     */
+    openNovelDetail(novel) {
+        hilog.info(0x0000, TAG, 'æ‰“å¼€å°è¯´è¯¦æƒ…: ' + novel.title);
+        // æž„å»ºå®Œæ•´çš„ä¹¦ç±è¯¦æƒ…URL
+        const fullBookUrl = novel.link.startsWith('http') ?
+            novel.link :
+            'https://www.bqg128.com' + novel.link;
+        hilog.info(0x0000, TAG, 'ä¹¦ç±è¯¦æƒ…é“¾æŽ¥: ' + fullBookUrl);
+        // è·³è½¬åˆ°ä¹¦ç±è¯¦æƒ…é¡µé¢
+        router.pushUrl({
+            url: 'pages/BookDetailPage',
+            params: {
+                bookUrl: fullBookUrl,
+                bookTitle: novel.title,
+                bookAuthor: novel.author,
+                bookCover: novel.cover
+            }
+        }).then(() => {
+            hilog.info(0x0000, TAG, 'æˆåŠŸè·³è½¬åˆ°ä¹¦ç±è¯¦æƒ…é¡µé¢');
+        }).catch((error) => {
+            hilog.error(0x0000, TAG, 'è·³è½¬å¤±è´¥: ' + error.message);
+        });
+    }
+    /**
+     * è¿”å›žä¹¦æž¶
+     */
+    backToBookshelf() {
+        this.showSearchResults = false;
+        this.onlineSearchResults = [];
+        this.searchKeyword = '';
+        this.searchErrorMessage = '';
+    }
+    jumper(book) {
+        if (!book.filePath) {
+            return;
+        }
+        this.getUIContext().getRouter().pushUrl({
+            url: "pages/Reader", params: {
+                filePath: book.filePath,
+                resourceIndex: book.resourceIndex,
+                domPos: book.domPos || ''
+            }
+        });
+        // Router addObserver æ–¹æ³•å·²ç§»é™¤ï¼Œå› ä¸ºRouterç±»åž‹æ²¡æœ‰è¿™ä¸ªå±žæ€§
+    }
+    /**
+     * Remove the page transition animation to speed up the page access speed of the reader
+     */
+    pageTransition() {
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            PageTransition.create();
+        }, null);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            PageTransitionEnter.create({ duration: 0, curve: Curve.Sharp });
+        }, null);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            PageTransitionExit.create({ duration: 0, curve: Curve.Sharp });
+        }, null);
+        PageTransition.pop();
+    }
+    rerender() {
+        this.updateDirtyElements();
+    }
+    static getEntryName() {
+        return "Index";
+    }
+}
+export { Index };
+registerNamedRoute(() => new Index(undefined, {}), "", { bundleName: "com.example.readerkitdemo", moduleName: "entry", pagePath: "pages/Index", pageFullPath: "entry/src/main/ets/pages/Index", integratedHsp: "false", moduleType: "followWithHap" });
+//# sourceMappingURL=Index.js.mapÂšÙk hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.file.picker.d.tsÙED:\ST\ReaderKitDemo\entry\src\main\ets\entryability\WindowAbility.etsÙCD:\ST\ReaderKitDemo\entry\src\main\ets\common\LocalBookImporter.etsÙt hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_hms_ets_api_@hms.core.readerservice.bookParser.d.tsÙe hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.hilog.d.tsÙ:D:\ST\ReaderKitDemo\entry\src\main\ets\utils\BookUtils.etsÙ@D:\ST\ReaderKitDemo\entry\src\main\ets\utils\BookDataManager.etsÙ:D:\ST\ReaderKitDemo\entry\src\main\ets\common\BookInfo.etsÙf hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.router.d.tsÙED:\ST\ReaderKitDemo\entry\src\main\ets\managers\BookSourceManager.etsÙ6D:\ST\ReaderKitDemo\entry\src\main\ets\pages\Index.etsÔrB›ªmoduleName±isLocalDependency¯isNodeEntryFile§pkgPath±belongProjectPath§pkgNameªpkgVersion±dependencyPkgInfo°belongModulePath¬shouldEmitJs¯hostModulesInfo¥entryÃÂ¹D:\ST\ReaderKitDemo\entry³D:\ST\ReaderKitDemo¥entry¥1.0.0Ô  ¹D:\ST\ReaderKitDemo\entryÃ‘ÔrC’²hostDependencyName®hostModuleName§./Index¥entryÃÚ[Y/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { picker } from '@kit.CoreFileKit';
+import { WindowAbility } from '../entryability/WindowAbility';
+import { LocalBookImporter } from '../common/LocalBookImporter';
+import { readerCore, bookParser } from '@kit.ReaderKit';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { BookUtils } from '../utils/BookUtils';
+import { common } from '@kit.AbilityKit';
+import { bookDataManager } from '../utils/BookDataManager';
+import { BookInfo } from '../common/BookInfo';
+import { router } from '@kit.ArkUI';
+import { bookSourceManager } from '../managers/BookSourceManager';
+import { NovelInfo } from '../models/BookSourceModel';
+
+const TAG: string = 'IndexPage';
+
+@Entry
+@Component
+struct Index {
+  @State isShow: boolean = false;
+  @State books: BookInfo[] = [];
+  @State searchText: string = '';
+  @State isEditMode: boolean = false;
+  @State selectedBooks: number[] = [];
+  @State isGridView: boolean = true;
+  
+  // åœ¨çº¿æœç´¢ç›¸å…³çŠ¶æ€
+  @State searchKeyword: string = ''; // æœç´¢å…³é”®è¯
+  @State showSearchSheet: boolean = false; // æœç´¢å¼¹çª—æ˜¾ç¤ºçŠ¶æ€
+  @State onlineSearchResults: NovelInfo[] = []; // åœ¨çº¿æœç´¢ç»“æžœ
+  @State isSearching: boolean = false; // æœç´¢åŠ è½½çŠ¶æ€
+  @State searchErrorMessage: string = ''; // æœç´¢é”™è¯¯ä¿¡æ¯
+  @State showSearchResults: boolean = false; // æ˜¾ç¤ºæœç´¢ç»“æžœé¡µé¢
+  
+  /**
+   * System font scaled density is changed? If it has changed, the reader needs to be restarted.
+   */
+  @StorageLink('isDensityChange') isDensityChange: boolean = false;
+
+  async aboutToAppear() {
+    hilog.info(0x0000, TAG, 'aboutToAppear');
+    WindowAbility.getInstance().toggleWindowSystemBar(['status', 'navigation'], this.getUIContext().getHostContext());
+    await bookDataManager.init(this.getUIContext().getHostContext() as common.UIAbilityContext);
+    this.loadBooksFromDB();
+  }
+
+  async loadBooksFromDB() {
+    this.books = await bookDataManager.queryAllBooks();
+  }
+
+  onPageShow(): void {
+    this.loadBooksFromDB(); // Refresh bookshelf data when returning to the page
+    WindowAbility.getInstance().toggleWindowSystemBar(['status', 'navigation'], this.getUIContext().getHostContext());
+    if (this.isDensityChange) {
+      // Restart the reader page
+      if (this.books.length > 0) {
+        this.jumper(this.books[0]);
+      }
+      AppStorage.setOrCreate('isDensityChange', false);
+    }
+  }
+
+  private async loadBook() {
+    try {
+      // Initialize file selector
+      let documentSelectOptions = new picker.DocumentSelectOptions();
+      // Set file type selection
+      documentSelectOptions.fileSuffixFilters = ['.epub', '.txt', '.mobi', '.azw', '.azw3'];
+      let documentPicker = new picker.DocumentViewPicker();
+      let documentSelectResult = await documentPicker.select(documentSelectOptions);
+      if (!documentSelectResult || documentSelectResult.length <= 0) {
+        hilog.error(0x0000, TAG, 'loadBook failed');
+        return;
+      }
+      // get book file path
+      let srcFile: string = decodeURI(documentSelectResult[0]);
+      hilog.info(0x0000, TAG, 'loadBook decodeURI succeeded. ' + srcFile);
+      let importer = new LocalBookImporter();
+      let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      let bookParserInfo = await importer.importLocalBookToCache(srcFile,
+        BookUtils.getBookFileLocalBookPath(context.filesDir));
+      const newBook = new BookInfo();
+      newBook.filePath = bookParserInfo.getFilePath();
+      newBook.bookName = bookParserInfo.getBookName();
+      try {
+        let defaultHandler = await bookParser.getDefaultHandler(newBook.filePath);
+        let bookInfo = defaultHandler.getBookInfo();
+        newBook.author = bookInfo?.bookCreator || 'æœªçŸ¥';
+      } catch (e) {
+        hilog.error(0x0000, TAG, 'get book author failed', e);
+      }
+      newBook.coverPath = ''; // Temporarily empty
+      newBook.lastReadTime = new Date().getTime();
+      await bookDataManager.insertBook(newBook);
+      await this.loadBooksFromDB(); // Refresh the bookshelf
+      hilog.info(0x0000, TAG, 'loadBook bookParserInfo parse succeeded,dest path is: ' + newBook.filePath);
+      this.getUIContext()
+        .getPromptAction()
+        .showToast({ message: $r('app.string.import_successful_tips'), duration: 2000 });
+    } catch (err) {
+      hilog.error(0x0000, TAG, 'loadBook failed, error is: ' + err);
+    }
+  }
+
+  /**
+   * æž„å»ºæœç´¢å¼¹çª—
+   */
+  @Builder
+  private buildSearchSheet(): void {
+    Column() {
+      // å¼¹çª—æ ‡é¢˜
+      Row() {
+        Text('æœç´¢å°è¯´')
+          .fontSize(18)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#2D3748')
+        
+        Blank()
+        
+        Button('Ã—')
+          .fontSize(20)
+          .fontColor('#718096')
+          .backgroundColor(Color.Transparent)
+          .onClick(() => {
+            this.showSearchSheet = false;
+          })
+      }
+      .width('100%')
+      .margin({ bottom: 20 })
+      
+      // æœç´¢è¾“å…¥æ¡†
+      TextInput({ placeholder: 'è¯·è¾“å…¥ä¹¦åã€ä½œè€…æˆ–ä¸»è§’å', text: $$this.searchKeyword })
+        .fontSize(16)
+        .backgroundColor('#F7FAFC')
+        .borderRadius(8)
+        .padding({ left: 12, right: 12, top: 12, bottom: 12 })
+        .margin({ bottom: 20 })
+        .onSubmit(() => {
+          this.performOnlineSearch();
+        })
+      
+      // æœç´¢æŒ‰é’®
+      Button('æœç´¢')
+        .fontSize(16)
+        .fontColor(Color.White)
+        .backgroundColor('#E53E3E')
+        .borderRadius(8)
+        .width('100%')
+        .height(44)
+        .onClick(() => {
+          this.performOnlineSearch();
+        })
+    }
+    .padding(20)
+    .backgroundColor(Color.White)
+    .borderRadius({ topLeft: 16, topRight: 16 })
+  }
+
+  /**
+   * æž„å»ºæœç´¢ç»“æžœé¡µé¢
+   */
+  @Builder
+  private buildSearchResultsPage(): void {
+    Column() {
+      // æœç´¢ç»“æžœé¡µé¢æ ‡é¢˜æ 
+      Row() {
+        Button() {
+          Text('â€¹')
+            .fontSize(24)
+            .fontColor('#2D3748')
+            .fontWeight(FontWeight.Bold)
+        }
+        .width(40)
+        .height(40)
+        .backgroundColor(Color.Transparent)
+        .onClick(() => {
+          this.backToBookshelf();
+        })
+        
+        Text(`æœç´¢ç»“æžœ: ${this.searchKeyword}`)
+          .fontSize(18)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#2D3748')
+          .layoutWeight(1)
+          .textAlign(TextAlign.Center)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+        
+        Button()
+          .width(40)
+          .height(40)
+          .backgroundColor(Color.Transparent)
+      }
+      .width('100%')
+      .height(56)
+      .padding({ left: 16, right: 16 })
+      .margin({ top: 44 })
+      .backgroundColor(Color.White)
+      .shadow({
+        radius: 2,
+        color: '#10000000',
+        offsetY: 1
+      })
+      
+      // æœç´¢ç»“æžœå†…å®¹
+      if (this.isSearching) {
+        // æœç´¢ä¸­çŠ¶æ€
+        Column() {
+          Progress({ type: ProgressType.Ring, value: 0 })
+            .width(40)
+            .height(40)
+            .color('#E53E3E')
+          Text('æ­£åœ¨æœç´¢å°è¯´...')
+            .fontSize(14)
+            .fontColor('#718096')
+            .margin({ top: 12 })
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor('#F7FAFC')
+      } else if (this.searchErrorMessage) {
+        // æœç´¢é”™è¯¯çŠ¶æ€
+        Column() {
+          Text('ðŸ˜”')
+            .fontSize(48)
+            .margin({ bottom: 12 })
+          Text(this.searchErrorMessage)
+            .fontSize(14)
+            .fontColor('#E53E3E')
+            .margin({ bottom: 16 })
+          Button('é‡æ–°æœç´¢')
+            .fontSize(14)
+            .fontColor(Color.White)
+            .backgroundColor('#E53E3E')
+            .borderRadius(20)
+            .padding({ left: 20, right: 20, top: 8, bottom: 8 })
+            .onClick(() => {
+              this.performOnlineSearch();
+            })
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor('#F7FAFC')
+      } else if (this.onlineSearchResults.length === 0) {
+        // æ— æœç´¢ç»“æžœçŠ¶æ€
+        Column() {
+          Text('ðŸ“š')
+            .fontSize(48)
+            .margin({ bottom: 12 })
+          Text('æœªæ‰¾åˆ°ç›¸å…³å°è¯´')
+            .fontSize(14)
+            .fontColor('#718096')
+            .margin({ bottom: 16 })
+          Button('é‡æ–°æœç´¢')
+            .fontSize(14)
+            .fontColor('#3182CE')
+            .backgroundColor('#EBF8FF')
+            .borderRadius(20)
+            .padding({ left: 20, right: 20, top: 8, bottom: 8 })
+            .onClick(() => {
+              this.showSearchSheet = true;
+            })
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor('#F7FAFC')
+      } else {
+        // æœç´¢ç»“æžœåˆ—è¡¨
+        Scroll() {
+          Column() {
+            // ç»“æžœç»Ÿè®¡
+            Text(`æ‰¾åˆ° ${this.onlineSearchResults.length} æœ¬ç›¸å…³å°è¯´`)
+              .fontSize(14)
+              .fontColor('#718096')
+              .width('100%')
+              .textAlign(TextAlign.Center)
+              .margin({ top: 16, bottom: 16 })
+            
+            // å°è¯´åˆ—è¡¨
+            ForEach(this.onlineSearchResults, (novel: NovelInfo, index: number) => {
+              this.buildNovelCard(novel)
+            })
+            
+            // åº•éƒ¨æç¤º
+            Text('å·²æ˜¾ç¤ºå…¨éƒ¨æœç´¢ç»“æžœ')
+              .fontSize(12)
+              .fontColor('#A0AEC0')
+              .margin({ top: 20, bottom: 20 })
+          }
+        }
+        .layoutWeight(1)
+        .scrollBar(BarState.Off)
+        .backgroundColor('#F7FAFC')
+      }
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor('#F7FAFC')
+  }
+
+  /**
+   * æž„å»ºå°è¯´å¡ç‰‡
+   */
+  @Builder
+  private buildNovelCard(novel: NovelInfo): void {
+    Row() {
+      // å°è¯´å°é¢
+      Image(novel.cover)
+        .width(60)
+        .height(80)
+        .objectFit(ImageFit.Cover)
+        .borderRadius(6)
+        .shadow({
+          radius: 4,
+          color: '#20000000',
+          offsetY: 2
+        })
+      
+      // å°è¯´ä¿¡æ¯
+      Column() {
+        // æ ‡é¢˜
+        Text(novel.title)
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#2D3748')
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .width('100%')
+          .textAlign(TextAlign.Start)
+        
+        // ä½œè€…ä¿¡æ¯
+        Text(novel.author)
+          .fontSize(12)
+          .fontColor('#718096')
+          .margin({ top: 4, bottom: 6 })
+          .width('100%')
+          .textAlign(TextAlign.Start)
+        
+        // ç®€ä»‹
+        Text(novel.description)
+          .fontSize(13)
+          .fontColor('#4A5568')
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .lineHeight(18)
+          .width('100%')
+          .textAlign(TextAlign.Start)
+        
+        // çƒ­åº¦å’Œåˆ†ç±»
+        Row() {
+          Text(novel.hotValue || 'çƒ­åº¦æœªçŸ¥')
+            .fontSize(11)
+            .fontColor('#E53E3E')
+            .backgroundColor('#FED7D7')
+            .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+            .borderRadius(10)
+          
+          if (novel.category) {
+            Text(novel.category)
+              .fontSize(11)
+              .fontColor('#3182CE')
+              .backgroundColor('#BEE3F8')
+              .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+              .borderRadius(10)
+              .margin({ left: 8 })
+          }
+        }
+        .margin({ top: 6 })
+        .width('100%')
+        .justifyContent(FlexAlign.Start)
+      }
+      .layoutWeight(1)
+      .margin({ left: 12 })
+      .alignItems(HorizontalAlign.Start)
+      .justifyContent(FlexAlign.SpaceBetween)
+    }
+    .width('100%')
+    .padding(12)
+    .backgroundColor(Color.White)
+    .borderRadius(8)
+    .margin({ left: 16, right: 16, bottom: 12 })
+    .shadow({
+      radius: 2,
+      color: '#10000000',
+      offsetY: 1
+    })
+    .onClick(() => {
+      this.openNovelDetail(novel);
+    })
+  }
+
+  build() {
+    // å¦‚æžœæ˜¾ç¤ºæœç´¢ç»“æžœé¡µé¢ï¼Œåˆ™æ˜¾ç¤ºæœç´¢ç»“æžœ
+    if (this.showSearchResults) {
+      this.buildSearchResultsPage()
+    } else {
+      // å¦åˆ™æ˜¾ç¤ºä¹¦æž¶é¡µé¢
+      Column() {
+      Row() {
+        Row({ space: 16 }) {
+          Image($r('app.media.sousuo'))
+            .width(32)
+            .height(32)
+            .onClick(() => {
+              this.getUIContext().getRouter().pushUrl({ url: 'pages/SearchPage' });
+            })
+
+          Image($r('app.media.xuanx'))
+            .width(32)
+            .height(32)
+            .onClick(() => {
+              this.isShow = !this.isShow;
+            })
+            .bindPopup(this.isShow, {
+              builder: this.popupWithButtonBuilder(),
+              placement: Placement.Bottom,
+              onStateChange: (e) => {
+                if (!e.isVisible) {
+                  this.isShow = false;
+                }
+              }
+            })
+        }
+      }
+      .width('100%')
+      .height(56)
+      .padding({ left: 16, right: 16 })
+      .margin({ top: 44 })
+      .justifyContent(FlexAlign.End)
+      .alignItems(VerticalAlign.Center)
+
+      if (this.isEditMode) {
+        Row() {
+          Text('åˆ é™¤')
+            .fontColor(Color.Red)
+            .onClick(async () => {
+              await bookDataManager.deleteBooksByIds(this.selectedBooks);
+              this.selectedBooks = [];
+              this.isEditMode = false;
+              await this.loadBooksFromDB();
+            })
+          Blank()
+          Text('å–æ¶ˆ')
+            .onClick(() => {
+              this.selectedBooks = [];
+              this.isEditMode = false;
+            })
+        }
+        .width('100%')
+        .height(56)
+        .padding({ left: 16, right: 16 })
+        .justifyContent(FlexAlign.SpaceBetween)
+      }
+
+      if (this.isGridView) {
+        Grid() {
+          ForEach(this.books, (book: BookInfo) => {
+            GridItem() {
+              Column({ space: 8 }) {
+                Stack({ alignContent: Alignment.TopEnd }) {
+                  Image(book.coverPath || $r('app.media.zwfm'))
+                    .width('100%')
+                    .aspectRatio(0.75)
+                    .borderRadius(8)
+                    .backgroundColor($r('app.color.black_5_opacity'))
+                  if (this.isEditMode) {
+                    Image(this.selectedBooks.includes(book.id) ? $r('app.media.CheckCircle') : $r('app.media.Circle'))
+                      .width(24)
+                      .height(24)
+                      .margin({ top: 4, right: 4 })
+                  }
+                }
+                Text(book.bookName)
+                  .fontSize(14)
+                  .maxLines(2)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+              }
+              .padding(8)
+              .onClick(() => {
+                if (this.isEditMode) {
+                  const index = this.selectedBooks.indexOf(book.id);
+                  if (index > -1) {
+                    this.selectedBooks.splice(index, 1);
+                  } else {
+                    this.selectedBooks.push(book.id);
+                  }
+                } else {
+                  this.jumper(book);
+                }
+              })
+            }
+          })
+        }
+        .columnsTemplate('1fr 1fr 1fr')
+        .columnsGap(16)
+        .rowsGap(16)
+        .layoutWeight(1)
+        .padding({ top: 20 })
+      } else {
+        // Listå¸ƒå±€
+        List({ space: 12 }) {
+          ForEach(this.books, (book: BookInfo) => {
+            ListItem() {
+              Row({ space: 12 }) {
+                Image(book.coverPath || $r('app.media.zwfm'))
+                  .width(60)
+                  .aspectRatio(0.75)
+                  .borderRadius(4)
+                  .backgroundColor($r('app.color.black_5_opacity'))
+                Column({ space: 4 }) {
+                  Text(book.bookName)
+                    .fontSize(16)
+                    .fontWeight(FontWeight.Bold)
+                    .maxLines(1)
+                    .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  Text(book.author || 'æœªçŸ¥')
+                    .fontSize(14)
+                    .fontColor($r('app.color.black_60_opacity'))
+                    .maxLines(1)
+                    .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  Text(`å·²è¯»: ${book.progress}`)
+                    .fontSize(12)
+                    .fontColor($r('app.color.black_60_opacity'))
+                }
+                .alignItems(HorizontalAlign.Start)
+                .layoutWeight(1)
+              }
+              .padding({ top: 8, bottom: 8 })
+              .onClick(() => {
+                this.jumper(book);
+              })
+            }
+          })
+        }
+        .layoutWeight(1)
+        .padding({ top: 20 })
+      }
+    }
+    .height('100%')
+    .width('100%')
+    .backgroundColor($r('app.color.page_background'))
+    .padding({ left: 16, right: 16 })
+    .bindSheet($$this.showSearchSheet, this.buildSearchSheet(), {
+      height: 300,
+      dragBar: true,
+      backgroundColor: Color.White,
+      onAppear: () => {
+        hilog.info(0x0000, TAG, 'æœç´¢å¼¹çª—å‡ºçŽ°');
+      },
+      onDisappear: () => {
+        hilog.info(0x0000, TAG, 'æœç´¢å¼¹çª—æ¶ˆå¤±');
+      }
+    })
+    }
+  }
+
+  @Builder
+  popupWithButtonBuilder() {
+    Column() {
+      Row({ space: 16 }) {
+        Image($r("app.media.sousuo")).width(20).height(20)
+        Text('åœ¨çº¿æœç´¢').fontSize(18)
+      }.height(50).width('100%').onClick(() => {
+        this.isShow = false;
+        this.showSearchSheet = true;
+      })
+      Row({ space: 16 }) {
+        Image($r("app.media.fenlei")).width(20).height(20)
+        Text('åˆ‡æ¢æ˜¾ç¤ºæ¨¡å¼').fontSize(18)
+      }.height(50).width('100%').onClick(() => {
+        this.isGridView = !this.isGridView;
+        this.isShow = false;
+      })
+      Row({ space: 16 }) {
+        Image($r("app.media.Plus")).width(20).height(20)
+        Text('æ·»åŠ æœ¬åœ°').fontSize(18)
+      }.height(50).width('100%').onClick(() => {
+        this.isShow = false;
+        this.loadBook();
+      })
+      Row({ space: 16 }) {
+        Image($r("app.media.StackMinus")).width(20).height(20)
+        Text('ä¹¦æž¶ç®¡ç†').fontSize(18)
+      }.height(50).width('100%').onClick(() => {
+        this.isShow = false;
+        this.isEditMode = true;
+        // è‡ªåŠ¨åˆ‡æ¢åˆ°å›¾ç‰‡åˆ—è¡¨æ¡†æ¨¡å¼ä»¥ä¾¿æ˜¾ç¤ºé€‰æ‹©æ¡†
+        if (!this.isGridView) {
+          this.isGridView = true;
+        }
+      })
+      Row({ space: 16 }) {
+        Image($r("app.media.SignOut")).width(20).height(20)
+        Text('å¯¼å‡ºä¹¦å•').fontSize(18)
+      }.height(50).width('100%').onClick(() => {
+        this.isShow = false;
+      })
+      Row({ space: 16 }) {
+        Image($r("app.media.SignIn")).width(20).height(20)
+        Text('å¯¼å…¥ä¹¦å•').fontSize(18)
+      }.height(50).width('100%').onClick(() => {
+        this.isShow = false;
+      })
+    }.width(160)
+  }
+
+  /**
+   * æ‰§è¡Œåœ¨çº¿æœç´¢
+   */
+  private async performOnlineSearch(): Promise<void> {
+    if (this.searchKeyword.trim()) {
+      hilog.info(0x0000, TAG, 'åœ¨çº¿æœç´¢å…³é”®è¯: ' + this.searchKeyword);
+      this.showSearchSheet = false;
+      
+      try {
+        this.isSearching = true;
+        this.searchErrorMessage = '';
+        
+        // ä½¿ç”¨ä¹¦æºç®¡ç†å™¨æœç´¢å°è¯´
+        const result = await bookSourceManager.searchNovels(this.searchKeyword.trim());
+        
+        if (result.success && result.data) {
+          this.onlineSearchResults = result.data;
+          this.showSearchResults = true;
+          hilog.info(0x0000, TAG, `åœ¨çº¿æœç´¢æˆåŠŸï¼Œæ‰¾åˆ° ${result.data.length} æœ¬å°è¯´`);
+        } else {
+          this.searchErrorMessage = result.error || 'æœç´¢å¤±è´¥';
+          hilog.error(0x0000, TAG, 'åœ¨çº¿æœç´¢å¤±è´¥: ' + this.searchErrorMessage);
+        }
+      } catch (error) {
+        hilog.error(0x0000, TAG, 'åœ¨çº¿æœç´¢å‡ºé”™: ' + JSON.stringify(error));
+        this.searchErrorMessage = 'æœç´¢å‡ºé”™ï¼Œè¯·é‡è¯•';
+      } finally {
+        this.isSearching = false;
+      }
+    }
+  }
+
+  /**
+   * æ‰“å¼€å°è¯´è¯¦æƒ…
+   * @param novel å°è¯´ä¿¡æ¯
+   */
+  private openNovelDetail(novel: NovelInfo): void {
+    hilog.info(0x0000, TAG, 'æ‰“å¼€å°è¯´è¯¦æƒ…: ' + novel.title);
+    
+    // æž„å»ºå®Œæ•´çš„ä¹¦ç±è¯¦æƒ…URL
+    const fullBookUrl = novel.link.startsWith('http') ? 
+      novel.link : 
+      'https://www.bqg128.com' + novel.link;
+    
+    hilog.info(0x0000, TAG, 'ä¹¦ç±è¯¦æƒ…é“¾æŽ¥: ' + fullBookUrl);
+    
+    // è·³è½¬åˆ°ä¹¦ç±è¯¦æƒ…é¡µé¢
+    router.pushUrl({
+      url: 'pages/BookDetailPage',
+      params: {
+        bookUrl: fullBookUrl,
+        bookTitle: novel.title,
+        bookAuthor: novel.author,
+        bookCover: novel.cover
+      }
+    }).then(() => {
+      hilog.info(0x0000, TAG, 'æˆåŠŸè·³è½¬åˆ°ä¹¦ç±è¯¦æƒ…é¡µé¢');
+    }).catch((error: Error) => {
+      hilog.error(0x0000, TAG, 'è·³è½¬å¤±è´¥: ' + error.message);
+    });
+  }
+
+  /**
+   * è¿”å›žä¹¦æž¶
+   */
+  private backToBookshelf(): void {
+    this.showSearchResults = false;
+    this.onlineSearchResults = [];
+    this.searchKeyword = '';
+    this.searchErrorMessage = '';
+  }
+
+  private jumper(book: BookInfo) {
+    if (!book.filePath) {
+      return;
+    }
+    this.getUIContext().getRouter().pushUrl({
+      url: "pages/Reader", params: {
+        filePath: book.filePath,
+        resourceIndex: book.resourceIndex,
+        domPos: book.domPos || ''
+      }
+    })
+    // Router addObserver æ–¹æ³•å·²ç§»é™¤ï¼Œå› ä¸ºRouterç±»åž‹æ²¡æœ‰è¿™ä¸ªå±žæ€§
+  }
+
+  /**
+   * Remove the page transition animation to speed up the page access speed of the reader
+   */
+  pageTransition() {
+    PageTransitionEnter({ duration: 0, curve: Curve.Sharp });
+    PageTransitionExit({ duration: 0, curve: Curve.Sharp });
+  }
+}
+
+export { Index };
+ÀÔrDš±@ohos.file.pickerÙ"@hms.core.readerservice.bookParser«@ohos.hilog¬@ohos.router½../entryability/WindowAbility»../common/LocalBookImporter²../common/BookInfo½../managers/BookSourceManager¸../utils/BookDataManager²../utils/BookUtilsÔrE—ªassertions¨external¢id¤meta±moduleSideEffectsªresolvedByµsyntheticNamedExportsAÃÙk hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.file.picker.d.tsÔrF‘¯hostModulesInfo’C±@ohos.file.picker¥entryC±@ohos.file.picker¥entryÃªoh-resolveÂEAÃÙt hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_hms_ets_api_@hms.core.readerservice.bookParser.d.tsF’CÙ"@hms.core.readerservice.bookParser¥entryCÙ"@hms.core.readerservice.bookParser¥entryÃªoh-resolveÂEAÃÙe hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.hilog.d.tsAÃªoh-resolveÂEAÃÙf hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.router.d.tsF”C¬@ohos.router¥entryC¬@ohos.router¥entryC¬@ohos.router¥entryC¬@ohos.router¥entryÃªoh-resolveÂEAÂÙED:\ST\ReaderKitDemo\entry\src\main\ets\entryability\WindowAbility.etsAÃªoh-resolveÂEAÂÙCD:\ST\ReaderKitDemo\entry\src\main\ets\common\LocalBookImporter.etsAÃªoh-resolveÂEAÂÙ:D:\ST\ReaderKitDemo\entry\src\main\ets\common\BookInfo.etsAÃªoh-resolveÂEAÂÙED:\ST\ReaderKitDemo\entry\src\main\ets\managers\BookSourceManager.etsAÃªoh-resolveÂEAÂÙ@D:\ST\ReaderKitDemo\entry\src\main\ets\utils\BookDataManager.etsAÃªoh-resolveÂEAÂÙ:D:\ST\ReaderKitDemo\entry\src\main\ets\utils\BookUtils.etsAÃªoh-resolveÂ“ÔrG–§version¤fileªsourceRoot§sources¥names¨mappings¨Index.js ‘©Index.etsÜ‘”    ‘” –”   ” 	” ” ”& )”' *˜”   ” ”	 	” ” ” ”= =”> >˜”   ” ”	 	” ” ”" "”? ?”Ì@ Ì@š”   ” ”	 ” ” ”! ”# ”) '”ÌM 7”ÌN 8–”   ” 	” ” ” 3”  4˜”   ” ”	 	” ” ” ”. .”/ /˜”   ” ”	 	” ” ”   ”: :”; ;˜”   ” ”	 	” ” ” ”- -”. .–”   ” 	” ” ”! #”" $˜”   ” ”	 	” ” ”" "”ÌA ÌA”ÌB ÌB–”   ” ”	 	” ” ”  ’”  ”  ‘”  ’”5 !”: ! ’”4 "”6 "’”9 #”; # ’”9 $”> $$’”< %#”> %%’”9 &”= &#’”< )!”> )#’”> *$”ÌC *)’”ÌB +,”ÌD +.’”: , ”? ,%’”ÌA -&”ÌC -(’”Ì@ .&”ÌE .+””8 3”ÌI 3 ”ÌK 3=”ÌP 3ÌB‘”  ’” !	” !’” !	” !’” "	” "’” "	” "’” #	” #’” #	” #’” $	” $’” $	” $’” %	” %’” %	” %’” &	” &’” &	” &’” )	” )’” )	” )’” *	” *’” *	” *’” +	” +’” +	” +’” ,	” ,’” ,	” ,’” -	” -’” -	” -’” .	” .’” .	” .’” 3"” 31’” 3"” 31”” 5”	 5”
+ 5” 5œ” 6” 6	” 6
+” 6” 6” 6” 6” 6”  6”/ 6+”0 6,”1 6-Ü ” 7” 7” 7”! 7”# 7”$ 7 ”9 75”: 76”; 77”ÌC 7?”ÌE 7ÌA”ÌQ 7ÌM”ÌR 7ÌN”ÌT 7ÌP”ÌX 7ÌT”ÌY 7ÌU”Ìe 7Ìa”Ìg 7Ìc”Ìh 7Ìd”Ìv 7Ìr”Ìx 7Ìt”Ìy 7Ìu”Ìz 7ÌvŸ” 8” 8
+” 8” 8”" 8”# 8”' 8#”( 8$”4 80”6 82”7 83”ÌE 8ÌA”ÌG 8Ì^”ÌH 8Ì_”ÌI 8Ì`–” 9” 9” 9	” 9” 9” 9’” :” :”” <”	 <”
+ <” <›” =” =” =	” =” =” =”* =&”+ ='”8 =4”: =6”; =7’” >” >’” Ì@” Ì@˜” ÌA” ÌA” ÌA	” ÌA” ÌA” ÌA”  ÌA”ÌT ÌAÌPÜ ” ÌB” ÌB” ÌB”! ÌB”# ÌB”$ ÌB ”9 ÌB5”: ÌB6”; ÌB7”ÌC ÌB?”ÌE ÌBÌA”ÌQ ÌBÌM”ÌR ÌBÌN”ÌT ÌBÌP”ÌX ÌBÌT”ÌY ÌBÌU”Ìe ÌBÌa”Ìg ÌBÌc”Ìh ÌBÌd”Ìv ÌBÌr”Ìx ÌBÌt”Ìy ÌBÌu”Ìz ÌBÌv–” ÌC” ÌC” ÌC” ÌC”  ÌC”" ÌC’” ÌD”& ÌD š” ÌE” ÌE
+” ÌE” ÌE” ÌE” ÌE”! ÌE”$ ÌE”% ÌE”' ÌE!” ÌF” ÌF” ÌF” ÌF” ÌF”  ÌF”! ÌF”& ÌF”' ÌF”( ÌF ”) ÌF!”* ÌF"”+ ÌF#‘” ÌGš” ÌH” ÌH” ÌH”" ÌH”# ÌH”4 ÌH.”6 ÌH0”; ÌH5”< ÌH6”= ÌH7‘”	 ÌI’” ÌJ” ÌJ”” ÌL
+”	 ÌL”
+ ÌL” ÌL’” ÌM” ÌM’” ÌN”' ÌN!š” ÌO” ÌO
+”% ÌO”( ÌO"”, ÌO&”2 ÌO,”3 ÌO-”ÌH ÌOÌB”ÌJ ÌOÌD”ÌK ÌOÌE’” ÌP”& ÌP Ü ” ÌQ”! ÌQ”" ÌQ”3 ÌQ-”6 ÌQ0”7 ÌQ1”> ÌQ8”Ì@ ÌQ:”ÌF ÌQÌ@”ÌH ÌQÌB”ÌO ÌQÌI”ÌQ ÌQÌK”ÌW ÌQÌQ”ÌY ÌQÌS”Ì` ÌQÌZ”Ìa ÌQÌ[”Ìb ÌQÌ\š” ÌR” ÌR
+” ÌR”! ÌR”% ÌR”+ ÌR%”, ÌR&”> ÌR8”Ì@ ÌR:”ÌA ÌR;œ” ÌS” ÌS
+”$ ÌS”' ÌS!”- ÌS'”; ÌS5”< ÌS6”ÌB ÌS<”ÌC ÌS=”ÌX ÌSÌR”ÌY ÌSÌS”ÌZ ÌSÌT›” ÌT” ÌT
+” ÌT”% ÌT”) ÌT#”= ÌT7”> ÌT8”ÌD ÌT>”ÌH ÌTÌB”ÌI ÌTÌC”ÌK ÌTÌEœ” ÌU” ÌU” ÌU” ÌU” ÌU”" ÌU”$ ÌU”' ÌU”) ÌU!”: ÌU2”; ÌU3”< ÌU4’” ÌV” ÌV‘” ÌW’” ÌX”! ÌXœ” ÌY” ÌY
+” ÌY” ÌY”# ÌY%”$ ÌY&”8 ÌY:”9 ÌY;”: ÌY<”; ÌY=”< ÌY>”= ÌY?ž” ÌZ” ÌZ” ÌZ” ÌZ” ÌZ” ÌZ” ÌZ”" ÌZ”$ ÌZ”ÌD ÌZ>”ÌG ÌZÌA”ÌN ÌZÌH”ÌO ÌZÌI”ÌP ÌZÌJ˜” Ì[” Ì[
+” Ì[” Ì[” Ì[”0 Ì[*”2 Ì[,”3 Ì[-œ” Ì\” Ì\
+” Ì\” Ì\” Ì\” Ì\”+ Ì\%”- Ì\'”. Ì\(”< Ì\6”> Ì\ÌS”? Ì\ÌTÜ ” Ì]” Ì]
+” Ì]”! Ì]”' Ì]!”/ Ì])”0 Ì]*”ÌF Ì]Ì@”ÌG Ì]ÌA”ÌN Ì]ÌH”ÌP Ì^”ÌY Ì^”ÌZ Ì^”Ìr Ì^*”Ìs Ì^+”Ìz Ì^2”Ì{ Ì^3”Ìƒ Ì^;”Ì„ Ì^<”Ì… Ì^=”Ì† Ì^>˜” Ì_” Ì_” Ì_” Ì_”  Ì_”( Ì_"”* Ì_$”+ Ì_%š” Ì`” Ì`” Ì`” Ì`” Ì`”- Ì`'”. Ì`(”9 Ì`3”; Ì`5”< Ì`6š” Ìa” Ìa” Ìa” Ìa” Ìa”- Ìa'”. Ìa(”9 Ìa3”; Ìa5”< Ìa6’” Ìb” Ìb
+ž” Ìc” Ìc”" Ìc”% Ìc”+ Ìc#”5 Ìc-”6 Ìc.”ÌG Ìc?”ÌH ÌcÌ@”ÌO ÌcÌG”ÌP ÌcÌH”ÌX ÌcÌP”ÌY ÌcÌQ”ÌZ ÌcÌR™” Ìd” Ìd” Ìd” Ìd”- Ìd%”. Ìd&”9 Ìd1”; Ìd3”< Ìd4›” Ìe” Ìe” Ìe” Ìe”! Ìe”) Ìe!”+ Ìe#”6 Ìe.”: Ìe2”> Ìe6”? Ìe7‘” Ìf”” Ìf” Ìf” Ìf” Ìfž” Ìg” Ìg” Ìg” Ìg” Ìg”" Ìg”$ Ìg”' Ìg”) Ìg!”ÌA Ìg9”ÌC Ìg;”ÌD Ìg<”ÌE Ìg=”ÌF Ìg>‘” Ìh™” Ìi” Ìi” Ìi” Ìi”  Ìi”" Ìi”# Ìi”$ Ìi”8 Ìi2œ” Ìj” Ìj” Ìj”  Ìj”# Ìj”' Ìj!”+ Ìj%”- Ìj'”. Ìj(”5 Ìj/”7 Ìj1”8 Ìj2™” Ìk” Ìk”! Ìk”" Ìk”, Ìk&”- Ìk'”4 Ìk.”5 Ìk/”6 Ìk0™” Ìl” Ìl” Ìl” Ìl”& Ìl ”( Ìl"”) Ìl#”* Ìl$”ÌB Ìl<Ü ” Ìm” Ìm” Ìm” Ìm” Ìm” Ìm” Ìm”" Ìm”$ Ìm”Ì\ ÌmÌV”Ì_ ÌmÌY”Ìf ÌmÌ`”Ìg ÌmÌa”Ìo ÌmÌi”Ìp ÌmÌj”Ìq ÌmÌk•” Ìn” Ìn
+” Ìn” Ìn” Ìn“” Ìo	”  Ìo”" Ìo” Ìp	” Ìp” Ìp” Ìp”$ Ìp”Ì• ÌpÌE”Ì— ÌpÌG”ÌŸ ÌpÌO”Ì¡ ÌpÌQ”Ì¥ ÌpÌU”Ì§ ÌpÌW”Ì¨ ÌpÌX”Ì© ÌpÌY‘”	 Ìq”” Ìq” Ìq” Ìq” Ìqž” Ìr” Ìr” Ìr” Ìr” Ìr” Ìr”  Ìr”# Ìr”% Ìr”ÌB Ìr<”ÌE Ìr?”ÌH ÌrÌB”ÌI ÌrÌC”ÌJ ÌrÌD‘”	 Ìs’” Ìt” Ìt‘” Ìv‘” Ìx’” Ìz
+” Ìz’” Ì{” Ì{
+–” Ì{” Ì{
+” Ì§” Ì§” Ì§” Ì§˜” Ì{” Ì{
+” Ì¨”" Ì¨”# Ì¨”( Ì¨”) Ì¨”. Ì¨ ž” Ì{” Ì{
+” Ì©” Ì©”  Ì©”" Ì©”) Ì©”+ Ì©”- Ì©”/ Ì©!”7 Ì©)”9 Ì©+”; Ì©-”= Ì©/’” Ì|” Ì|’” Ì}” Ì}	’” Ì|” Ì|–” Ì}” Ì}	” Ì” Ì” Ì” Ì’” Ì|” Ì|š” Ì}” Ì}	” ÌŽ” ÌŽ” ÌŽ” ÌŽ” ÌŽ”! ÌŽ”# ÌŽ”% ÌŽ”” Ì~” Ì~” Ì~” Ì~–” Ì~” Ì~” Ì” Ì” Ì” Ì˜” Ì~” Ì~” Ì€” Ì€” Ì€”& Ì€ ”' Ì€!”- Ì€'–” Ì~” Ì~” Ì” Ì” Ì”$ Ì’” Ì~” Ì~’” Ìƒ” Ìƒ’” Ìƒ” Ìƒ”” Ì…” Ì…”# Ì…”& Ì…–” Ì…” Ì…” Ì†” Ì†” Ì†” Ì†–” Ì…” Ì…” Ì‡” Ì‡” Ì‡”& Ì‡˜” Ì…” Ì…” Ìˆ”" Ìˆ”# Ìˆ”( Ìˆ ”) Ìˆ!”4 Ìˆ,—” Ì…” Ì…” Ì‰” Ì‰” Ì‰” Ì‰”  Ì‰—” ÌŠ” ÌŠ” ÌŠ”$ ÌŠ ”' ÌŠ#”, ÌŠ(”- ÌŠ)’” Ì‹
+” Ì‹’” Ì…” Ì…’” Ì|” Ì|’” Ì}” Ì}	’” Ì” ÌÜ ” Ì‘” Ì‘” Ì‘” Ì‘”* Ì‘”, Ì‘”: Ì‘-”< Ì‘/”Ì@ Ì‘3”ÌK Ì‘5”ÌP Ì‘<”Ì] Ì‘ÌI”Ìz Ì‘5”Ì Ì‘<”ÌŒ Ì‘ÌI”Ìœ Ì‘ÌI”Ìž Ì‘ÌK’” Ì” Ì–” Ì‘” Ì‘” Ì’	” Ì’” Ì’”! Ì’’” Ì” Ì–” Ì‘” Ì‘” Ì“	”% Ì“”& Ì“”/ Ì“"’” Ì” Ì–” Ì‘” Ì‘” Ì”	”" Ì””# Ì””$ Ì”’” Ì” ÌÜ ” Ì‘” Ì‘” Ì•	” Ì•” Ì•”  Ì•”$ Ì•”& Ì•”( Ì•”* Ì•”/ Ì•"”1 Ì•$”3 Ì•&”5 Ì•(”8 Ì•+”: Ì•-”< Ì•/”> Ì•1”ÌD Ì•7”ÌF Ì•9”ÌH Ì•;”ÌJ Ì•=’” Ì” Ìš” Ì‘” Ì‘” Ì–	” Ì–” Ì–” Ì–”% Ì–”' Ì–”) Ì–”+ Ì–’” Ì” Ì—” Ì‘” Ì‘” Ì—	” Ì—” Ì—”" Ì—”$ Ì—–” Ì˜
+” Ì˜” Ì˜”( Ì˜"”* Ì˜$”+ Ì˜%’” Ì™” Ì™	’” Ì›” Ì›”” Ìœ” Ìœ”# Ìœ”' Ìœ’” Ì›” Ì›–” Ìœ” Ìœ” Ì	” Ì” Ì” Ì’” Ì›” Ì›˜” Ìœ” Ìœ” Ìž	” Ìž” Ìž”" Ìž”# Ìž”( Ìž’” Ì›” Ì›–” Ìœ” Ìœ” ÌŸ	”" ÌŸ”# ÌŸ”, ÌŸ"’” Ì›” Ì›–” Ìœ” Ìœ” Ì 	” Ì ”  Ì ”! Ì ’” Ì›” Ì›–” Ìœ” Ìœ” Ì¡	” Ì¡” Ì¡” Ì¡’” Ì›” Ì›–” Ìœ” Ìœ” Ì¢	” Ì¢” Ì¢” Ì¢’” Ì›” Ì›—” Ìœ” Ìœ” Ì£	” Ì£” Ì£” Ì£”  Ì£–” Ì¤
+” Ì¤” Ì¤”( Ì¤"”* Ì¤$”+ Ì¤%’” Ì¥” Ì¥	’” Ì›” Ì›’” Ìœ” Ìœ’” Ì{” Ì{
+‘” Ìª‘” Ì¬‘” Ì®’” Ì°
+” Ì° ’” Ì±” Ì±
+–” Ì±” Ì±
+” Í8” Í8
+” Í8” Í8–” Ì±” Ì±
+” Í9” Í9” Í9”  Í9–” Ì±” Ì±
+” Í:”" Í:”# Í:”, Í:’” Ì²” Ì²’” Ì³” Ì³	’” Ì²” Ì²–” Ì³” Ì³	” ÌÏ” ÌÏ” ÌÏ” ÌÏ’” Ì²” Ì²–” Ì³” Ì³	” ÌÐ” ÌÐ” ÌÐ” ÌÐ’” Ì²” Ì²ž” Ì³” Ì³	” ÌÑ” ÌÑ” ÌÑ” ÌÑ” ÌÑ”  ÌÑ”" ÌÑ”$ ÌÑ”) ÌÑ ”+ ÌÑ"”- ÌÑ$”/ ÌÑ&’” Ì²” Ì²š” Ì³” Ì³	” ÌÒ” ÌÒ” ÌÒ” ÌÒ” ÌÒ” ÌÒ”  ÌÒ”" ÌÒ’” Ì²” Ì²˜” Ì³” Ì³	” ÌÓ” ÌÓ”  ÌÓ”% ÌÓ”& ÌÓ”+ ÌÓ"’” Ì²” Ì²•” Ì³” Ì³	” ÌÔ” ÌÔ” ÌÔ”” ÌÕ” ÌÕ” ÌÕ” ÌÕ”” ÌÖ” ÌÖ” ÌÖ”" ÌÖ”” Ì×” Ì×” Ì×” Ì×‘” ÌØ’” Ì´” Ì´–” Ì´” Ì´” Ìº	” Ìº” Ìº” Ìº–” Ì´” Ì´” Ì»	” Ì»” Ì»” Ì»˜” Ì´” Ì´” Ì¼	”" Ì¼”# Ì¼”( Ì¼”) Ì¼”4 Ì¼*—” Ì´” Ì´” Ì½	” Ì½” Ì½” Ì½”  Ì½–” Ì¾
+” Ì¾” Ì¾”$ Ì¾”& Ì¾ ”' Ì¾!’” Ì¿” Ì¿	”” Ìµ
+” Ìµ” Ìµ” Ìµ–” Ìµ
+” Ìµ” Ì¶” Ì¶” Ì¶” Ì¶–” Ìµ
+” Ìµ” Ì·” Ì·” Ì·”$ Ì· ˜” Ìµ
+” Ìµ” Ì¸” Ì¸” Ì¸”& Ì¸"”' Ì¸#”+ Ì¸'’” Ìµ
+” Ìµ’” Ì´” Ì´˜” ÌÁ” ÌÁ” ÌÁ”! ÌÁ”% ÌÁ”& ÌÁ”3 ÌÁ(”5 ÌÁ*–” ÌÁ” ÌÁ” ÌÂ” ÌÂ” ÌÂ” ÌÂ˜” ÌÁ” ÌÁ” ÌÃ” ÌÃ” ÌÃ”& ÌÃ ”' ÌÃ!”- ÌÃ'–” ÌÁ” ÌÁ” ÌÄ” ÌÄ” ÌÄ”$ ÌÄ–” ÌÁ” ÌÁ” ÌÅ” ÌÅ” ÌÅ” ÌÅ˜” ÌÁ” ÌÁ” ÌÆ” ÌÆ” ÌÆ”$ ÌÆ”% ÌÆ”+ ÌÆ%–” ÌÁ” ÌÁ” ÌÇ” ÌÇ” ÌÇ” ÌÇœ” ÌÁ” ÌÁ” ÌÈ” ÌÈ” ÌÈ”  ÌÈ”( ÌÈ"”* ÌÈ$”6 ÌÈ0”7 ÌÈ1”? ÌÈ9”ÌA ÌÈ;’” ÌÁ” ÌÁ’” ÌÊ” ÌÊ–” ÌÊ” ÌÊ” ÌË” ÌË” ÌË” ÌË–” ÌÊ” ÌÊ” ÌÌ” ÌÌ” ÌÌ” ÌÌ˜” ÌÊ” ÌÊ” ÌÍ”" ÌÍ”# ÌÍ”( ÌÍ ”) ÌÍ!”4 ÌÍ,’” ÌÊ” ÌÊ’” Ì²” Ì²’” Ì³” Ì³	’” ÌÚ” ÌÚ–” ÌÛ” ÌÛ
+” ÌÛ” ÌÛ”  ÌÛ”" ÌÛ’” ÌÜ”  ÌÜ’” ÌÝ” ÌÝ’” ÌÜ”  ÌÜ–” ÌÝ” ÌÝ” Ìç	”$ Ìç”% Ìç”+ Ìç’” ÌÜ”  ÌÜ–” ÌÝ” ÌÝ” Ìè	”+ Ìè”, Ìè”- Ìè’” ÌÜ”  ÌÜ˜” ÌÝ” ÌÝ” Ìé	”- Ìé”. Ìé”7 Ìé!”8 Ìé"”> Ìé(’” ÌÜ”  ÌÜ–” ÌÝ” ÌÝ” Ìê	”. Ìê”/ Ìê”8 Ìê"ž” ÌÞ
+”  ÌÞ”( ÌÞ”* ÌÞ”. ÌÞ”0 ÌÞ”< ÌÞ'”= ÌÞ(”ÌA ÌÞ,”ÌC ÌÞ.”ÌH ÌÞ3”ÌJ ÌÞ5”ÌK ÌÞ6”ÌM ÌÞ8–” ÌÞ
+”  ÌÞ”! Ìß”& Ìß”' Ìß”) Ìß–” ÌÞ
+”  ÌÞ”! Ìà”' Ìà”( Ìà”* Ìà–” ÌÞ
+”  ÌÞ”! Ìá”& Ìá”' Ìá”0 Ìá”” Ìâ
+” Ìâ”$ Ìâ”/ Ìâ–” Ìâ
+” Ìâ” Ìã”% Ìã”& Ìã”( Ìã–” Ìâ
+” Ìâ” Ìä”& Ìä”' Ìä”0 Ìä š” Ìâ
+” Ìâ” Ìå”# Ìå”$ Ìå”& Ìå”) Ìå”+ Ìå”- Ìå”/ Ìå’” Ìâ
+” Ìâ’” ÌÜ” ÌÜ’” ÌÝ” ÌÝ‘” Ìë–” Ìë” Ìë” Ìë” Ìë”, Ìë(”. Ìë*’” Ìì”! Ìì’” Ìí” Ìí’” Ìì”! Ìì–” Ìí” Ìí” Ìÿ	”$ Ìÿ”% Ìÿ”+ Ìÿ’” Ìì”! Ìì–” Ìí” Ìí” Í 	”+ Í ”, Í ”- Í ’” Ìì”! Ìì˜” Ìí” Ìí” Í	”- Í”. Í”7 Í!”8 Í"”> Í(’” Ìì”! Ìì–” Ìí” Ìí” Í	”. Í”/ Í”8 Í"”” Ìî
+” Ìî”$ Ìî”( Ìî–” Ìî
+” Ìî” Ìï”% Ìï”& Ìï”( Ìïš” Ìî
+” Ìî” Ìð”# Ìð”$ Ìð”& Ìð”, Ìð”. Ìð”0 Ìð ”2 Ìð"’” Ìî
+” Ìî–” Ìñ
+” Ìñ”$ Ìñ”( Ìñ”) Ìñ”; Ìñ&–” Ìñ
+” Ìñ” Ìò”% Ìò”& Ìò”( Ìò–” Ìñ
+” Ìñ” Ìó”& Ìó”' Ìó”0 Ìó š” Ìñ
+” Ìñ” Ìô”# Ìô”$ Ìô”& Ìô”, Ìô”. Ìô”0 Ìô ”2 Ìô"’” Ìñ
+” Ìñ”” Ìõ
+” Ìõ”/ Ìõ”5 Ìõ–” Ìõ
+” Ìõ” Ìö”' Ìö”( Ìö”* Ìö˜” Ìõ
+” Ìõ” Ì÷”( Ì÷”) Ì÷”. Ì÷”/ Ì÷”4 Ì÷"–” Ìõ
+” Ìõ” Ìø”. Ìø”/ Ìø”8 Ìø&–” Ìõ
+” Ìõ” Ìù”+ Ìù”, Ìù”. ÌùÜ ” Ìõ
+” Ìõ” Ìú”& Ìú”' Ìú”) Ìú”- Ìú”/ Ìú”1 Ìú”3 Ìú!”8 Ìú&”: Ìú(”< Ìú*”> Ìú,”ÌA Ìú/”ÌC Ìú1”ÌD Ìú2”ÌF Ìú4”ÌL Ìú:”ÌN Ìú<”ÌO Ìú=”ÌQ Ìú?—” Ìõ
+” Ìõ” Ìû”& Ìû”' Ìû”* Ìû”, Ìû–” Ìü”  Ìü”! Ìü”4 Ìü&”6 Ìü(”7 Ìü)’” Ìý” Ìý’” Ìõ
+” Ìõ’” Ìì” Ìì’” Ìí” Ìí‘” Íš” Í” Í” Í” Í”- Í)”. Í*”4 Í0”9 Í5”: Í6”< Í8’” Í”" Í’” Í” Í’” Í”" Í–” Í” Í” Í	”$ Í”% Í”+ Í’” Í”" Í–” Í” Í” Í	”+ Í”, Í”- Í’” Í”" Í˜” Í” Í” Í	”- Í”. Í”7 Í!”8 Í"”> Í(’” Í”" Í–” Í” Í” Í	”. Í”/ Í”8 Í"”” Í
+” Í”$ Í”( Í–” Í
+” Í” Í”% Í”& Í”( Íš” Í
+” Í” Í”# Í”$ Í”& Í”, Í”. Í”0 Í ”2 Í"’” Í
+” Í”” Í	
+” Í	”$ Í	”- Í	–” Í	
+” Í	” Í
+”% Í
+”& Í
+”( Í
+–” Í	
+” Í	” Í”& Í”' Í”0 Í š” Í	
+” Í	” Í”# Í”$ Í”& Í”, Í”. Í”0 Í ”2 Í"’” Í	
+” Í	”” Í
+” Í”/ Í”5 Í–” Í
+” Í” Í”' Í”( Í”* Í–” Í
+” Í” Í”( Í”) Í”2 Í –” Í
+” Í” Í”. Í”/ Í”8 Í&–” Í
+” Í” Í”+ Í”, Í”. ÍÜ ” Í
+” Í” Í”& Í”' Í”) Í”- Í”/ Í”1 Í”3 Í!”8 Í&”: Í(”< Í*”> Í,”ÌA Í/”ÌC Í1”ÌD Í2”ÌF Í4”ÌL Í:”ÌN Í<”ÌO Í=”ÌQ Í?—” Í
+” Í” Í”& Í”' Í”* Í”, Í—” Í”  Í”! Í”0 Í"”3 Í%”7 Í)”8 Í*’” Í” Í’” Í
+” Í’” Í” Í’” Í” Í‘” Í‘” Í’” Í”! Í’” Í” Í’” Í”! Í–” Í” Í” Í3	”+ Í3”, Í3”- Í3’” Í”! Í˜” Í” Í” Í4	”( Í4”) Í4”1 Í4”2 Í4”5 Í4’” Í”! Í–” Í” Í” Í5	”. Í5”/ Í5”8 Í5"’” Í
+” Í’” Í” Íš” Í ” Í ”$ Í ”* Í ”. Í ”/ Í ”ÌB Í /”ÌC Í 0”ÌI Í 6”ÌQ Í >’” Í” Í–” Í ” Í ” Í!”% Í!”& Í!”( Í!’” Í” Í–” Í ” Í ” Í"”& Í"”' Í"”0 Í""’” Í” Í–” Í ” Í ” Í#”" Í#”# Í#”) Í#’” Í” Í˜” Í ” Í ” Í$”& Í$”' Í$”0 Í$"”1 Í$#”7 Í$)’” Í” Íž” Í ” Í ” Í%”# Í%”$ Í%”& Í%”) Í%”+ Í%”- Í%”/ Í%!”5 Í%'”7 Í%)”9 Í%+”; Í%-’” Í” Í’” Í ” Í ’” Í'” Í'’” Í(” Í(’”? Í(ÌA”ÌD Í(ÌN—” Í)”  Í)”! Í)”/ Í)!”; Í)"”Ì@ Í)'”ÌA Í)(””; Í(”? Í(”Ì@ Í(”ÌS Í(,’” Í'” Í'’” Í(” Í(’” Í,” Í,”” Í-” Í-”$ Í-”/ Í-’” Í,” Í,–” Í-” Í-” Í.”% Í.”& Í.”( Í.’” Í,” Í,–” Í-” Í-” Í/”& Í/”' Í/”0 Í/"’” Í,” Í,ž” Í-” Í-” Í0”# Í0”$ Í0”& Í0”) Í0”+ Í0”- Í0”/ Í0!”5 Í0'”7 Í0)”9 Í0+”; Í0-’” Í,” Í,’” Í-” Í-’” Í
+” Í’” Í” Í’” Í” Í‘” Í6’” Ì±” Ì±
+‘” Í;‘” Í=‘” Í?”” ÍA
+” ÍA” ÍA” ÍA)’” ÍB” ÍB–” ÍB” ÍB” Í‰” Í‰
+” Í‰” Í‰–” ÍB” ÍB” ÍŠ” ÍŠ” ÍŠ” ÍŠ˜” ÍB” ÍB” Í‹” Í‹”  Í‹”% Í‹”& Í‹”+ Í‹ –” ÍB” ÍB” ÍŒ” ÍŒ” ÍŒ” ÍŒÜ ” ÍB” ÍB” Í” Í” Í” Í” Í” Í”! Í”# Í”( Í”* Í”, Í!”. Í#”4 Í)”6 Í+”8 Í-”: Í/•” ÍB” ÍB” ÍŽ” ÍŽ” ÍŽ”” Í” Í” Í” Í”” Í” Í” Í”" Í”” Í‘” Í‘” Í‘” Í‘‘” Í’—” ÍB” ÍB” Í“” Í“” Í“” Í“” Í“˜” Í”” Í”
+” Í””$ Í””% Í””* Í” ”+ Í”!”, Í”"’” Í•” Í•’” ÍC” ÍC–” ÍD” ÍD” ÍD” ÍD” ÍD”$ ÍD’” ÍC” ÍC–” ÍD” ÍD” ÍE	” ÍE” ÍE” ÍE’” ÍC” ÍC–” ÍD” ÍD” ÍF	” ÍF” ÍF” ÍF’” ÍC” ÍC˜” ÍD” ÍD” ÍG	” ÍG” ÍG”$ ÍG”% ÍG”* ÍG!’” ÍC” ÍC–” ÍD” ÍD” ÍH	” ÍH” ÍH”  ÍH’” ÍC” ÍC•” ÍD” ÍD” ÍI	” ÍI” ÍI”” ÍJ
+” ÍJ” ÍJ” ÍJ”” ÍK
+” ÍK” ÍK”" ÍK”” ÍL
+” ÍL” ÍL” ÍL‘” ÍM	’” ÍO” ÍO’” ÍP” ÍP’” ÍO” ÍO–” ÍP” ÍP” Í„” Í„”  Í„”! Í„’” ÍO” ÍOš” ÍP” ÍP” Í…” Í…” Í…” Í…”  Í…”" Í…”$ Í…”& Í…’” ÍO” ÍO˜” ÍP” ÍP” Í†” Í†” Í†”- Í†!”. Í†"”3 Í†'’” ÍO” ÍO˜” ÍP” ÍP” Í‡”! Í‡”" Í‡”+ Í‡”, Í‡ ”8 Í‡,’” ÍQ” ÍQ–” ÍR” ÍR” ÍR” ÍR” ÍR”# ÍR’” ÍQ” ÍQ–” ÍR” ÍR” ÍS” ÍS” ÍS” ÍS’” ÍQ” ÍQ˜” ÍR” ÍR” ÍT” ÍT” ÍT”& ÍT ”' ÍT!”- ÍT'’” ÍQ” ÍQ–” ÍR” ÍR” ÍU” ÍU” ÍU”$ ÍU’” ÍQ” ÍQ–” ÍR” ÍR” ÍV” ÍV” ÍV” ÍV’” ÍQ” ÍQœ” ÍR” ÍR” ÍW” ÍW” ÍW”  ÍW”( ÍW"”* ÍW$”6 ÍW0”7 ÍW1”? ÍW9”ÌA ÍW;’” ÍQ” ÍQ–” ÍR” ÍR” ÍX” ÍX” ÍX” ÍX’” ÍQ” ÍQ˜” ÍR” ÍR” ÍY” ÍY” ÍY”$ ÍY”% ÍY”* ÍY$’” ÍQ” ÍQ’” ÍR” ÍR’” Í[” Í[–” Í\” Í\” Í\” Í\” Í\”$ Í\’” Í[” Í[–” Í\” Í\” Í]” Í]” Í]” Í]’” Í[” Í[–” Í\” Í\” Í^” Í^” Í^”$ Í^’” Í[” Í[ž” Í\” Í\” Í_” Í_” Í_” Í_” Í_” Í_”  Í_”" Í_”( Í_"”* Í_$”+ Í_%”- Í_'’” Í[” Í[–” Í\” Í\” Í`” Í`” Í`” Í`’” Í[” Í[˜” Í\” Í\” Ía” Ía” Ía”$ Ía”% Ía”* Ía$’” Í[” Í[’” Í\” Í\’” Íc” Íc–” Íd” Íd” Íd” Íd” Íd”) Íd’” Íc” Íc–” Íd” Íd” Íe” Íe” Íe” Íe’” Íc” Íc–” Íd” Íd” Íf” Íf” Íf”$ Íf’” Íc” Íc–” Íd” Íd” Íg” Íg” Íg” Íg’” Íc” Ícœ” Íd” Íd” Íh” Íh” Íh”  Íh”( Íh"”* Íh$”6 Íh0”7 Íh1”? Íh9”ÌA Íh;’” Íc” Íc–” Íd” Íd” Íi” Íi” Íi” Íi’” Íc” Íc–” Íd” Íd” Íj” Íj” Íj” Íj’” Íc” Íc˜” Íd” Íd” Ík” Ík” Ík”$ Ík”% Ík”* Ík$’” Íc” Íc’” Íd” Íd’” Ím” Ím’” Ín” Ín’” Ím” Ímš” Ín” Ín” Í€	” Í€” Í€” Í€” Í€” Í€” Í€”! Í€’” Ím” Ím–” Ín” Ín” Í	” Í” Í” Í’” Ím” Ím˜” Ín” Ín” Í‚	” Í‚” Í‚”( Í‚!”) Í‚"”. Í‚'˜” Ío
+” Ío” Ío” Ío” Ío”& Ío”* Ío!”0 Ío'–” Ío
+” Ío” Íp” Íp” Íp” Íp–” Ío
+” Ío” Íq” Íq” Íq”$ Íq –” Ío
+” Ío” Ír”  Ír”! Ír”* Ír&Ü ” Ío
+” Ío” Ís” Ís” Ís” Ís” Ís”! Ís”" Ís”$ Ís ”) Ís%”+ Ís'”, Ís(”. Ís*”1 Ís-”3 Ís/”4 Ís0”6 Ís2”< Ís8”> Ís:”? Ís;”ÌA Ís=–” Ío
+” Ío” Ít” Ít” Ít”  Ít’” Ío
+” Ío–” Ív
+” Ív” Ív” Ív” Ív”  Ív–” Íw” Íw”$ Íw”) Íw”* Íw”2 Íw–” Íw” Íw” Íx”% Íx”& Íx”( Íx–” Íw” Íw” Íy”& Íy”' Íy”0 Íy"–” Íw” Íw” Íz”, Íz”- Íz”6 Íz(Ü ” Íw” Íw” Í{”$ Í{”% Í{”' Í{”+ Í{”- Í{”. Í{ ”0 Í{"”5 Í{'”7 Í{)”8 Í{*”: Í{,”= Í{/”? Í{1”Ì@ Í{2”ÌB Í{4”ÌH Í{:”ÌJ Í{<”ÌK Í{=”ÌM Í{?–” Íw” Íw” Í|”) Í|”* Í|”, Í|š” Íw” Íw” Í}”# Í}”$ Í}”& Í}”* Í}”, Í}”- Í}”/ Í}!’” Íw” Íw‘” Í~‘” Í~’” Ím” Ím’” Ín” Ín’” ÍO” ÍO’” ÍP” ÍP’” ÍB” ÍB‘” Í–‘” Í˜’” Í™”! Í™–” Íš” Íš” Íš” Íš”& Íš”( Íš •” Í›” Í›
+” Í›”/ Í›!”< Í›#‘” Íœ‘” Íœ’” Í”# Í’” Íž” Íž’” Í”# Í–” Íž” Íž” Í+”% Í+”& Í+”, Í+’” Í”# Í–” Íž” Íž” Í,”$ Í,
+”% Í,”+ Í,’” Í”# Í”” Íž” Íž” Í-”. Í-’” Í”# Íž” Íž” Íž” Í.”& Í.”' Í.”) Í.”- Í.”/ Í.”1 Í.”3 Í.”8 Í.”: Í. ”< Í."”> Í.$’” Í”# Íš” Íž” Íž” Í/”( Í/”2 Í/”7 Í/”ÌF Í/%”Ìc Í/”Ìh Í/”Ìw Í/%””  Í/'”$ Í/+”% Í/,”5 Í/<‘”! Í/Ì@”” Í0”" Í0”$ Í0”' Í0”” Í1”# Í1”% Í1”) Í1–” Í2”+ Í2”- Í2”2 Í2”3 Í2”8 Í2"•” Í3”$ Í3”& Í3”) Í3”+ Í3œ”  Í4”% Í4”& Í4”* Í4”+ Í4”1 Í4”3 Í4”6 Í4”8 Í4 ”Ì@ Í4(”ÌA Í4)”ÌB Í4*’” Í5” Í5•” Í6”' Í6”) Í6”, Í6”. Í6œ”  Í7”% Í7”& Í7”* Í7”+ Í7”1 Í7”3 Í7”6 Í7”8 Í7 ”Ì@ Í7(”ÌA Í7)”ÌB Í7*’” Í8” Í8‘” Í9’” ÍŸ” ÍŸ	–” ÍŸ” ÍŸ	” Í¹”! Í¹”" Í¹”( Í¹–” ÍŸ” ÍŸ	” Íº”" Íº”# Íº”% Íºž” ÍŸ” ÍŸ	” Í»”# Í»”$ Í»”& Í»”* Í»”, Í»”. Í»”0 Í»”5 Í» ”7 Í»"”9 Í»$”; Í»&š” ÍŸ” ÍŸ	” Í¼”" Í¼”# Í¼”% Í¼”( Í¼”* Í¼”, Í¼”. Í¼˜” ÍŸ” ÍŸ	” Í½”* Í½”+ Í½”4 Í½”5 Í½ ”8 Í½#˜” ÍŸ” ÍŸ	” Í¾”& Í¾”' Í¾”4 Í¾”5 Í¾ ”; Í¾&˜” Í ” Í ”# Í ”% Í ”* Í ”, Í ”. Í ”0 Í ’” Í¡
+” Í¡–” Í¡
+” Í¡” Í¢”# Í¢”$ Í¢”& Í¢–” Í¡
+” Í¡” Í£”$ Í£”% Í£”' Í£—” Í¡
+” Í¡” Í¤”% Í¤”& Í¤”) Í¤”+ Í¤Ü ” Í¥”  Í¥”! Í¥”- Í¥”/ Í¥!”0 Í¥"”9 Í¥+”; Í¥-”< Í¥.”ÌC Í¥5”ÌD Í¥6”ÌF Í¥8”ÌI Í¥;”ÌK Í¥=”Ì] Í¥ÌO”Ì_ Í¥ÌQ”Ì` Í¥ÌR”Ìa Í¥ÌS’” Í¦” Í¦’” Í¨
+” Í¨–” Í¨
+” Í¨” Í©”# Í©”$ Í©”& Í©–” Í¨
+” Í¨” Íª”$ Íª”% Íª”' Íª—” Í¨
+” Í¨” Í«”% Í«”& Í«”) Í«”+ Í«š” Í¬”  Í¬”! Í¬”' Í¬”* Í¬”+ Í¬”/ Í¬!”0 Í¬"”6 Í¬(”7 Í¬)’” Í­” Í­™” Í¨
+” Í¨” Í®”' Í®”( Í®”, Í®”- Í®”3 Í®"”5 Í®$’” Í¯”# Í¯””$ Í¯”( Í¯”) Í¯”? Í¯2‘”# Í¯4–” Í°”% Í°”' Í°”0 Í°"”1 Í°#”7 Í°)—” Í±”) Í±”+ Í±”, Í±”- Í±”/ Í±!”1 Í±#—”  Í²”$ Í²”% Í²”& Í²”' Í²”0 Í² ”2 Í²"—”$ Í³”( Í³”) Í³”/ Í³”2 Í³ ”7 Í³%”8 Í³&‘”! Í´’” Íµ” Íµ‘” Í¶’” Í ” Í ’” ÍŸ” ÍŸ	–” ÍÀ” ÍÀ
+”  ÍÀ”! ÍÀ”+ ÍÀ”- ÍÀ’”$ ÍÁ”' ÍÁ–”$ ÍÁ”' ÍÁ”( ÍÑ	”- ÍÑ”. ÍÑ”4 ÍÑ–”$ ÍÁ”' ÍÁ”( ÍÒ	”. ÍÒ”/ ÍÒ”1 ÍÒž”$ ÍÁ”' ÍÁ”( ÍÓ	”/ ÍÓ”0 ÍÓ”2 ÍÓ”6 ÍÓ”8 ÍÓ”: ÍÓ”< ÍÓ”ÌA ÍÓ"”ÌC ÍÓ$”ÌE ÍÓ&”ÌG ÍÓ(˜”$ ÍÁ”' ÍÁ”( ÍÔ	”6 ÍÔ”7 ÍÔ”Ì@ ÍÔ!”ÌA ÍÔ"”ÌM ÍÔ.””$ ÍÂ
+”( ÍÂ”0 ÍÂ”4 ÍÂ˜”$ ÍÂ
+”( ÍÂ”) ÍÃ”2 ÍÃ”3 ÍÃ”8 ÍÃ”9 ÍÃ”< ÍÃ ˜”$ ÍÂ
+”( ÍÂ”) ÍÄ”0 ÍÄ”1 ÍÄ”6 ÍÄ”: ÍÄ”< ÍÄ ›”( ÍÅ”. ÍÅ”= ÍÅ#”> ÍÅ$”ÌN ÍÅ4”Ìk ÍÅ5”Ìo ÍÅ9”Ìp ÍÅ:”Ì} ÍÅÌG”Ì ÍÅÌH”Ì€ ÍÅÌI—”( ÍÆ”, ÍÆ”- ÍÆ”: ÍÆ ”= ÍÆ#”? ÍÆ%”Ì@ ÍÆ&—”( ÍÇ”, ÍÇ”- ÍÇ”7 ÍÇ”: ÍÇ ”? ÍÇ%”Ì@ ÍÇ&—”( ÍÈ”. ÍÈ”2 ÍÈ”3 ÍÈ”ÌB ÍÈ(”ÌD ÍÈ*”ÌE ÍÈ+’”$ ÍÉ”% ÍÉ’”  ÍÂ
+”$ ÍÂ’”$ ÍÊ
+”) ÍÊ’”  ÍÊ
+”% ÍÊ””$ ÍË
+”( ÍË”0 ÍË”4 ÍË—”$ ÍË
+”( ÍË”) ÍÌ”0 ÍÌ”1 ÍÌ”4 ÍÌ”6 ÍÌ—”( ÍÍ”, ÍÍ”- ÍÍ”: ÍÍ ”= ÍÍ#”? ÍÍ%”Ì@ ÍÍ&—”( ÍÎ”, ÍÎ”- ÍÎ”7 ÍÎ”: ÍÎ ”? ÍÎ%”Ì@ ÍÎ&’”$ ÍÏ”% ÍÏ’”  ÍË
+”$ ÍË’”  ÍÁ”# ÍÁ‘” ÍÕ‘” ÍÕ–” Í×” Í×
+”  Í×”! Í×”+ Í×”- Í×’”$ ÍØ”( ÍØ–”$ ÍØ”( ÍØ”) Íþ	”8 Íþ”9 Íþ”ÌF Íþ&–”$ ÍØ”( ÍØ”) Íÿ	”3 Íÿ”4 Íÿ”6 Íÿ–”$ ÍØ”( ÍØ”) Í 	”0 Í ”1 Í ”3 Í –”$ ÍØ”( ÍØ”) Í	”5 Í”6 Í”7 Íš”$ ÍØ”( ÍØ”) Í	”0 Í”1 Í”3 Í”6 Í”8 Í”: Í”< Í’”$ ÍÙ
+”+ ÍÙ˜”4 ÍÛ”: ÍÛ”ÌB ÍÛ”ÌD ÍÛ”ÌI ÍÛ”ÌK ÍÛ”ÌL ÍÛ”ÌN ÍÛ!–”4 ÍÛ”: ÍÛ”; Íî”ÌB Íî”ÌC Íî”ÌD Íî—”4 ÍÛ”: ÍÛ”; Íï”ÌB Íï”ÌC Íï”ÌF Íï”ÌH Íï–”8 Íð”< Íð”Ì@ Íð”ÌA Íð”ÌK Íð#”ÌM Íð%Ÿ”< Íñ”ÌB Íñ”ÌG Íñ”ÌJ Íñ ”ÌN Íñ$”ÌO Íñ%”Ì\ Íñ2”Ì] Íñ3”Ìd Íñ:”Ìe Íñ;”Ìi Íñ?”Ìj ÍñÌ@”Ìl ÍñÌB”Ìm ÍñÌC”Ìn ÍñÌD—”< Íò”Ì@ Íò”ÌE Íò”ÌH Íò”ÌI Íò”ÌJ Íò ”ÌL Íò"œ”Ì@ Íó”ÌD Íó”ÌE Íó”ÌR Íó&”ÌS Íó'”ÌY Íó-”ÌZ Íó.”Ì_ Íó3”Ìa Íó5”Ìb Íó6”Ìc Íó7”Ìd Íó8‘”= Íô‘”ÌA Íôœ”Ì@ Íõ”ÌD Íõ”ÌE Íõ”ÌR Íõ&”ÌS Íõ'”ÌW Íõ+”ÌX Íõ,”Ì\ Íõ0”Ì] Íõ1”Ì_ Íõ3”Ì` Íõ4”Ìa Íõ5‘”= Íö‘”9 Í÷‘”= Í÷˜”< Íø”Ì@ Íø”ÌA Íø”ÌG Íø”ÌH Íø”ÌL Íø"”ÌM Íø#”ÌN Íø$‘”9 Íù’”4 Íú”5 Íúš”4 ÍÜ”9 ÍÜ”ÌA ÍÜ”ÌC ÍÜ”ÌO ÍÜ$”ÌQ ÍÜ&”ÌZ ÍÜ/”Ì[ ÍÜ0”Ìa ÍÜ6”Ìc ÍÜ8—”4 ÍÝ”9 ÍÝ”ÌA ÍÝ”ÌE ÍÝ”ÌF ÍÝ”ÌO ÍÝ&”ÌÂ ÍÝ>–”4 ÍÝ”9 ÍÝ”: ÍÞ”? ÍÞ”Ì@ ÍÞ”ÌF ÍÞ!–”4 ÍÝ”9 ÍÝ”: Íß”ÌE Íß ”ÌF Íß!”ÌJ Íß%–”4 ÍÝ”9 ÍÝ”: Íà”ÌF Íà!”ÌG Íà"”ÌH Íà#””4 ÍÝ”9 ÍÝ”: Íá”ÌI Íá$–”4 Íâ”8 Íâ”< Íâ”= Íâ”ÌG Íâ%”ÌI Íâ'Ü ”Ì@ Íã”ÌE Íã”ÌM Íã”ÌQ Íã”ÌR Íã”Ì_ Íã,”Ì` Íã-”Ìh Íã5”Ìi Íã6”Ìm Íã:”Ìn Íã;”Ìp Íã=”Ìq Íã>”Ìr Íã?”Ìs ÍãÌ@”Ìä ÍãÌ]”Ìå ÍãÌ^”ÍU ÍãÌu–”Ì@ Íã”ÌE Íã”ÌF Íä”ÌK Íä”ÌL Íä”ÌN Íä–”Ì@ Íã”ÌE Íã”ÌF Íå”ÌL Íå”ÌM Íå”ÌO Íå ž”Ì@ Íã”ÌE Íã”ÌF Íæ”ÌL Íæ”ÌM Íæ”ÌO Íæ ”ÌR Íæ#”ÌT Íæ%”ÌU Íæ&”ÌW Íæ(”Ì\ Íæ-”Ì^ Íæ/”Ì_ Íæ0”Ìa Íæ2‘”5 Íç‘”5 Íç’”0 ÍÜ”5 ÍÜ–”4 Íé”8 Íé”Ì@ Íé”ÌD Íé”ÌE Íé”ÌM Íé"–”4 Íé”8 Íé”9 Íê”ÌA Íê”ÌB Íê”ÌD Íê–”4 Íé”8 Íé”9 Íë”ÌA Íë”ÌB Íë”ÌC Íëœ”4 Íé”8 Íé”9 Íì”ÌE Íì”ÌF Íì ”ÌH Íì"”ÌP Íì*”ÌR Íì,”Ì^ Íì8”Ì_ Íì9”Ìg ÍìÌA”Ìi ÍìÌC’”0 Íé”4 Íé’”0 ÍÛ”6 ÍÛ’”0 ÍÚ”8 ÍÚ””ÌG ÍÙ”ÌK ÍÙ”ÌL ÍÙ”ÌQ ÍÙ’”  ÍÙ
+”' ÍÙ’”  ÍØ”$ ÍØ‘” Í‘” Í’”$ Í”- Í˜”$ Í”( Í”0 Í”2 Í”7 Í”9 Í”; Í”= Í’”$ Í”- Í–”$ Í”( Í”) Í'	”5 Í'”6 Í'”7 Í'’”$ Í”- Íš”$ Í”( Í”) Í(	”0 Í(”1 Í(”3 Í(”6 Í(”8 Í(”: Í(”< Í(’”$ Í
+”+ Í’”4 Í”< Í˜”4 Í”7 Í”? Í”ÌA Í”ÌF Í”ÌH Í”ÌJ Í”ÌL Íž”4 Í”7 Í”8 Í ”? Í ”Ì@ Í ”ÌB Í ”ÌE Í ”ÌG Í ”ÌH Í ”ÌJ Í !”ÌP Í '”ÌR Í )”ÌS Í *”ÌU Í ,—”4 Í”7 Í”8 Í!”? Í!”Ì@ Í!”ÌC Í!”ÌE Í!˜”8 Í"”< Í"”= Í"”ÌC Í"”ÌD Í"”ÌH Í" ”ÌI Í"!”ÌJ Í""’”4 Í#”5 Í#—”4 Í	”9 Í	”ÌA Í	”ÌE Í	”ÌF Í	”ÌO Í	$”ÌÂ Í	<–”4 Í	”9 Í	”: Í
+”? Í
+”Ì@ Í
+”ÌB Í
+–”4 Í	”9 Í	”: Í”ÌE Í”ÌF Í”ÌJ Í#–”4 Í	”9 Í	”: Í”ÌF Í”ÌG Í ”ÌH Í!””4 Í	”9 Í	”: Í”ÌI Í"˜”4 Í”: Í”ÌB Í”ÌD Í”ÌI Í”ÌK Í ”ÌL Í!”ÌN Í#˜”4 Í”: Í”; Í”ÌE Í”ÌF Í”ÌU Í+”ÌV Í,”Ì[ Í1–”4 Í”: Í”; Í”ÌG Í”ÌH Í”ÌI Í–”4 Í”8 Í”Ì@ Í”ÌD Í”ÌE Í”ÌM Í$–”4 Í”8 Í”9 Í”ÌA Í”ÌB Í”ÌD Í ˜”4 Í”8 Í”9 Í”ÌC Í”ÌD Í ”ÌN Í*”ÌO Í+”ÌS Í/–”4 Í”8 Í”9 Í”ÌA Í”ÌB Í”ÌC Íœ”4 Í”8 Í”9 Í”ÌE Í!”ÌF Í"”ÌH Í$”ÌP Í,”ÌR Í.”Ì^ Í:”Ì_ Í;”Ìg ÍÌC”Ìi ÍÌE’”0 Í”4 Í˜”4 Í”8 Í”Ì@ Í”ÌD Í”ÌE Í”ÌK Í"”ÌO Í&”ÌS Í*–”4 Í”8 Í”9 Í”ÌA Í”ÌB Í”ÌD Í ””4 Í”8 Í”9 Í”ÌB Í–”4 Í”8 Í”9 Í”ÌA Í”ÌB Í”ÌC Íœ”4 Í”8 Í”9 Í”ÌE Í!”ÌF Í"”ÌH Í$”ÌP Í,”ÌR Í.”Ì^ Í:”Ì_ Í;”Ìg ÍÌC”Ìi ÍÌE’”0 Í”4 Í˜”4 Í”8 Í”Ì@ Í”ÌG Í”ÌK Í"”ÌL Í#”ÌT Í+”ÌV Í-–”4 Í”8 Í”9 Í”ÌA Í”ÌB Í”ÌD Í ””4 Í”8 Í”9 Í”ÌB Í’”0 Í”4 Í’”0 Í”6 Í’”0 Í”3 Í’”0 Í”8 Í’”, Í”4 Í””ÌG Í”ÌK Í”ÌL Í”ÌQ Í’”  Í
+”' Í’”  Í”) Í’”  Í”$ Í‘” Í)’” Í” Í’” Íž” Íž‘” Í:‘” Í;’” Í>” Í>’” Í?” Í?
+–” Í?” Í?
+” Íl” Íl” Íl” Íl˜” Í@” Í@	” Í@
+” Í@” Í@”  Í@”" Í@”$ Í@–” Í@” Í@	” ÍC” ÍC” ÍC” ÍC–” Í@” Í@	” ÍC” ÍC” ÍC” ÍC—” Í@” Í@	” ÍC!” ÍC(” ÍC)” ÍC,” ÍC.—” ÍD” ÍD” ÍD” ÍD” ÍD”# ÍD”$ ÍD—” ÍE” ÍE” ÍE”$ ÍE”' ÍE”+ ÍE#”, ÍE$’” ÍF” ÍF’” ÍA” ÍA–” ÍA” ÍA” ÍA&” ÍA+” ÍA,” ÍA.–” ÍA” ÍA” ÍA0” ÍA6” ÍA7” ÍA9”” ÍB” ÍB” ÍB” ÍB–” ÍB” ÍB” ÍB” ÍB” ÍB” ÍB ’” ÍB” ÍB’” Í@” Í@	˜” ÍG” ÍG	” ÍG
+” ÍG” ÍG”  ÍG”" ÍG”$ ÍG–” ÍG” ÍG	” ÍJ” ÍJ” ÍJ” ÍJ–” ÍG” ÍG	” ÍJ” ÍJ” ÍJ” ÍJ—” ÍG” ÍG	” ÍJ!” ÍJ(” ÍJ)” ÍJ,” ÍJ.š” ÍK” ÍK” ÍK” ÍK”" ÍK”# ÍK”' ÍK”( ÍK ”2 ÍK*”3 ÍK+—” ÍL” ÍL” ÍL” ÍL” ÍL”# ÍL”$ ÍL’” ÍM” ÍM’” ÍH” ÍH–” ÍH” ÍH” ÍH&” ÍH+” ÍH,” ÍH.–” ÍH” ÍH” ÍH0” ÍH6” ÍH7” ÍH9”” ÍI” ÍI” ÍI”  ÍI–” ÍI” ÍI” ÍI” ÍI” ÍI ” ÍI"’” ÍI” ÍI’” ÍG” ÍG	˜” ÍN” ÍN	” ÍN
+” ÍN” ÍN”  ÍN”" ÍN”$ ÍN–” ÍN” ÍN	” ÍQ” ÍQ” ÍQ” ÍQ–” ÍN” ÍN	” ÍQ” ÍQ” ÍQ” ÍQ—” ÍN” ÍN	” ÍQ!” ÍQ(” ÍQ)” ÍQ,” ÍQ.—” ÍR” ÍR” ÍR” ÍR” ÍR”# ÍR”$ ÍR–” ÍS” ÍS” ÍS” ÍS” ÍS”  ÍS’” ÍT” ÍT’” ÍO” ÍO–” ÍO” ÍO” ÍO$” ÍO)” ÍO*” ÍO,–” ÍO” ÍO” ÍO.” ÍO4” ÍO5” ÍO7”” ÍP” ÍP” ÍP” ÍP–” ÍP” ÍP” ÍP” ÍP” ÍP” ÍP ’” ÍP” ÍP’” ÍN” ÍN	˜” ÍU” ÍU	” ÍU
+” ÍU” ÍU”  ÍU”" ÍU”$ ÍU–” ÍU” ÍU	” ÍX” ÍX” ÍX” ÍX–” ÍU” ÍU	” ÍX” ÍX” ÍX” ÍX—” ÍU” ÍU	” ÍX!” ÍX(” ÍX)” ÍX,” ÍX.—” ÍY” ÍY” ÍY” ÍY” ÍY”# ÍY”$ ÍY—” ÍZ” ÍZ” ÍZ” ÍZ”" ÍZ”& ÍZ”' ÍZ’” Í[”& Í[—” Í\” Í\” Í\” Í\” Í\”$ Í\”& Í\—” Í]
+” Í]” Í]”# Í]”& Í]”* Í] ”+ Í]!‘” Í^	’” Í_” Í_’” ÍV” ÍV–” ÍV” ÍV” ÍV*” ÍV/” ÍV0” ÍV2–” ÍV” ÍV” ÍV4” ÍV:” ÍV;” ÍV=”” ÍW” ÍW” ÍW” ÍW–” ÍW” ÍW” ÍW” ÍW” ÍW” ÍW ’” ÍW” ÍW’” ÍU” ÍU	˜” Í`” Í`	” Í`
+” Í`” Í`”  Í`”" Í`”$ Í`–” Í`” Í`	” Íc” Íc” Íc” Íc–” Í`” Í`	” Íc” Íc” Íc” Íc—” Í`” Í`	” Íc!” Íc(” Íc)” Íc,” Íc.—” Íd” Íd” Íd” Íd” Íd”# Íd”$ Íd’” Íe” Íe’” Ía” Ía–” Ía” Ía” Ía'” Ía,” Ía-” Ía/–” Ía” Ía” Ía1” Ía7” Ía8” Ía:”” Íb” Íb” Íb” Íb–” Íb” Íb” Íb” Íb” Íb” Íb ’” Íb” Íb’” Í`” Í`	˜” Íf” Íf	” Íf
+” Íf” Íf”  Íf”" Íf”$ Íf–” Íf” Íf	” Íi” Íi” Íi” Íi–” Íf” Íf	” Íi” Íi” Íi” Íi—” Íf” Íf	” Íi!” Íi(” Íi)” Íi,” Íi.—” Íj” Íj” Íj” Íj” Íj”# Íj”$ Íj’” Ík” Ík’” Íg” Íg–” Íg” Íg” Íg&” Íg+” Íg,” Íg.–” Íg” Íg” Íg0” Íg6” Íg7” Íg9”” Íh” Íh” Íh” Íh–” Íh” Íh” Íh” Íh” Íh” Íh ’” Íh” Íh’” Íf” Íf	’” Í?” Í?
+‘” Ím‘” Ío‘” Íq”” Ír
+”	 Ír”
+ Ír” Ír#™” Ís” Ís” Ís” Ís” Ís” Ís”# Ís”% Ís!”' Ís#Ü ” Ít” Ít” Ít” Ít” Ít” Ít” Ít”" Ít”$ Ít”/ Ít)”2 Ít,”6 Ít0”7 Ít1”ÌD Ít>”ÌE Ít?”ÌF ÍtÌ@—” Íu” Íu
+” Íu”  Íu”# Íu”( Íu"”) Íu#’” Íw” Íw
+—” Íx” Íx” Íx”  Íx”# Íx”' Íx”( Íx —” Íy” Íy” Íy”' Íy”* Íy"”, Íy$”- Íy%’” Í{” Í{Ü ” Í|” Í|” Í|” Í|”% Í|”6 Í|.”7 Í|/”ÌC Í|;”ÌD Í|<”ÌH Í|Ì@”ÌI Í|ÌA”ÌV Í|ÌN”ÌW Í|ÌO”Ì[ Í|ÌS”Ì] Í|ÌU”Ì^ Í|ÌV”Ì_ Í|ÌWš” Í~” Í~” Í~” Í~”" Í~”& Í~”, Í~$”- Í~%”1 Í~)”3 Í~+™” Í
+” Í” Í”, Í"”/ Í%”5 Í+”6 Í,”: Í0”; Í1—” Í€
+” Í€” Í€”* Í€ ”- Í€#”1 Í€'”2 Í€(Ü ” Í
+” Í” Í” Í” Í”% Í”' Í”* Í ”, Í"”9 Í/”? Í5”Ì@ Í6”ÌD Í:”ÌE Í;”ÌK ÍÌA”ÌQ ÍÌG”ÌR ÍÌH”ÌS ÍÌI‘” Í‚	‘” Í‚›” Íƒ
+” Íƒ” Íƒ”+ Íƒ!”. Íƒ$”4 Íƒ*”5 Íƒ+”: Íƒ0”> Íƒ4”ÌD Íƒ:”ÌE Íƒ;Ü ” Í„
+” Í„” Í„” Í„”  Í„”& Í„”( Í„”+ Í„!”- Í„#”7 Í„-”: Í„0”> Í„4”? Í„5”ÌQ Í„ÌG”ÌR Í„ÌH”ÌS Í„ÌI‘” Í…	‘” Í†”” Í†” Í†” Í†” Í†Ü ” Í‡” Í‡” Í‡” Í‡” Í‡”" Í‡”$ Í‡”' Í‡”) Í‡!”3 Í‡+”6 Í‡.”: Í‡2”; Í‡3”ÌD Í‡<”ÌE Í‡=”ÌJ Í‡ÌB”ÌK Í‡ÌC”ÌL Í‡ÌD”ÌM Í‡ÌE—” Íˆ” Íˆ” Íˆ”' Íˆ”* Íˆ"”4 Íˆ,”5 Íˆ-‘” Í‰‘” Í‰—” ÍŠ” ÍŠ” ÍŠ”  ÍŠ”# ÍŠ”( ÍŠ ”) ÍŠ!‘” Í‹‘”	 ÍŒ’” Í” Í‘” Í‘” Í’”” Í“
+” Í“” Í“” Í“*Ü ” Í”” Í”	” Í”
+” Í”” Í”” Í”” Í”” Í””  Í””* Í”&”- Í”)”2 Í”.”3 Í”/”8 Í”4”9 Í”5”: Í”6’” Í–” Í–ž” Í—” Í—
+” Í—” Í—”! Í—”" Í—”& Í—"”' Í—#”1 Í—-”2 Í—.”8 Í—4”9 Í—5”: Í—6”; Í—7–” Í˜” Í˜” Í˜” Í˜” Í˜” Í˜—” Í™”$ Í™”' Í™!”, Í™&”- Í™'”1 Í™+”2 Í™,ž” Í›” Í›	” Í›
+” Í›” Í›” Í›” Í›” Í›”  Í›”* Í›&”- Í›)”8 Í›4”9 Í›5”: Í›6’” Í” Í•” Íž” Íž
+” Íž” Íž” Íž”” ÍŸ” ÍŸ	” ÍŸ”' ÍŸ!“” Í ” Í ” Í ”” Í¡” Í¡” Í¡”$ Í¡–” Í¢” Í¢” Í¢”  Í¢”! Í¢”& Í¢–” Í£” Í£” Í£”! Í£”" Í£”( Í£ –” Í¤” Í¤” Í¤”  Í¤”! Í¤”& Í¤‘” Í¥—”	 Í¦”
+ Í¦” Í¦” Í¦” Í¦” Í¦” Í¦œ” Í§” Í§” Í§” Í§” Í§” Í§” Í§”" Í§”$ Í§”1 Í§+”2 Í§,”3 Í§-š” Í¨”	 Í¨”
+ Í¨” Í¨” Í¨” Í¨” Í¨” Í¨” Í¨” Í¨Ü ” Í©” Í©” Í©” Í©” Í©” Í©”  Í©”# Í©”% Í©”- Í©'”0 Í©*”5 Í©/”6 Í©0”= Í©7”> Í©8”? Í©9”” Íª”	 Íª”
+ Íª” Íª’” Í«” Í«‘” Í­‘” Í¯’” Í°
+” Í°—” Í±” Í±” Í±	” Í±”! Í±”& Í±"”' Í±#—” Í²” Í²” Í²	”  Í²”# Í²”% Í²!”& Í²"—” Í³” Í³” Í³	” Í³” Í³” Í³”  Í³—” Í´” Í´” Í´	” Í´”" Í´”$ Í´ ”% Í´!’” Íµ” Íµ”” Í·
+”
+ Í·” Í·” Í·—” Í¸” Í¸” Í¸	” Í¸” Í¸” Í¸” Í¸’” Í¹” Í¹‘”	 Íº›” Í»” Í»” Í»	” Í»” Í»” Í»”% Í»!”' Í»#”( Í»$”/ Í»+”0 Í»,—” Í¼” Í¼	” Í¼” Í¼”! Í¼”' Í¼!”) Í¼#–” Í½” Í½” Í½” Í½” Í½”' Í½–” Í¾” Í¾” Í¾”# Í¾”$ Í¾”1 Í¾)˜” Í¿” Í¿” Í¿” Í¿” Í¿”# Í¿”' Í¿”) Í¿!‘” ÍÀ“”	 ÍÁ”
+ ÍÁ” ÍÁ’” ÍÂ”4 ÍÂ0’” ÍÃ” ÍÃ‘” ÍÅ‘” ÍÇ’” ÍÈ” ÍÈž” ÍÉ” ÍÉ”' ÍÉ”) ÍÉ”1 ÍÉ"”3 ÍÉ$”4 ÍÉ%”6 ÍÉ'”; ÍÉ,”= ÍÉ.”ÌB ÍÉ3”ÌC ÍÉ4”ÌH ÍÉ9”ÌJ ÍÉ;ž” ÍÊ” ÍÊ”& ÍÊ”( ÍÊ”0 ÍÊ!”2 ÍÊ#”3 ÍÊ$”5 ÍÊ&”: ÍÊ+”< ÍÊ-”ÌA ÍÊ2”ÌB ÍÊ3”ÌG ÍÊ8”ÌI ÍÊ:‘” ÍË–”  ÍÎ ” ÍÎ”	 ÍÎ	” ÍÎ” ÍÎ” ÍÎÔrH–§version¤file§sources®sourcesContent¥names¨mappingsÀ‘À‘ÀÜ‘”    ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”  	 ‘”  
+ ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”    ‘”  ! ‘”  " ‘”  # ‘”  $ ‘”  % ‘”  & ‘”  ' ‘”  ( ‘”  ) ‘”  * ‘”  + ‘”  , ‘”  - ‘”  . ‘”  / ‘”  0 ‘”  1 ‘”  2 ‘”  3 ‘”  4 ‘”  5 ‘”  6 ‘”  7 ‘”  8 ‘”  9 ‘”  : ‘”  ; ‘”  < ‘”  = ‘”  > ‘”  ? ‘”  Ì@ ‘”  ÌA ‘”  ÌB ‘”  ÌC ‘”  ÌD ‘”  ÌE ‘”  ÌF ‘”  ÌG ‘”  ÌH ‘”  ÌI ‘”  ÌJ ‘”  ÌK ‘”  ÌL ‘”  ÌM ‘”  ÌN ‘”  ÌO ‘”  ÌP ‘”  ÌQ ‘”  ÌR ‘”  ÌS ‘”  ÌT ‘”  ÌU ‘”  ÌV ‘”  ÌW ‘”  ÌX ‘”  ÌY ‘”  ÌZ ‘”  Ì[ ‘”  Ì\ ‘”  Ì] ‘”  Ì^ ‘”  Ì_ ‘”  Ì` ‘”  Ìa ‘”  Ìb ‘”  Ìc ‘”  Ìd ‘”  Ìe ‘”  Ìf ‘”  Ìg ‘”  Ìh ‘”  Ìi ‘”  Ìj ‘”  Ìk ‘”  Ìl ‘”  Ìm ‘”  Ìn ‘”  Ìo ‘”  Ìp ‘”  Ìq ‘”  Ìr ‘”  Ìs ‘”  Ìt ‘”  Ìu ‘”  Ìv ‘”  Ìw ‘”  Ìx ‘”  Ìy ‘”  Ìz ‘”  Ì{ ‘”  Ì| ‘”  Ì} ‘”  Ì~ ‘”  Ì ‘”  Ì€ ‘”  Ì ‘”  Ì‚ ‘”  Ìƒ ‘”  Ì„ ‘”  Ì… ‘”  Ì† ‘”  Ì‡ ‘”  Ìˆ ‘”  Ì‰ ‘”  ÌŠ ‘”  Ì‹ ‘”  ÌŒ ‘”  Ì ‘”  ÌŽ ‘”  Ì ‘”  Ì ‘”  Ì‘ ‘”  Ì’ ‘”  Ì“ ‘”  Ì” ‘”  Ì• ‘”  Ì– ‘”  Ì— ‘”  Ì˜ ‘”  Ì™ ‘”  Ìš ‘”  Ì› ‘”  Ìœ ‘”  Ì ‘”  Ìž ‘”  ÌŸ ‘”  Ì  ‘”  Ì¡ ‘”  Ì¢ ‘”  Ì£ ‘”  Ì¤ ‘”  Ì¥ ‘”  Ì¦ ‘”  Ì§ ‘”  Ì¨ ‘”  Ì© ‘”  Ìª ‘”  Ì« ‘”  Ì¬ ‘”  Ì­ ‘”  Ì® ‘”  Ì¯ ‘”  Ì° ‘”  Ì± ‘”  Ì² ‘”  Ì³ ‘”  Ì´ ‘”  Ìµ ‘”  Ì¶ ‘”  Ì· ‘”  Ì¸ ‘”  Ì¹ ‘”  Ìº ‘”  Ì» ‘”  Ì¼ ‘”  Ì½ ‘”  Ì¾ ‘”  Ì¿ ‘”  ÌÀ ‘”  ÌÁ ‘”  ÌÂ ‘”  ÌÃ ‘”  ÌÄ ‘”  ÌÅ ‘”  ÌÆ ‘”  ÌÇ ‘”  ÌÈ ‘”  ÌÉ ‘”  ÌÊ ‘”  ÌË ‘”  ÌÌ ‘”  ÌÍ ‘”  ÌÎ ‘”  ÌÏ ‘”  ÌÐ ‘”  ÌÑ ‘”  ÌÒ ‘”  ÌÓ ‘”  ÌÔ ‘”  ÌÕ ‘”  ÌÖ ‘”  Ì× ‘”  ÌØ ‘”  ÌÙ ‘”  ÌÚ ‘”  ÌÛ ‘”  ÌÜ ‘”  ÌÝ ‘”  ÌÞ ‘”  Ìß ‘”  Ìà ‘”  Ìá ‘”  Ìâ ‘”  Ìã ‘”  Ìä ‘”  Ìå ‘”  Ìæ ‘”  Ìç ‘”  Ìè ‘”  Ìé ‘”  Ìê ‘”  Ìë ‘”  Ìì ‘”  Ìí ‘”  Ìî ‘”  Ìï ‘”  Ìð ‘”  Ìñ ‘”  Ìò ‘”  Ìó ‘”  Ìô ‘”  Ìõ ‘”  Ìö ‘”  Ì÷ ‘”  Ìø ‘”  Ìù ‘”  Ìú ‘”  Ìû ‘”  Ìü ‘”  Ìý ‘”  Ìþ ‘”  Ìÿ ‘”  Í  ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í	 ‘”  Í
+ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í  ‘”  Í! ‘”  Í" ‘”  Í# ‘”  Í$ ‘”  Í% ‘”  Í& ‘”  Í' ‘”  Í( ‘”  Í) ‘”  Í* ‘”  Í+ ‘”  Í, ‘”  Í- ‘”  Í. ‘”  Í/ ‘”  Í0 ‘”  Í1 ‘”  Í2 ‘”  Í3 ‘”  Í4 ‘”  Í5 ‘”  Í6 ‘”  Í7 ‘”  Í8 ‘”  Í9 ‘”  Í: ‘”  Í; ‘”  Í< ‘”  Í= ‘”  Í> ‘”  Í? ‘”  Í@ ‘”  ÍA ‘”  ÍB ‘”  ÍC ‘”  ÍD ‘”  ÍE ‘”  ÍF ‘”  ÍG ‘”  ÍH ‘”  ÍI ‘”  ÍJ ‘”  ÍK ‘”  ÍL ‘”  ÍM ‘”  ÍN ‘”  ÍO ‘”  ÍP ‘”  ÍQ ‘”  ÍR ‘”  ÍS ‘”  ÍT ‘”  ÍU ‘”  ÍV ‘”  ÍW ‘”  ÍX ‘”  ÍY ‘”  ÍZ ‘”  Í[ ‘”  Í\ ‘”  Í] ‘”  Í^ ‘”  Í_ ‘”  Í` ‘”  Ía ‘”  Íb ‘”  Íc ‘”  Íd ‘”  Íe ‘”  Íf ‘”  Íg ‘”  Íh ‘”  Íi ‘”  Íj ‘”  Ík ‘”  Íl ‘”  Ím ‘”  Ín ‘”  Ío ‘”  Íp ‘”  Íq ‘”  Ír ‘”  Ís ‘”  Ít ‘”  Íu ‘”  Ív ‘”  Íw ‘”  Íx ‘”  Íy ‘”  Íz ‘”  Í{ ‘”  Í| ‘”  Í} ‘”  Í~ ‘”  Í ‘”  Í€ ‘”  Í ‘”  Í‚ ‘”  Íƒ ‘”  Í„ ‘”  Í… ‘”  Í† ‘”  Í‡ ‘”  Íˆ ‘”  Í‰ ‘”  ÍŠ ‘”  Í‹ ‘”  ÍŒ ‘”  Í ‘”  ÍŽ ‘”  Í ‘”  Í ‘”  Í‘ ‘”  Í’ ‘”  Í“ ‘”  Í” ‘”  Í• ‘”  Í– ‘”  Í— ‘”  Í˜ ‘”  Í™ ‘”  Íš ‘”  Í› ‘”  Íœ ‘”  Í ‘”  Íž ‘”  ÍŸ ‘”  Í  ‘”  Í¡ ‘”  Í¢ ‘”  Í£ ‘”  Í¤ ‘”  Í¥ ‘”  Í¦ ‘”  Í§ ‘”  Í¨ ‘”  Í© ‘”  Íª ‘”  Í« ‘”  Í¬ ‘”  Í­ ‘”  Í® ‘”  Í¯ ‘”  Í° ‘”  Í± ‘”  Í² ‘”  Í³ ‘”  Í´ ‘”  Íµ ‘”  Í¶ ‘”  Í· ‘”  Í¸ ‘”  Í¹ ‘”  Íº ‘”  Í» ‘”  Í¼ ‘”  Í½ ‘”  Í¾ ‘”  Í¿ ‘”  ÍÀ ‘”  ÍÁ ‘”  ÍÂ ‘”  ÍÃ ‘”  ÍÄ ‘”  ÍÅ ‘”  ÍÆ ‘”  ÍÇ ‘”  ÍÈ ‘”  ÍÉ ‘”  ÍÊ ‘”  ÍË ‘”  ÍÌ ‘”  ÍÍ ‘”  ÍÎ ‘”  ÍÏ ‘”  ÍÐ ‘”  ÍÑ ‘”  ÍÒ ‘”  ÍÓ ‘”  ÍÔ ‘”  ÍÕ ‘”  ÍÖ ‘”  Í× ‘”  ÍØ ‘”  ÍÙ ‘”  ÍÚ ‘”  ÍÛ ‘”  ÍÜ ‘”  ÍÝ ‘”  ÍÞ ‘”  Íß ‘”  Íà ‘”  Íá ‘”  Íâ ‘”  Íã ‘”  Íä ‘”  Íå ‘”  Íæ ‘”  Íç ‘”  Íè ‘”  Íé ‘”  Íê ‘”  Íë ‘”  Íì ‘”  Íí ‘”  Íî ‘”  Íï ‘”  Íð ‘”  Íñ ‘”  Íò ‘”  Íó ‘”  Íô ‘”  Íõ ‘”  Íö ‘”  Í÷ ‘”  Íø ‘”  Íù ‘”  Íú ‘”  Íû ‘”  Íü ‘”  Íý ‘”  Íþ ‘”  Íÿ ‘”  Í  ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í	 ‘”  Í
+ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í  ‘”  Í! ‘”  Í" ‘”  Í# ‘”  Í$ ‘”  Í% ‘”  Í& ‘”  Í' ‘”  Í( ‘”  Í) ‘”  Í* ‘”  Í+ ‘”  Í, ‘”  Í- ‘”  Í. ‘”  Í/ ‘”  Í0 ‘”  Í1 ‘”  Í2 ‘”  Í3 ‘”  Í4 ‘”  Í5 ‘”  Í6 ‘”  Í7 ‘”  Í8 ‘”  Í9 ‘”  Í: ‘”  Í; ‘”  Í< ‘”  Í= ‘”  Í> ‘”  Í? ‘”  Í@ ‘”  ÍA ‘”  ÍB ‘”  ÍC ‘”  ÍD ‘”  ÍE ‘”  ÍF ‘”  ÍG ‘”  ÍH ‘”  ÍI ‘”  ÍJ ‘”  ÍK ‘”  ÍL ‘”  ÍM ‘”  ÍN ‘”  ÍO ‘”  ÍP ‘”  ÍQ ‘”  ÍR ‘”  ÍS ‘”  ÍT ‘”  ÍU ‘”  ÍV ‘”  ÍW ‘”  ÍX ‘”  ÍY ‘”  ÍZ ‘”  Í[ ‘”  Í\ ‘”  Í] ‘”  Í^ ‘”  Í_ ‘”  Í` ‘”  Ía ‘”  Íb ‘”  Íc ‘”  Íd ‘”  Íe ‘”  Íf ‘”  Íg ‘”  Íh ‘”  Íi ‘”  Íj ‘”  Ík ‘”  Íl ‘”  Ím ‘”  Ín ‘”  Ío ‘”  Íp ‘”  Íq ‘”  Ír ‘”  Ís ‘”  Ít ‘”  Íu ‘”  Ív ‘”  Íw ‘”  Íx ‘”  Íy ‘”  Íz ‘”  Í{ ‘”  Í| ‘”  Í} ‘”  Í~ ‘”  Í ‘”  Í€ ‘”  Í ‘”  Í‚ ‘”  Íƒ ‘”  Í„ ‘”  Í… ‘”  Í† ‘”  Í‡ ‘”  Íˆ ‘”  Í‰ ‘”  ÍŠ ‘”  Í‹ ‘”  ÍŒ ‘”  Í ‘”  ÍŽ ‘”  Í ‘”  Í ‘”  Í‘ ‘”  Í’ ‘”  Í“ ‘”  Í” ‘”  Í• ‘”  Í– ‘”  Í— ‘”  Í˜ ‘”  Í™ ‘”  Íš ‘”  Í› ‘”  Íœ ‘”  Í ‘”  Íž ‘”  ÍŸ ‘”  Í  ‘”  Í¡ ‘”  Í¢ ‘”  Í£ ‘”  Í¤ ‘”  Í¥ ‘”  Í¦ ‘”  Í§ ‘”  Í¨ ‘”  Í© ‘”  Íª ‘”  Í« ‘”  Í¬ ‘”  Í­ ‘”  Í® ‘”  Í¯ ‘”  Í° ‘”  Í± ‘”  Í² ‘”  Í³ ‘”  Í´ ‘”  Íµ ‘”  Í¶ ‘”  Í· ‘”  Í¸ ‘”  Í¹ ‘”  Íº ‘”  Í» ‘”  Í¼ ‘”  Í½ ‘”  Í¾ ‘”  Í¿ ‘”  ÍÀ ‘”  ÍÁ ‘”  ÍÂ ‘”  ÍÃ ‘”  ÍÄ ‘”  ÍÅ ‘”  ÍÆ ‘”  ÍÇ ‘”  ÍÈ ‘”  ÍÉ ‘”  ÍÊ ‘”  ÍË ‘”  ÍÌ ‘”  ÍÍ ‘”  ÍÎ ‘”  ÍÏ ‘”  ÍÐ ‘”  ÍÑ ‘”  ÍÒ ‘”  ÍÓ ‘”  ÍÔ ‘”  ÍÕ ‘”  ÍÖ ‘”  Í× ‘”  ÍØ ‘”  ÍÙ ‘”  ÍÚ ‘”  ÍÛ ‘”  ÍÜ ‘”  ÍÝ ‘”  ÍÞ ‘”  Íß ‘”  Íà ‘”  Íá ‘”  Íâ ‘”  Íã ‘”  Íä ‘”  Íå ‘”  Íæ ‘”  Íç ‘”  Íè ‘”  Íé ‘”  Íê ‘”  Íë ‘”  Íì ‘”  Íí ‘”  Íî ‘”  Íï ‘”  Íð ‘”  Íñ ‘”  Íò ‘”  Íó ‘”  Íô ‘”  Íõ ‘”  Íö ‘”  Í÷ ‘”  Íø ‘”  Íù ‘”  Íú ‘”  Íû ‘”  Íü ‘”  Íý ‘”  Íþ ‘”  Íÿ ‘”  Í  ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í	 ‘”  Í
+ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í  ‘”  Í! ‘”  Í" ‘”  Í# ‘”  Í$ ‘”  Í% ‘”  Í& ‘”  Í' ‘”  Í( ‘”  Í) ‘”  Í* ‘”  Í+ ‘”  Í, ‘”  Í- ‘”  Í. ‘”  Í/ ‘”  Í0 ‘”  Í1 ‘”  Í2 ‘”  Í3 ‘”  Í4 ‘”  Í5 ‘”  Í6 ‘”  Í7 ‘”  Í8 ‘”  Í9 ‘”  Í: ‘”  Í; ‘”  Í< ‘”  Í= ‘”  Í> ‘”  Í? ‘”  Í@ ‘”  ÍA ‘”  ÍB ‘”  ÍC ‘”  ÍD ‘”  ÍE ‘”  ÍF ‘”  ÍG ‘”  ÍH ‘”  ÍI ‘”  ÍJ ‘”  ÍK ‘”  ÍL ‘”  ÍM ‘”  ÍN ‘”  ÍO ‘”  ÍP ‘”  ÍQ ‘”  ÍR ‘”  ÍS ‘”  ÍT ‘”  ÍU ‘”  ÍV ‘”  ÍW ‘”  ÍX ‘”  ÍY ‘”  ÍZ ‘”  Í[ ‘”  Í\ ‘”  Í] ‘”  Í^ ‘”  Í_ ‘”  Í` ‘”  Ía ‘”  Íb ‘”  Íc ‘”  Íd ‘”  Íe ‘”  Íf ‘”  Íg ‘”  Íh ‘”  Íi ‘”  Íj ‘”  Ík ‘”  Íl ‘”  Ím ‘”  Ín ‘”  Ío ‘”  Íp ‘”  Íq ‘”  Ír ‘”  Ís ‘”  Ít ‘”  Íu ‘”  Ív ‘”  Íw ‘”  Íx ‘”  Íy ‘”  Íz ‘”  Í{ ‘”  Í| ‘”  Í} ‘”  Í~ ‘”  Í ‘”  Í€ ‘”  Í ‘”  Í‚ ‘”  Íƒ ‘”  Í„ ‘”  Í… ‘”  Í† ‘”  Í‡ ‘”  Íˆ ‘”  Í‰ ‘”  ÍŠ ‘”  Í‹ ‘”  ÍŒ ‘”  Í ‘”  ÍŽ ‘”  Í ‘”  Í ‘”  Í‘ ‘”  Í’ ‘”  Í“ ‘”  Í” ‘”  Í• ‘”  Í– ‘”  Í— ‘”  Í˜ ‘”  Í™ ‘”  Íš ‘”  Í› ‘”  Íœ ‘”  Í ‘”  Íž ‘”  ÍŸ ‘”  Í  ‘”  Í¡ ‘”  Í¢ ‘”  Í£ ‘”  Í¤ ‘”  Í¥ ‘”  Í¦ ‘”  Í§ ‘”  Í¨ ‘”  Í© ‘”  Íª ‘”  Í« ‘”  Í¬ ‘”  Í­ ‘”  Í® ‘”  Í¯ ‘”  Í° ‘”  Í± ‘”  Í² ‘”  Í³ ‘”  Í´ ‘”  Íµ ‘”  Í¶ ‘”  Í· ‘”  Í¸ ‘”  Í¹ ‘”  Íº ‘”  Í» ‘”  Í¼ ‘”  Í½ ‘”  Í¾ ‘”  Í¿ ‘”  ÍÀ ‘”  ÍÁ ‘”  ÍÂ ‘”  ÍÃ ‘”  ÍÄ ‘”  ÍÅ ‘”  ÍÆ ‘”  ÍÇ ‘”  ÍÈ ‘”  ÍÉ ‘”  ÍÊ ‘”  ÍË ‘”  ÍÌ ‘”  ÍÍ ‘”  ÍÎ ‘”  ÍÏ ‘”  ÍÐ ‘”  ÍÑ ‘”  ÍÒ ‘”  ÍÓ ‘”  ÍÔ ‘”  ÍÕ ‘”  ÍÖ ‘”  Í× ‘”  ÍØ ‘”  ÍÙ ‘”  ÍÚ ‘”  ÍÛ ‘”  ÍÜ ‘”  ÍÝ ‘”  ÍÞ ‘”  Íß ‘”  Íà ‘”  Íá ‘”  Íâ ‘”  Íã ‘”  Íä ‘”  Íå ‘”  Íæ ‘”  Íç ‘”  Íè ‘”  Íé ‘”  Íê ‘”  Íë ‘”  Íì ‘”  Íí ‘”  Íî ‘”  Íï ‘”  Íð ‘”  Íñ ‘”  Íò ‘”  Íó ‘”  Íô ‘”  Íõ ‘”  Íö ‘”  Í÷ ‘”  Íø ‘”  Íù ‘”  Íú ‘”  Íû ‘”  Íü ‘”  Íý ‘”  Íþ ‘”  Íÿ ‘”  Í  ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í	 ‘”  Í
+ ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í ‘”  Í  ‘”  Í! ‘”  Í" ‘”  Í# ‘”  Í$ ‘”  Í% ‘”  Í& ‘”  Í' ‘”  Í( ‘”  Í) ‘”  Í* ‘”  Í+ ‘”  Í, ‘”  Í- ‘”  Í. ‘”  Í/ ‘”  Í0 ‘”  Í1 ‘”  Í2 ‘”  Í3 ‘”  Í4 ‘”  Í5 ‘”  Í6 ‘”  Í7 ‘”  Í8 ‘”  Í9 ‘”  Í: ‘”  Í; ‘”  Í< ‘”  Í= ‘”  Í> ‘”  Í? ‘”  Í@ ‘”  ÍA ‘”  ÍB ‘”  ÍC ‘”  ÍD ‘”  ÍE ‘”  ÍF ‘”  ÍG ‘”  ÍH ‘”  ÍI ‘”  ÍJ ‘”  ÍK ‘”  ÍL ‘”  ÍM ‘”  ÍN ‘”  ÍO ‘”  ÍP ‘”  ÍQ ‘”  ÍR ‘”  ÍS ‘”  ÍT ‘”  ÍU ‘”  ÍV ‘”  ÍW ‘”  ÍX ‘”  ÍY ‘”  ÍZ ‘”  Í[ ‘”  Í\ ‘”  Í] ‘”  Í^ ‘”  Í_ ‘”  Í` ‘”  Ía ‘”  Íb ‘”  Íc ‘”  Íd ‘”  Íe ‘”  Íf ‘”  Íg ‘”  Íh ‘”  Íi ‘”  Íj ‘”  Ík ‘”  Íl ‘”  Ím ‘”  Ín ‘”  Ío ‘”  Íp ‘”  Íq ‘”  Ír ‘”  Ís ‘”  Ít ‘”  Íu ‘”  Ív ‘”  Íw ‘”  Íx ‘”  Íy ‘”  Íz ‘”  Í{ ‘”  Í| ‘”  Í} ‘”  Í~ ‘”  Í ‘”  Í€ ‘”  Í ‘”  Í‚ ‘”  Íƒ ‘”  Í„ ‘”  Í… ‘”  Í† ‘”  Í‡ ‘”  Íˆ ‘”  Í‰ ‘”  ÍŠ ‘”  Í‹ ‘”  ÍŒ ‘”  Í ‘”  ÍŽ ‘”  Í ‘”  Í ‘”  Í‘ ‘”  Í’ ‘”  Í“ ‘”  Í” ‘”  Í• ‘”  Í– ‘”  Í— ‘”  Í˜ ‘”  Í™ ‘”  Íš ‘”  Í› ‘”  Íœ ‘”  Í ‘”  Íž ‘”  ÍŸ ‘”  Í  ‘”  Í¡ ‘”  Í¢ ‘”  Í£ ‘”  Í¤ ‘”  Í¥ ‘”  Í¦ ‘”  Í§ ‘”  Í¨ ‘”  Í© ‘”  Íª ‘”  Í« ‘”  Í¬ ‘”  Í­ ‘”  Í® ‘”  Í¯ ‘”  Í° ‘”  Í± ‘”  Í² ‘”  Í³ ‘”  Í´ ‘”  Íµ ‘”  Í¶ ‘”  Í· ‘”  Í¸ ‘”  Í¹ ‘”  Íº ‘”  Í» ‘”  Í¼ ‘”  Í½ ‘”  Í¾ ‘”  Í¿ ‘”  ÍÀ ‘”  ÍÁ ‘”  ÍÂ ‘”  ÍÃ ‘”  ÍÄ ‘”  ÍÅ ‘”  ÍÆ ‘”  ÍÇ ‘”  ÍÈ ‘”  ÍÉ ‘”  ÍÊ ‘”  ÍË ‘”  ÍÌ ‘”  ÍÍ ‘”  ÍÎ ‘”  ÍÏ ‘”  ÍÐ ‘”  ÍÑ ‘”  ÍÒ ‘”  ÍÓ ‘”  ÍÔ ‘”  ÍÕ ‘”  ÍÖ ‘”  Í× ‘”  ÍØ ‘”  ÍÙ ‘”  ÍÚ ‘”  ÍÛ ‘”  ÍÜ ‘”  ÍÝ ‘”  ÍÞ ‘”  Íß ‘”  Íà ‘”  Íá ‘”  Íâ ‘”  Íã ‘”  Íä ‘”  Íå ‘”  Íæ ‘”  Íç ‘”  Íè ‘”  Íé ‘”  Íê ‘”  Íë ‘”  Íì ‘”  Íí ‘”  Íî ‘”  Íï ‘”  Íð ‘”  Íñ ‘”  Íò ‘”  Íó ‘”  Íô ‘”  Íõ ‘”  Íö ‘”  Í÷ ‘”  Íø ‘”  Íù ‘”  Íú ‘”  Íû ‘”  Íü ‘”  Íý ‘”  Íþ ‘”  Íÿ ‘”  Í  ‘”  Í ‘”  Í ÔrI’§missing¦pluginÃ¦genAbcÂÔ  ÔrJ”²dynamicImportCache¹exportAllDeclarationCache»exportNamedDeclarationCache«importCache‘ÔrK–¤type¥start£end«declarationªspecifiers¦source¶ExportNamedDeclarationÍæ(Íæ9À‘ÔrL•¤type¥start£end¥local¨exported¯ExportSpecifierÍæ1Íæ6ÔrM”¤type¥start£end¤nameªIdentifierÍæ1Íæ6¥IndexMªIdentifierÍæ1Íæ6¥IndexÀšÔrN•¤type¥start£endªspecifiers¦source±ImportDeclarationÍîÍ‘ÔrO”¤type¥start£end¥local¶ImportDefaultSpecifierÍõÍûMªIdentifierÍõÍû¦pickerÔrP•¤type¥start£end¥value£raw§LiteralÍÍ±@ohos.file.picker³"@ohos.file.picker"N±ImportDeclarationÍÍU‘ÔrQ•¤type¥start£end¨imported¥local¯ImportSpecifierÍ Í-MªIdentifierÍ Í-­WindowAbilityMªIdentifierÍ Í-­WindowAbilityP§LiteralÍ5ÍT½../entryability/WindowAbility¿'../entryability/WindowAbility'N±ImportDeclarationÍWÍ—‘Q¯ImportSpecifierÍ`ÍqMªIdentifierÍ`Íq±LocalBookImporterMªIdentifierÍ`Íq±LocalBookImporterP§LiteralÍyÍ–»../common/LocalBookImporter½'../common/LocalBookImporter'N±ImportDeclarationÍ™Íç‘Q¯ImportSpecifierÍ¢ÍºMªIdentifierÍ¢Í¬ªbookParserMªIdentifierÍ°ÍºªbookParserP§LiteralÍÂÍæÙ"@hms.core.readerservice.bookParserÙ$"@hms.core.readerservice.bookParser"N±ImportDeclarationÍéÍ	‘O¶ImportDefaultSpecifierÍðÍõMªIdentifierÍðÍõ¥hilogP§LiteralÍûÍ«@ohos.hilog­"@ohos.hilog"N±ImportDeclarationÍÍ:‘Q¯ImportSpecifierÍÍMªIdentifierÍÍ©BookUtilsMªIdentifierÍÍ©BookUtilsP§LiteralÍ%Í9²../utils/BookUtils´'../utils/BookUtils'N±ImportDeclarationÍ<Íw‘Q¯ImportSpecifierÍEÍTMªIdentifierÍEÍT¯bookDataManagerMªIdentifierÍEÍT¯bookDataManagerP§LiteralÍ\Ív¸../utils/BookDataManagerº'../utils/BookDataManager'N±ImportDeclarationÍyÍ§‘Q¯ImportSpecifierÍ‚ÍŠMªIdentifierÍ‚ÍŠ¨BookInfoMªIdentifierÍ‚ÍŠ¨BookInfoP§LiteralÍ’Í¦²../common/BookInfo´'../common/BookInfo'N±ImportDeclarationÍ©ÍË‘O¶ImportDefaultSpecifierÍ°Í¶MªIdentifierÍ°Í¶¦routerP§LiteralÍ¼ÍÊ¬@ohos.router®"@ohos.router"N±ImportDeclarationÍÍÍ‘Q¯ImportSpecifierÍÖÍçMªIdentifierÍÖÍç±bookSourceManagerMªIdentifierÍÖÍç±bookSourceManagerP§LiteralÍïÍ½../managers/BookSourceManager¿'../managers/BookSourceManager'

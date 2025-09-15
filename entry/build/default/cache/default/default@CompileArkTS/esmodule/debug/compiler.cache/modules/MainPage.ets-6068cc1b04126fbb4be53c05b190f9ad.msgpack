@@ -1,0 +1,237 @@
+Ôr@Ÿªassertions¤code´customTransformCache¬dependencies¢id¤meta±moduleSideEffects¬originalCode±originalSourcemap«resolvedIds®sourcemapChainµsyntheticNamedExportsµtransformDependencies®transformFiles¨cacheAstÔrAÚÎif (!("finalizeConstruction" in ViewPU.prototype)) {
+    Reflect.set(ViewPU.prototype, "finalizeConstruction", () => { });
+}
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+import { Index } from './Index';
+import { MinePage } from './Mine';
+import { RecommendPage } from './RecommendPage';
+class MainPage extends ViewPU {
+    constructor(parent, params, __localStorage, elmtId = -1, paramsLambda = undefined, extraInfo) {
+        super(parent, __localStorage, elmtId, extraInfo);
+        if (typeof paramsLambda === "function") {
+            this.paramsGenerator_ = paramsLambda;
+        }
+        this.__currentIndex = new ObservedPropertySimplePU(0, this, "currentIndex");
+        this.setInitiallyProvidedValue(params);
+        this.finalizeConstruction();
+    }
+    setInitiallyProvidedValue(params) {
+        if (params.currentIndex !== undefined) {
+            this.currentIndex = params.currentIndex;
+        }
+    }
+    updateStateVars(params) {
+    }
+    purgeVariableDependenciesOnElmtId(rmElmtId) {
+        this.__currentIndex.purgeDependencyOnElmtId(rmElmtId);
+    }
+    aboutToBeDeleted() {
+        this.__currentIndex.aboutToBeDeleted();
+        SubscriberManager.Get().delete(this.id__());
+        this.aboutToBeDeletedInternal();
+    }
+    get currentIndex() {
+        return this.__currentIndex.get();
+    }
+    set currentIndex(newValue) {
+        this.__currentIndex.set(newValue);
+    }
+    TabBuilder(title, targetIndex, icon, parent = null) {
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Column.create();
+            Column.width('100%');
+            Column.height('100%');
+            Column.justifyContent(FlexAlign.Center);
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Image.create(icon);
+            Image.width(24);
+            Image.height(24);
+            Image.fillColor(this.currentIndex === targetIndex ? '#243154' : { "id": 16777237, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+        }, Image);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create(title);
+            Text.fontColor(this.currentIndex === targetIndex ? '#243154' : { "id": 16777237, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Text.fontSize(12);
+        }, Text);
+        Text.pop();
+        Column.pop();
+    }
+    initialRender() {
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Tabs.create({ barPosition: BarPosition.End });
+            Tabs.onChange((index) => {
+                this.currentIndex = index;
+            });
+            Tabs.width('100%');
+            Tabs.height('100%');
+        }, Tabs);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            TabContent.create(() => {
+                {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        if (isInitialRender) {
+                            let componentCall = new Index(this, {}, undefined, elmtId, () => { }, { page: "entry/src/main/ets/pages/MainPage.ets", line: 43, col: 9 });
+                            ViewPU.create(componentCall);
+                            let paramsLambda = () => {
+                                return {};
+                            };
+                            componentCall.paramsGenerator_ = paramsLambda;
+                        }
+                        else {
+                            this.updateStateVarsOfChildByElmtId(elmtId, {});
+                        }
+                    }, { name: "Index" });
+                }
+            });
+            TabContent.tabBar({ builder: () => {
+                    this.TabBuilder.call(this, 'ä¹¦æ¶', 0, { "id": 16777272, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                } });
+        }, TabContent);
+        TabContent.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            TabContent.create(() => {
+                {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        if (isInitialRender) {
+                            let componentCall = new RecommendPage(this, {}, undefined, elmtId, () => { }, { page: "entry/src/main/ets/pages/MainPage.ets", line: 48, col: 9 });
+                            ViewPU.create(componentCall);
+                            let paramsLambda = () => {
+                                return {};
+                            };
+                            componentCall.paramsGenerator_ = paramsLambda;
+                        }
+                        else {
+                            this.updateStateVarsOfChildByElmtId(elmtId, {});
+                        }
+                    }, { name: "RecommendPage" });
+                }
+            });
+            TabContent.tabBar({ builder: () => {
+                    this.TabBuilder.call(this, 'æ¨è', 1, { "id": 16777276, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                } });
+        }, TabContent);
+        TabContent.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            TabContent.create(() => {
+                {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        if (isInitialRender) {
+                            let componentCall = new MinePage(this, {}, undefined, elmtId, () => { }, { page: "entry/src/main/ets/pages/MainPage.ets", line: 53, col: 9 });
+                            ViewPU.create(componentCall);
+                            let paramsLambda = () => {
+                                return {};
+                            };
+                            componentCall.paramsGenerator_ = paramsLambda;
+                        }
+                        else {
+                            this.updateStateVarsOfChildByElmtId(elmtId, {});
+                        }
+                    }, { name: "MinePage" });
+                }
+            });
+            TabContent.tabBar({ builder: () => {
+                    this.TabBuilder.call(this, 'æˆ‘çš„', 2, { "id": 16777294, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                } });
+        }, TabContent);
+        TabContent.pop();
+        Tabs.pop();
+    }
+    rerender() {
+        this.updateDirtyElements();
+    }
+    static getEntryName() {
+        return "MainPage";
+    }
+}
+registerNamedRoute(() => new MainPage(undefined, {}), "", { bundleName: "com.example.readerkitdemo", moduleName: "entry", pagePath: "pages/MainPage", pageFullPath: "entry/src/main/ets/pages/MainPage", integratedHsp: "false", moduleType: "followWithHap" });
+//# sourceMappingURL=MainPage.js.mapÂ“Ù6D:\ST\ReaderKitDemo\entry\src\main\ets\pages\Index.etsÙ5D:\ST\ReaderKitDemo\entry\src\main\ets\pages\Mine.etsÙ>D:\ST\ReaderKitDemo\entry\src\main\ets\pages\RecommendPage.etsÙ9D:\ST\ReaderKitDemo\entry\src\main\ets\pages\MainPage.etsÔrBšªmoduleName±isLocalDependency¯isNodeEntryFile§pkgPath±belongProjectPath§pkgNameªpkgVersion±dependencyPkgInfo°belongModulePath¬shouldEmitJs¥entryÃÂ¹D:\ST\ReaderKitDemo\entry³D:\ST\ReaderKitDemo¥entry¥1.0.0Ô  ¹D:\ST\ReaderKitDemo\entryÃÃÚZ/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { Index } from './Index';
+import { MinePage } from './Mine';
+import { RecommendPage } from './RecommendPage';
+
+@Entry
+@Component
+struct MainPage {
+  @State currentIndex: number = 0;
+
+  @Builder TabBuilder(title: string, targetIndex: number, icon: Resource) {
+    Column() {
+      Image(icon)
+        .width(24)
+        .height(24)
+        .fillColor(this.currentIndex === targetIndex ? '#243154' : $r('app.color.black_60_opacity'))
+      Text(title)
+        .fontColor(this.currentIndex === targetIndex ? '#243154' : $r('app.color.black_60_opacity'))
+        .fontSize(12)
+    }
+    .width('100%')
+    .height('100%')
+    .justifyContent(FlexAlign.Center)
+  }
+
+  build() {
+    Tabs({ barPosition: BarPosition.End }) {
+      TabContent() {
+        Index()
+      }
+      .tabBar(this.TabBuilder('ä¹¦æ¶', 0, $r('app.media.bookshelf')))
+
+      TabContent() {
+        RecommendPage()
+      }
+      .tabBar(this.TabBuilder('æ¨è', 1, $r('app.media.faxian')))
+
+      TabContent() {
+        MinePage()
+      }
+      .tabBar(this.TabBuilder('æˆ‘çš„', 2, $r('app.media.usercenter')))
+    }
+    .onChange((index: number) => {
+      this.currentIndex = index;
+    })
+    .width('100%')
+    .height('100%')
+  }
+}
+ÀÔrC“¦./Mine§./Index¯./RecommendPageÔrD—ªassertions¨external¢id¤meta±moduleSideEffectsªresolvedByµsyntheticNamedExportsAÂÙ5D:\ST\ReaderKitDemo\entry\src\main\ets\pages\Mine.etsAÃªoh-resolveÂDAÂÙ6D:\ST\ReaderKitDemo\entry\src\main\ets\pages\Index.etsAÃªoh-resolveÂDAÂÙ>D:\ST\ReaderKitDemo\entry\src\main\ets\pages\RecommendPage.etsAÃªoh-resolveÂ“ÔrE–§version¤fileªsourceRoot§sources¥names¨mappings«MainPage.js ‘¬MainPage.etsÜ ˜‘”    ‘” ˜”   ” ”	 	” ” ” ” ”   ˜”   ” ”	 	” ” ” ”! !”" "˜”   ” ”	 	” ” ” ”/ /”0 0’” ” ‘”  ’”;  ”< !‘” 0’” 	” ’” 	” ˜” ” ” ” #” %”! 8”# :”' ÌH’” ” 
+–” ” 
+” "” "
+” "” "–” ” 
+” #” #” #”  #˜” ” 
+” $”! $”" $”+ $”, $”2 $$”” ” ” ” –” ” ” 	” ” ” –” ” ” 	” ” ” Ü ” ” ” 	” ” ”  ”! ”- $”2 )”= 4”> 5”? 6”Ì@ 7”ÌI Ì@”ÌJ ÌA”ÌK ÌB”Ì» Ìc”” ” 
+” ” Ü ” ” 
+” 	” ” ” ”  ”, $”1 )”< 4”= 5”> 6”? 7”ÌH Ì@”ÌI ÌA”ÌJ ÌB”Ìº Ìc–” ” 
+”  	”  ”  ”  ’” ” 
+’” ” 
+‘” %‘” 'š” (” (” (	” (”% (”' (”2 (#”3 ($”6 ('”8 ()™” (” (” 8” 8” 8” 8”  8”" 8”$ 8 —” 9” 9
+” 9”! 9”$ 9”) 9”* 9 ’” :” :–” (” (” ;” ;
+” ;” ;–” (” (” <” <” <” <’”4 *”9 *’” ,” ,˜” ,” ,” ,”# ,”/ ,”3 ,"”5 ,$”6 ,%’”4 /”ÌA /’” 1” 1˜” 1” 1” 1”# 1”/ 1”3 1"”5 1$”6 1%’”4 4”< 4’” 6” 6˜” 6” 6” 6”# 6”/ 6”3 6"”5 6$”6 6%’” (” (‘” =ÔrF–§version¤file§sources®sourcesContent¥names¨mappingsÀ‘À‘ÀÜ ¡‘”    ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”  	 ‘”  
+ ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”    ‘”  ! ‘”  " ‘”  # ‘”  $ ‘”  % ‘”  & ‘”  ' ‘”  ( ‘”  ) ‘”  * ‘”  + ‘”  , ‘”  - ‘”  . ‘”  / ‘”  0 ‘”  1 ‘”  2 ‘”  3 ‘”  4 ‘”  5 ‘”  6 ‘”  7 ‘”  8 ‘”  9 ‘”  : ‘”  ; ‘”  < ‘”  = ‘”  > ‘”  ? ‘”  Ì@ ‘”  ÌA ‘”  ÌB ‘”  ÌC ‘”  ÌD ‘”  ÌE ‘”  ÌF ‘”  ÌG ‘”  ÌH ‘”  ÌI ‘”  ÌJ ‘”  ÌK ‘”  ÌL ‘”  ÌM ‘”  ÌN ‘”  ÌO ‘”  ÌP ‘”  ÌQ ‘”  ÌR ‘”  ÌS ‘”  ÌT ‘”  ÌU ‘”  ÌV ‘”  ÌW ‘”  ÌX ‘”  ÌY ‘”  ÌZ ‘”  Ì[ ‘”  Ì\ ‘”  Ì] ‘”  Ì^ ‘”  Ì_ ‘”  Ì` ‘”  Ìa ‘”  Ìb ‘”  Ìc ‘”  Ìd ‘”  Ìe ‘”  Ìf ‘”  Ìg ‘”  Ìh ‘”  Ìi ‘”  Ìj ‘”  Ìk ‘”  Ìl ‘”  Ìm ‘”  Ìn ‘”  Ìo ‘”  Ìp ‘”  Ìq ‘”  Ìr ‘”  Ìs ‘”  Ìt ‘”  Ìu ‘”  Ìv ‘”  Ìw ‘”  Ìx ‘”  Ìy ‘”  Ìz ‘”  Ì{ ‘”  Ì| ‘”  Ì} ‘”  Ì~ ‘”  Ì ‘”  Ì€ ‘”  Ì ‘”  Ì‚ ‘”  Ìƒ ‘”  Ì„ ‘”  Ì… ‘”  Ì† ‘”  Ì‡ ‘”  Ìˆ ‘”  Ì‰ ‘”  ÌŠ ‘”  Ì‹ ‘”  ÌŒ ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì‘ ‘”  Ì’ ‘”  Ì“ ‘”  Ì” ‘”  Ì• ‘”  Ì– ‘”  Ì— ‘”  Ì˜ ‘”  Ì™ ‘”  Ìš ‘”  Ì› ‘”  Ìœ ‘”  Ì ‘”  Ì ‘”  ÌŸ ‘”  Ì  ÔrG’§missing¦pluginÃ¦genAbcÂÔ  ÔrH”²dynamicImportCache¹exportAllDeclarationCache»exportNamedDeclarationCache«importCache“ÔrI•¤type¥start£endªspecifiers¦source±ImportDeclarationÍîÍ‘ÔrJ•¤type¥start£end¨imported¥local¯ImportSpecifierÍ÷ÍüÔrK”¤type¥start£end¤nameªIdentifierÍ÷Íü¥IndexKªIdentifierÍ÷Íü¥IndexÔrL•¤type¥start£end¥value£raw§LiteralÍÍ§./Index©'./Index'I±ImportDeclarationÍÍ2‘J¯ImportSpecifierÍÍ!KªIdentifierÍÍ!¨MinePageKªIdentifierÍÍ!¨MinePageL§LiteralÍ)Í1¦./Mine¨'./Mine'I±ImportDeclarationÍ4Íd‘J¯ImportSpecifierÍ=ÍJKªIdentifierÍ=ÍJ­RecommendPageKªIdentifierÍ=ÍJ­RecommendPageL§LiteralÍRÍc¯./RecommendPage±'./RecommendPage'

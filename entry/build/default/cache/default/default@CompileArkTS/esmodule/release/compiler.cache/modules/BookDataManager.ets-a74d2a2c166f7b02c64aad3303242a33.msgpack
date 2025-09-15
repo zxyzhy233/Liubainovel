@@ -1,0 +1,460 @@
+Ôr@Ÿªassertions¤code´customTransformCache¬dependencies¢id¤meta±moduleSideEffects¬originalCode±originalSourcemap«resolvedIds®sourcemapChainµsyntheticNamedExportsµtransformDependencies®transformFiles¨cacheAstÔrAÚ"\/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+import relationalStore from "@ohos.data.relationalStore";
+import hilog from "@ohos.hilog";
+import { BookInfo } from '../common/BookInfo';
+const TAG = 'BookDataManager';
+const DB_NAME = 'BookShelf.db';
+const TABLE_NAME = 'books';
+const SQL_CREATE_TABLE = `
+  CREATE TABLE IF NOT EXISTS ${TABLE_NAME} (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bookName TEXT NOT NULL,
+    author TEXT,
+    filePath TEXT NOT NULL UNIQUE,
+    coverPath TEXT,
+    progress TEXT,
+    lastReadTime INTEGER,
+    resourceIndex INTEGER,
+    domPos TEXT
+  )
+`;
+class BookDataManager {
+    constructor() {
+        this.rdbStore = null;
+    }
+    async init(context) {
+        if (this.rdbStore) {
+            return;
+        }
+        try {
+            const storeConfig = {
+                name: DB_NAME,
+                securityLevel: relationalStore.SecurityLevel.S1
+            };
+            this.rdbStore = await relationalStore.getRdbStore(context, storeConfig);
+            await this.rdbStore.executeSql(SQL_CREATE_TABLE);
+            // Check if 'author' column exists
+            const columns = await this.rdbStore.querySql(`PRAGMA table_info(${TABLE_NAME})`);
+            let hasAuthorColumn = false;
+            while (columns.goToNextRow()) {
+                if (columns.getString(columns.getColumnIndex('name')) === 'author') {
+                    hasAuthorColumn = true;
+                    break;
+                }
+            }
+            columns.close();
+            // If 'author' column does not exist, add it
+            if (!hasAuthorColumn) {
+                await this.rdbStore.executeSql(`ALTER TABLE ${TABLE_NAME} ADD COLUMN author TEXT`);
+                hilog.info(0x0000, TAG, 'Database schema updated: added author column.');
+            }
+            hilog.info(0x0000, TAG, 'Database init success.');
+        }
+        catch (e) {
+            hilog.error(0x0000, TAG, `Database init failed, error: ${e}`);
+        }
+    }
+    async insertBook(book) {
+        if (!this.rdbStore) {
+            hilog.error(0x0000, TAG, 'RdbStore is not initialized.');
+            return -1;
+        }
+        const valueBucket = {
+            bookName: book.bookName,
+            author: book.author,
+            filePath: book.filePath,
+            coverPath: book.coverPath,
+            progress: book.progress,
+            lastReadTime: book.lastReadTime
+        };
+        try {
+            const newRowId = await this.rdbStore.insert(TABLE_NAME, valueBucket);
+            hilog.info(0x0000, TAG, `Insert book success, row id: ${newRowId}`);
+            return newRowId;
+        }
+        catch (e) {
+            hilog.error(0x0000, TAG, `Insert book failed, error: ${e}`);
+            return -1;
+        }
+    }
+    async queryAllBooks() {
+        if (!this.rdbStore) {
+            hilog.error(0x0000, TAG, 'RdbStore is not initialized.');
+            return [];
+        }
+        const predicates = new relationalStore.RdbPredicates(TABLE_NAME);
+        try {
+            const resultSet = await this.rdbStore.query(predicates);
+            const books = [];
+            if (resultSet.rowCount > 0) {
+                while (resultSet.goToNextRow()) {
+                    const book = new BookInfo();
+                    book.id = resultSet.getLong(resultSet.getColumnIndex('id'));
+                    book.bookName = resultSet.getString(resultSet.getColumnIndex('bookName'));
+                    book.author = resultSet.getString(resultSet.getColumnIndex('author'));
+                    book.filePath = resultSet.getString(resultSet.getColumnIndex('filePath'));
+                    book.coverPath = resultSet.getString(resultSet.getColumnIndex('coverPath'));
+                    book.progress = resultSet.getString(resultSet.getColumnIndex('progress'));
+                    book.lastReadTime = resultSet.getLong(resultSet.getColumnIndex('lastReadTime'));
+                    book.resourceIndex = resultSet.getLong(resultSet.getColumnIndex('resourceIndex'));
+                    book.domPos = resultSet.getString(resultSet.getColumnIndex('domPos'));
+                    books.push(book);
+                }
+            }
+            resultSet.close();
+            hilog.info(0x0000, TAG, 'Query all books success.');
+            return books;
+        }
+        catch (e) {
+            hilog.error(0x0000, TAG, `Query all books failed, error: ${e}`);
+            return [];
+        }
+    }
+    async queryBooksByName(bookName) {
+        if (!this.rdbStore) {
+            hilog.error(0x0000, TAG, 'RdbStore is not initialized.');
+            return [];
+        }
+        const predicates = new relationalStore.RdbPredicates(TABLE_NAME);
+        predicates.like('bookName', `%${bookName}%`);
+        try {
+            const resultSet = await this.rdbStore.query(predicates);
+            const books = [];
+            if (resultSet.rowCount > 0) {
+                while (resultSet.goToNextRow()) {
+                    const book = new BookInfo();
+                    book.id = resultSet.getLong(resultSet.getColumnIndex('id'));
+                    book.bookName = resultSet.getString(resultSet.getColumnIndex('bookName'));
+                    book.author = resultSet.getString(resultSet.getColumnIndex('author'));
+                    book.filePath = resultSet.getString(resultSet.getColumnIndex('filePath'));
+                    book.coverPath = resultSet.getString(resultSet.getColumnIndex('coverPath'));
+                    book.progress = resultSet.getString(resultSet.getColumnIndex('progress'));
+                    book.lastReadTime = resultSet.getLong(resultSet.getColumnIndex('lastReadTime'));
+                    book.resourceIndex = resultSet.getLong(resultSet.getColumnIndex('resourceIndex'));
+                    book.domPos = resultSet.getString(resultSet.getColumnIndex('domPos'));
+                    books.push(book);
+                }
+            }
+            resultSet.close();
+            hilog.info(0x0000, TAG, 'Query books by name success.');
+            return books;
+        }
+        catch (e) {
+            hilog.error(0x0000, TAG, `Query books by name failed, error: ${e}`);
+            return [];
+        }
+    }
+    /**
+     * æ›´æ–°ä¹¦ç±é˜…è¯»è¿›åº¦ï¼ˆæ”¹ä¸ºè®°å½•ç« èŠ‚åï¼‰
+     * @param filePath æ–‡ä»¶è·¯å¾„
+     * @param resourceIndex èµ„æºç´¢å¼•
+     * @param domPos DOMä½ç½®
+     * @param chapterName ç« èŠ‚åï¼ˆæ›¿ä»£åŸæ¥çš„è¿›åº¦ç™¾åˆ†æ¯”ï¼‰
+     */
+    async updateBookProgress(filePath, resourceIndex, domPos, chapterName) {
+        if (!this.rdbStore) {
+            hilog.error(0x0000, TAG, 'RdbStore is not initialized.');
+            return;
+        }
+        try {
+            const valueBucket = {
+                resourceIndex: resourceIndex,
+                domPos: domPos,
+                progress: chapterName
+            };
+            const predicates = new relationalStore.RdbPredicates(TABLE_NAME);
+            predicates.equalTo('filePath', filePath);
+            await this.rdbStore.update(valueBucket, predicates);
+            hilog.info(0x0000, TAG, `Updated book progress: ${filePath}, resourceIndex=${resourceIndex}, domPos=${domPos}, chapterName=${chapterName}`);
+        }
+        catch (err) {
+            hilog.error(0x0000, TAG, `Failed to update book progress: ${JSON.stringify(err)}`);
+        }
+    }
+    async deleteBooksByIds(ids) {
+        if (!this.rdbStore) {
+            hilog.error(0x0000, TAG, 'RdbStore is not initialized.');
+            return;
+        }
+        if (!ids || ids.length === 0) {
+            return;
+        }
+        const predicates = new relationalStore.RdbPredicates(TABLE_NAME);
+        predicates.in('id', ids);
+        try {
+            await this.rdbStore.delete(predicates);
+            hilog.info(0x0000, TAG, `Delete books success, ids: ${ids.join(',')}`);
+        }
+        catch (e) {
+            hilog.error(0x0000, TAG, `Delete books failed, error: ${e}`);
+        }
+    }
+}
+export const bookDataManager = new BookDataManager();
+//# sourceMappingURL=BookDataManager.js.mapÂ“Ùt hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.data.relationalStore.d.tsÙe hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.hilog.d.tsÙ:D:\ST\ReaderKitDemo\entry\src\main\ets\common\BookInfo.etsÙ@D:\ST\ReaderKitDemo\entry\src\main\ets\utils\BookDataManager.etsÔrB›ªmoduleName±isLocalDependency¯isNodeEntryFile§pkgPath±belongProjectPath§pkgNameªpkgVersion±dependencyPkgInfo¯hostModulesInfo°belongModulePath¬shouldEmitJs¥entryÃÂ¹D:\ST\ReaderKitDemo\entry³D:\ST\ReaderKitDemo¥entry¥1.0.0Ô  “ÔrC’²hostDependencyName®hostModuleName¸../utils/BookDataManager¥entryC¸../utils/BookDataManager¥entryC¸../utils/BookDataManager¥entry¹D:\ST\ReaderKitDemo\entryÃÃÚÙ/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { relationalStore } from '@kit.ArkData';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { BookInfo } from '../common/BookInfo';
+import { common } from '@kit.AbilityKit';
+
+const TAG: string = 'BookDataManager';
+const DB_NAME = 'BookShelf.db';
+const TABLE_NAME = 'books';
+
+const SQL_CREATE_TABLE = `
+  CREATE TABLE IF NOT EXISTS ${TABLE_NAME} (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bookName TEXT NOT NULL,
+    author TEXT,
+    filePath TEXT NOT NULL UNIQUE,
+    coverPath TEXT,
+    progress TEXT,
+    lastReadTime INTEGER,
+    resourceIndex INTEGER,
+    domPos TEXT
+  )
+`;
+
+class BookDataManager {
+  private rdbStore: relationalStore.RdbStore | null = null;
+
+  async init(context: common.UIAbilityContext): Promise<void> {
+    if (this.rdbStore) {
+      return;
+    }
+    try {
+      const storeConfig: relationalStore.StoreConfig = {
+        name: DB_NAME,
+        securityLevel: relationalStore.SecurityLevel.S1
+      };
+      this.rdbStore = await relationalStore.getRdbStore(context, storeConfig);
+      await this.rdbStore.executeSql(SQL_CREATE_TABLE);
+      // Check if 'author' column exists
+      const columns = await this.rdbStore.querySql(`PRAGMA table_info(${TABLE_NAME})`);
+      let hasAuthorColumn = false;
+      while(columns.goToNextRow()) {
+        if (columns.getString(columns.getColumnIndex('name')) === 'author') {
+          hasAuthorColumn = true;
+          break;
+        }
+      }
+      columns.close();
+
+      // If 'author' column does not exist, add it
+      if (!hasAuthorColumn) {
+        await this.rdbStore.executeSql(`ALTER TABLE ${TABLE_NAME} ADD COLUMN author TEXT`);
+        hilog.info(0x0000, TAG, 'Database schema updated: added author column.');
+      }
+      hilog.info(0x0000, TAG, 'Database init success.');
+    } catch (e) {
+      hilog.error(0x0000, TAG, `Database init failed, error: ${e}`);
+    }
+  }
+
+  async insertBook(book: BookInfo): Promise<number> {
+    if (!this.rdbStore) {
+      hilog.error(0x0000, TAG, 'RdbStore is not initialized.');
+      return -1;
+    }
+    const valueBucket: relationalStore.ValuesBucket = {
+      bookName: book.bookName,
+      author: book.author,
+      filePath: book.filePath,
+      coverPath: book.coverPath,
+      progress: book.progress,
+      lastReadTime: book.lastReadTime
+    };
+    try {
+      const newRowId = await this.rdbStore.insert(TABLE_NAME, valueBucket);
+      hilog.info(0x0000, TAG, `Insert book success, row id: ${newRowId}`);
+      return newRowId;
+    } catch (e) {
+      hilog.error(0x0000, TAG, `Insert book failed, error: ${e}`);
+      return -1;
+    }
+  }
+
+  async queryAllBooks(): Promise<BookInfo[]> {
+    if (!this.rdbStore) {
+      hilog.error(0x0000, TAG, 'RdbStore is not initialized.');
+      return [];
+    }
+    const predicates = new relationalStore.RdbPredicates(TABLE_NAME);
+    try {
+      const resultSet = await this.rdbStore.query(predicates);
+      const books: BookInfo[] = [];
+      if (resultSet.rowCount > 0) {
+        while (resultSet.goToNextRow()) {
+          const book = new BookInfo();
+          book.id = resultSet.getLong(resultSet.getColumnIndex('id'));
+          book.bookName = resultSet.getString(resultSet.getColumnIndex('bookName'));
+          book.author = resultSet.getString(resultSet.getColumnIndex('author'));
+          book.filePath = resultSet.getString(resultSet.getColumnIndex('filePath'));
+          book.coverPath = resultSet.getString(resultSet.getColumnIndex('coverPath'));
+          book.progress = resultSet.getString(resultSet.getColumnIndex('progress'));
+          book.lastReadTime = resultSet.getLong(resultSet.getColumnIndex('lastReadTime'));
+          book.resourceIndex = resultSet.getLong(resultSet.getColumnIndex('resourceIndex'));
+          book.domPos = resultSet.getString(resultSet.getColumnIndex('domPos'));
+          books.push(book);
+        }
+      }
+      resultSet.close();
+      hilog.info(0x0000, TAG, 'Query all books success.');
+      return books;
+    } catch (e) {
+      hilog.error(0x0000, TAG, `Query all books failed, error: ${e}`);
+      return [];
+    }
+  }
+
+  async queryBooksByName(bookName: string): Promise<BookInfo[]> {
+    if (!this.rdbStore) {
+      hilog.error(0x0000, TAG, 'RdbStore is not initialized.');
+      return [];
+    }
+    const predicates = new relationalStore.RdbPredicates(TABLE_NAME);
+    predicates.like('bookName', `%${bookName}%`);
+    try {
+      const resultSet = await this.rdbStore.query(predicates);
+      const books: BookInfo[] = [];
+      if (resultSet.rowCount > 0) {
+        while (resultSet.goToNextRow()) {
+          const book = new BookInfo();
+          book.id = resultSet.getLong(resultSet.getColumnIndex('id'));
+          book.bookName = resultSet.getString(resultSet.getColumnIndex('bookName'));
+          book.author = resultSet.getString(resultSet.getColumnIndex('author'));
+          book.filePath = resultSet.getString(resultSet.getColumnIndex('filePath'));
+          book.coverPath = resultSet.getString(resultSet.getColumnIndex('coverPath'));
+          book.progress = resultSet.getString(resultSet.getColumnIndex('progress'));
+          book.lastReadTime = resultSet.getLong(resultSet.getColumnIndex('lastReadTime'));
+          book.resourceIndex = resultSet.getLong(resultSet.getColumnIndex('resourceIndex'));
+          book.domPos = resultSet.getString(resultSet.getColumnIndex('domPos'));
+          books.push(book);
+        }
+      }
+      resultSet.close();
+      hilog.info(0x0000, TAG, 'Query books by name success.');
+      return books;
+    } catch (e) {
+      hilog.error(0x0000, TAG, `Query books by name failed, error: ${e}`);
+      return [];
+    }
+  }
+
+  /**
+   * æ›´æ–°ä¹¦ç±é˜…è¯»è¿›åº¦ï¼ˆæ”¹ä¸ºè®°å½•ç« èŠ‚åï¼‰
+   * @param filePath æ–‡ä»¶è·¯å¾„
+   * @param resourceIndex èµ„æºç´¢å¼•
+   * @param domPos DOMä½ç½®
+   * @param chapterName ç« èŠ‚åï¼ˆæ›¿ä»£åŸæ¥çš„è¿›åº¦ç™¾åˆ†æ¯”ï¼‰
+   */
+  async updateBookProgress(filePath: string, resourceIndex: number, domPos: string, chapterName: string): Promise<void> {
+    if (!this.rdbStore) {
+      hilog.error(0x0000, TAG, 'RdbStore is not initialized.');
+      return;
+    }
+    try {
+      const valueBucket: relationalStore.ValuesBucket = {
+        resourceIndex: resourceIndex,
+        domPos: domPos,
+        progress: chapterName
+      };
+      const predicates = new relationalStore.RdbPredicates(TABLE_NAME);
+      predicates.equalTo('filePath', filePath);
+      await this.rdbStore.update(valueBucket, predicates);
+      hilog.info(0x0000, TAG, `Updated book progress: ${filePath}, resourceIndex=${resourceIndex}, domPos=${domPos}, chapterName=${chapterName}`);
+    } catch (err) {
+      hilog.error(0x0000, TAG, `Failed to update book progress: ${JSON.stringify(err)}`);
+    }
+  }
+
+  async deleteBooksByIds(ids: number[]): Promise<void> {
+    if (!this.rdbStore) {
+      hilog.error(0x0000, TAG, 'RdbStore is not initialized.');
+      return;
+    }
+    if (!ids || ids.length === 0) {
+      return;
+    }
+    const predicates = new relationalStore.RdbPredicates(TABLE_NAME);
+    predicates.in('id', ids);
+    try {
+      await this.rdbStore.delete(predicates);
+      hilog.info(0x0000, TAG, `Delete books success, ids: ${ids.join(',')}`);
+    } catch (e) {
+      hilog.error(0x0000, TAG, `Delete books failed, error: ${e}`);
+    }
+  }
+}
+
+export const bookDataManager = new BookDataManager();
+ÀÔrD“º@ohos.data.relationalStore«@ohos.hilog²../common/BookInfoÔrE—ªassertions¨external¢id¤meta±moduleSideEffectsªresolvedByµsyntheticNamedExportsAÃÙt hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.data.relationalStore.d.tsÔrF‘¯hostModulesInfo‘Cº@ohos.data.relationalStore¥entryÃªoh-resolveÂEAÃÙe hvigor_ignore_D:_Program Files_Huawei_DevEco Studio_sdk_default_openharmony_ets_api_@ohos.hilog.d.tsAÃªoh-resolveÂEAÂÙ:D:\ST\ReaderKitDemo\entry\src\main\ets\common\BookInfo.etsAÃªoh-resolveÂ“ÔrG–§version¤fileªsourceRoot§sources¥names¨mappings²BookDataManager.js ‘³BookDataManager.etsÜ Î‘”    ‘” –”   ” 	” ”  ”8 .”9 /–”   ” 	” ” ” 3”  4˜”   ” ”	 	” ” ” ”- -”. .–”   ” ”	 	” ” %” &–”   ” ” ” ” ” –”   ” ” ” ” ” ””   ” ” ” ’” ”) )’” $” $“”  & ” &” &‘” & •” '
+” '” '6” ':” ';’” ÌĞ ” ÌĞ–” )”	 )”
+ )” )” )” )-–” *” *” *” *” *” *’” +” +‘”	 ,’” -” -”” .” .” .”  .7”” /” /” /” /˜” 0” 0” 0”. 0&”/ 0'”< 04”= 05”? 07’” 1” 1Ÿ” 2” 2
+” 2” 2” 2”" 2”1 2+”2 2,”= 27”> 28”ÌE 2?”ÌG 2ÌA”ÌR 2ÌL”ÌS 2ÌM”ÌT 2ÌN›” 3” 3” 3” 3” 3”  3”* 3$”+ 3%”; 35”< 36”= 37’” 4”. 4(Ü ” 5” 5” 5” 5”" 5”& 5 ”' 5!”/ 5)”0 5*”8 52”9 53”ÌN 5ÌH”ÌX 5ÌR”Ì[ 5ÌU”Ì\ 5ÌV”Ì] 5ÌW–” 6” 6
+” 6”" 6”' 6!”( 6"—” 7” 7” 7” 7”& 7”( 7!”* 7#Ü ” 8” 8” 8” 8”% 8”& 8”- 8%”. 8&”< 84”= 85”ÌC 8;”ÌD 8<”ÌE 8=”ÌJ 8ÌB”ÌR 8ÌJ”ÌT 8ÌL•” 9
+”# 9”& 9”* 9 ”+ 9!’” :
+” :‘” ;	‘” <–” =” =” =” =” =” =’” ?”8 ?2•” Ì@” Ì@
+” Ì@”  Ì@”" Ì@” ÌA” ÌA” ÌA” ÌA”# ÌA”$ ÌA”. ÌA&”/ ÌA'”> ÌA6”ÌH ÌAÌ@”Ìa ÌAÌY”Ìb ÌAÌZ”Ìc ÌAÌ[œ” ÌB” ÌB” ÌB” ÌB” ÌB”! ÌB”# ÌB”& ÌB”( ÌB ”ÌW ÌBÌO”ÌX ÌBÌP”ÌY ÌBÌQ‘” ÌCœ” ÌD” ÌD” ÌD” ÌD” ÌD” ÌD” ÌD”" ÌD”$ ÌD”< ÌD6”= ÌD7”> ÌD8‘”	 ÌE”” ÌE” ÌE” ÌE” ÌE” ÌF” ÌF” ÌF” ÌF” ÌF” ÌF”  ÌF”# ÌF”% ÌF”ÌE ÌF?”ÌF ÌFÌ@”ÌH ÌFÌB”ÌI ÌFÌC”ÌJ ÌFÌD‘”	 ÌG’” ÌH” ÌH–” ÌJ”	 ÌJ”
+ ÌJ” ÌJ” ÌJ” ÌJ!—” ÌK” ÌK” ÌK	” ÌK” ÌK” ÌK” ÌKœ” ÌL” ÌL” ÌL” ÌL” ÌL” ÌL”  ÌL”# ÌL”% ÌL”ÌC ÌL=”ÌD ÌL>”ÌE ÌL?•” ÌM” ÌM” ÌM” ÌM” ÌM‘”	 ÌN”” ÌO” ÌO
+” ÌO” ÌO6–” ÌP” ÌP” ÌP” ÌP” ÌP”# ÌP–” ÌQ” ÌQ” ÌQ” ÌQ” ÌQ” ÌQ–” ÌR” ÌR” ÌR” ÌR” ÌR”# ÌR–” ÌS” ÌS” ÌS” ÌS” ÌS”% ÌS–” ÌT” ÌT” ÌT” ÌT” ÌT”# ÌT–” ÌU” ÌU” ÌU” ÌU” ÌU”+ ÌU%’”	 ÌV”
+ ÌV’” ÌW” ÌWÜ ” ÌX” ÌX” ÌX” ÌX”# ÌX”' ÌX!”( ÌX"”0 ÌX*”1 ÌX+”7 ÌX1”8 ÌX2”ÌB ÌX<”ÌD ÌX>”ÌO ÌXÌI”ÌP ÌXÌJ”ÌQ ÌXÌK” ÌY” ÌY” ÌY” ÌY” ÌY” ÌY” ÌY”" ÌY”$ ÌY”ÌD ÌY>”ÌL ÌYÌF”ÌN ÌYÌH”ÌO ÌYÌI”ÌP ÌYÌJ”” ÌZ” ÌZ” ÌZ” ÌZ‘”	 Ì[”” Ì[” Ì[” Ì[” Ì[” Ì\” Ì\” Ì\” Ì\” Ì\” Ì\”  Ì\”# Ì\”% Ì\”ÌC Ì\=”ÌD Ì\>”ÌF Ì\Ì@”ÌG Ì\ÌA”ÌH Ì\ÌB•” Ì]” Ì]” Ì]” Ì]” Ì]‘”	 Ì^’” Ì_” Ì_”” Ìa”	 Ìa”
+ Ìa” Ìa—” Ìb” Ìb” Ìb	” Ìb” Ìb” Ìb” Ìbœ” Ìc” Ìc” Ìc” Ìc” Ìc” Ìc”  Ìc”# Ìc”% Ìc”ÌC Ìc=”ÌD Ìc>”ÌE Ìc?”” Ìd” Ìd” Ìd” Ìd‘”	 Ìeœ” Ìf” Ìf
+” Ìf” Ìf” Ìf”. Ìf*”/ Ìf+”< Ìf8”= Ìf9”ÌG ÌfÌC”ÌH ÌfÌD”ÌI ÌfÌE’” Ìg” Ìg” Ìh” Ìh” Ìh” Ìh”$ Ìh”( Ìh"”) Ìh#”1 Ìh+”2 Ìh,”7 Ìh1”8 Ìh2”ÌB Ìh<”ÌC Ìh=”ÌD Ìh>–” Ìi” Ìi” Ìi” Ìi ” Ìi"” Ìi#˜” Ìj” Ìj
+” Ìj” Ìj”" Ìj”% Ìj”& Ìj ”( Ìj"—” Ìk” Ìk”  Ìk”! Ìk”, Ìk$”. Ìk&”0 Ìk(˜” Ìl
+” Ìl” Ìl”! Ìl”% Ìl”- Ìl#”/ Ìl%”0 Ìl&Ü ” Ìm
+” Ìm” Ìm” Ìm” Ìm”' Ìm”( Ìm”/ Ìm%”0 Ìm&”9 Ìm/”: Ìm0”ÌH Ìm>”ÌI Ìm?”ÌM ÌmÌC”ÌN ÌmÌD”ÌO ÌmÌE”ÌP ÌmÌFÜ ” Ìn
+” Ìn” Ìn”! Ìn”$ Ìn”- Ìn#”. Ìn$”7 Ìn-”8 Ìn.”ÌA Ìn7”ÌB Ìn8”ÌP ÌnÌF”ÌQ ÌnÌG”Ì[ ÌnÌQ”Ì\ ÌnÌR”Ì] ÌnÌS”Ì^ ÌnÌTÜ ” Ìo
+” Ìo” Ìo” Ìo”" Ìo”+ Ìo!”, Ìo"”5 Ìo+”6 Ìo,”? Ìo5”Ì@ Ìo6”ÌN ÌoÌD”ÌO ÌoÌE”ÌW ÌoÌM”ÌX ÌoÌN”ÌY ÌoÌO”ÌZ ÌoÌPÜ ” Ìp
+” Ìp” Ìp”! Ìp”$ Ìp”- Ìp#”. Ìp$”7 Ìp-”8 Ìp.”ÌA Ìp7”ÌB Ìp8”ÌP ÌpÌF”ÌQ ÌpÌG”Ì[ ÌpÌQ”Ì\ ÌpÌR”Ì] ÌpÌS”Ì^ ÌpÌTÜ ” Ìq
+” Ìq” Ìq”" Ìq”% Ìq”. Ìq$”/ Ìq%”8 Ìq.”9 Ìq/”ÌB Ìq8”ÌC Ìq9”ÌQ ÌqÌG”ÌR ÌqÌH”Ì] ÌqÌS”Ì^ ÌqÌT”Ì_ ÌqÌU”Ì` ÌqÌVÜ ” Ìr
+” Ìr” Ìr”! Ìr”$ Ìr”- Ìr#”. Ìr$”7 Ìr-”8 Ìr.”ÌA Ìr7”ÌB Ìr8”ÌP ÌrÌF”ÌQ ÌrÌG”Ì[ ÌrÌQ”Ì\ ÌrÌR”Ì] ÌrÌS”Ì^ ÌrÌTÜ ” Ìs
+” Ìs” Ìs”% Ìs”( Ìs”1 Ìs'”2 Ìs(”9 Ìs/”: Ìs0”ÌC Ìs9”ÌD Ìs:”ÌR ÌsÌH”ÌS ÌsÌI”Ìa ÌsÌW”Ìb ÌsÌX”Ìc ÌsÌY”Ìd ÌsÌZÜ ” Ìt
+” Ìt” Ìt”& Ìt”) Ìt”2 Ìt(”3 Ìt)”: Ìt0”; Ìt1”ÌD Ìt:”ÌE Ìt;”ÌS ÌtÌI”ÌT ÌtÌJ”Ìc ÌtÌY”Ìd ÌtÌZ”Ìe ÌtÌ[”Ìf ÌtÌ\Ü ” Ìu
+” Ìu” Ìu” Ìu”" Ìu”+ Ìu!”, Ìu"”5 Ìu+”6 Ìu,”? Ìu5”Ì@ Ìu6”ÌN ÌuÌD”ÌO ÌuÌE”ÌW ÌuÌM”ÌX ÌuÌN”ÌY ÌuÌO”ÌZ ÌuÌP˜” Ìv
+” Ìv” Ìv” Ìv” Ìv”# Ìv”$ Ìv”% Ìv‘” Ìw	‘” Ìx–” Ìy” Ìy” Ìy” Ìy” Ìy” Ìyœ” Ìz” Ìz” Ìz” Ìz” Ìz” Ìz” Ìz”" Ìz”$ Ìz”> Ìz8”? Ìz9”Ì@ Ìz:”” Ì{” Ì{” Ì{” Ì{‘”	 Ì|”” Ì|” Ì|” Ì|” Ì|” Ì}” Ì}” Ì}” Ì}” Ì}” Ì}”  Ì}”# Ì}”% Ì}”ÌG Ì}ÌA”ÌH Ì}ÌB”ÌJ Ì}ÌD”ÌK Ì}ÌE”ÌL Ì}ÌF”” Ì~” Ì~” Ì~” Ì~‘”	 Ì’” Ì€” Ì€–” Ì‚”	 Ì‚”
+ Ì‚” Ì‚” Ì‚”# Ì‚)—” Ìƒ” Ìƒ” Ìƒ	” Ìƒ” Ìƒ” Ìƒ” Ìƒœ” Ì„” Ì„” Ì„” Ì„” Ì„” Ì„”  Ì„”# Ì„”% Ì„”ÌC Ì„=”ÌD Ì„>”ÌE Ì„?”” Ì…” Ì…” Ì…” Ì…‘”	 Ì†œ” Ì‡” Ì‡
+” Ì‡” Ì‡” Ì‡”. Ì‡*”/ Ì‡+”< Ì‡8”= Ì‡9”ÌG Ì‡ÌC”ÌH Ì‡ÌD”ÌI Ì‡ÌEœ” Ìˆ” Ìˆ” Ìˆ” Ìˆ” Ìˆ”" Ìˆ”$ Ìˆ ”( Ìˆ$”0 Ìˆ,”3 Ìˆ/”4 Ìˆ0”5 Ìˆ1’” Ì‰” Ì‰” ÌŠ” ÌŠ” ÌŠ” ÌŠ”$ ÌŠ”( ÌŠ"”) ÌŠ#”1 ÌŠ+”2 ÌŠ,”7 ÌŠ1”8 ÌŠ2”ÌB ÌŠ<”ÌC ÌŠ=”ÌD ÌŠ>–” Ì‹” Ì‹” Ì‹” Ì‹ ” Ì‹"” Ì‹#˜” ÌŒ” ÌŒ
+” ÌŒ” ÌŒ”" ÌŒ”% ÌŒ”& ÌŒ ”( ÌŒ"—” Ì” Ì”  Ì”! Ì”, Ì$”. Ì&”0 Ì(˜” Ì
+” Ì” Ì”! Ì”% Ì”- Ì#”/ Ì%”0 Ì&Ü ” Ì
+” Ì” Ì” Ì” Ì”' Ì”( Ì”/ Ì%”0 Ì&”9 Ì/”: Ì0”ÌH Ì>”ÌI Ì?”ÌM ÌÌC”ÌN ÌÌD”ÌO ÌÌE”ÌP ÌÌFÜ ” Ì
+” Ì” Ì”! Ì”$ Ì”- Ì#”. Ì$”7 Ì-”8 Ì.”ÌA Ì7”ÌB Ì8”ÌP ÌÌF”ÌQ ÌÌG”Ì[ ÌÌQ”Ì\ ÌÌR”Ì] ÌÌS”Ì^ ÌÌTÜ ” Ì‘
+” Ì‘” Ì‘” Ì‘”" Ì‘”+ Ì‘!”, Ì‘"”5 Ì‘+”6 Ì‘,”? Ì‘5”Ì@ Ì‘6”ÌN Ì‘ÌD”ÌO Ì‘ÌE”ÌW Ì‘ÌM”ÌX Ì‘ÌN”ÌY Ì‘ÌO”ÌZ Ì‘ÌPÜ ” Ì’
+” Ì’” Ì’”! Ì’”$ Ì’”- Ì’#”. Ì’$”7 Ì’-”8 Ì’.”ÌA Ì’7”ÌB Ì’8”ÌP Ì’ÌF”ÌQ Ì’ÌG”Ì[ Ì’ÌQ”Ì\ Ì’ÌR”Ì] Ì’ÌS”Ì^ Ì’ÌTÜ ” Ì“
+” Ì“” Ì“”" Ì“”% Ì“”. Ì“$”/ Ì“%”8 Ì“.”9 Ì“/”ÌB Ì“8”ÌC Ì“9”ÌQ Ì“ÌG”ÌR Ì“ÌH”Ì] Ì“ÌS”Ì^ Ì“ÌT”Ì_ Ì“ÌU”Ì` Ì“ÌVÜ ” Ì”
+” Ì”” Ì””! Ì””$ Ì””- Ì”#”. Ì”$”7 Ì”-”8 Ì”.”ÌA Ì”7”ÌB Ì”8”ÌP Ì”ÌF”ÌQ Ì”ÌG”Ì[ Ì”ÌQ”Ì\ Ì”ÌR”Ì] Ì”ÌS”Ì^ Ì”ÌTÜ ” Ì•
+” Ì•” Ì•”% Ì•”( Ì•”1 Ì•'”2 Ì•(”9 Ì•/”: Ì•0”ÌC Ì•9”ÌD Ì•:”ÌR Ì•ÌH”ÌS Ì•ÌI”Ìa Ì•ÌW”Ìb Ì•ÌX”Ìc Ì•ÌY”Ìd Ì•ÌZÜ ” Ì–
+” Ì–” Ì–”& Ì–”) Ì–”2 Ì–(”3 Ì–)”: Ì–0”; Ì–1”ÌD Ì–:”ÌE Ì–;”ÌS Ì–ÌI”ÌT Ì–ÌJ”Ìc Ì–ÌY”Ìd Ì–ÌZ”Ìe Ì–Ì[”Ìf Ì–Ì\Ü ” Ì—
+” Ì—” Ì—” Ì—”" Ì—”+ Ì—!”, Ì—"”5 Ì—+”6 Ì—,”? Ì—5”Ì@ Ì—6”ÌN Ì—ÌD”ÌO Ì—ÌE”ÌW Ì—ÌM”ÌX Ì—ÌN”ÌY Ì—ÌO”ÌZ Ì—ÌP˜” Ì˜
+” Ì˜” Ì˜” Ì˜” Ì˜”# Ì˜”$ Ì˜”% Ì˜‘” Ì™	‘” Ìš–” Ì›” Ì›” Ì›” Ì›” Ì›” Ì›œ” Ìœ” Ìœ” Ìœ” Ìœ” Ìœ” Ìœ” Ìœ”" Ìœ”$ Ìœ”ÌB Ìœ<”ÌC Ìœ=”ÌD Ìœ>”” Ì” Ì” Ì” Ì‘”	 Ì”” Ì” Ì” Ì” Ì” ÌŸ” ÌŸ” ÌŸ” ÌŸ” ÌŸ” ÌŸ”  ÌŸ”# ÌŸ”% ÌŸ”ÌK ÌŸÌE”ÌL ÌŸÌF”ÌN ÌŸÌH”ÌO ÌŸÌI”ÌP ÌŸÌJ”” Ì ” Ì ” Ì ” Ì ‘”	 Ì¡’” Ì¢” Ì¢‘” Ì¤‘” Ìªœ” Ì«”	 Ì«”
+ Ì«” Ì«” Ì«”% Ì«+”' Ì«-”4 Ì«ÌB”6 Ì«ÌD”< Ì«ÌR”> Ì«ÌT”ÌI Ì«Ìg—” Ì¬” Ì¬” Ì¬	” Ì¬” Ì¬” Ì¬” Ì¬œ” Ì­” Ì­” Ì­” Ì­” Ì­” Ì­”  Ì­”# Ì­”% Ì­”ÌC Ì­=”ÌD Ì­>”ÌE Ì­?’” Ì®” Ì®‘”	 Ì¯’” Ì°” Ì°”” Ì±” Ì±” Ì±”  Ì±8”” Ì²” Ì²” Ì²”, Ì²$”” Ì³” Ì³” Ì³” Ì³”” Ì´” Ì´” Ì´”% Ì´’” Ìµ” Ìµœ” Ì¶” Ì¶” Ì¶” Ì¶”# Ì¶”2 Ì¶,”3 Ì¶-”Ì@ Ì¶:”ÌA Ì¶;”ÌK Ì¶ÌE”ÌL Ì¶ÌF”ÌM Ì¶ÌGš” Ì·” Ì·” Ì·” Ì·” Ì·”) Ì·#”+ Ì·%”3 Ì·-”4 Ì·.”5 Ì·/” Ì¸” Ì¸” Ì¸” Ì¸” Ì¸”  Ì¸”& Ì¸ ”' Ì¸!”2 Ì¸,”4 Ì¸.”> Ì¸8”? Ì¸9”Ì@ Ì¸:Ü ” Ì¹” Ì¹” Ì¹” Ì¹” Ì¹” Ì¹” Ì¹”" Ì¹”$ Ì¹”> Ì¹8”ÌF Ì¹Ì@”ÌY Ì¹ÌS”Ìf Ì¹Ì`”Ìr Ì¹Ìl”Ìx Ì¹Ìr”Ì‰ Ì¹Ìƒ”Ì” Ì¹Ì”Ì– Ì¹Ì”Ì— Ì¹Ì‘”Ì˜ Ì¹Ì’‘”	 Ìº”” Ìº” Ìº” Ìº” ÌºÜ ” Ì»” Ì»” Ì»” Ì»” Ì»” Ì»”  Ì»”# Ì»”% Ì»”ÌH Ì»ÌB”ÌL Ì»ÌF”ÌM Ì»ÌG”ÌV Ì»ÌP”ÌW Ì»ÌQ”ÌZ Ì»ÌT”Ì[ Ì»ÌU”Ì] Ì»ÌW”Ì^ Ì»ÌX”Ì_ Ì»ÌY‘”	 Ì¼’” Ì½” Ì½–” Ì¿”	 Ì¿”
+ Ì¿” Ì¿” Ì¿” Ì¿&—” ÌÀ” ÌÀ” ÌÀ	” ÌÀ” ÌÀ” ÌÀ” ÌÀœ” ÌÁ” ÌÁ” ÌÁ” ÌÁ” ÌÁ” ÌÁ”  ÌÁ”# ÌÁ”% ÌÁ”ÌC ÌÁ=”ÌD ÌÁ>”ÌE ÌÁ?’” ÌÂ” ÌÂ‘”	 ÌÃ›” ÌÄ” ÌÄ” ÌÄ	” ÌÄ” ÌÄ” ÌÄ” ÌÄ” ÌÄ”# ÌÄ”$ ÌÄ ”& ÌÄ"’” ÌÅ” ÌÅ‘”	 ÌÆœ” ÌÇ” ÌÇ
+” ÌÇ” ÌÇ” ÌÇ”. ÌÇ*”/ ÌÇ+”< ÌÇ8”= ÌÇ9”ÌG ÌÇÌC”ÌH ÌÇÌD”ÌI ÌÇÌEš” ÌÈ” ÌÈ” ÌÈ” ÌÈ” ÌÈ” ÌÈ” ÌÈ” ÌÈ”  ÌÈ”! ÌÈ’” ÌÉ” ÌÉ›” ÌÊ” ÌÊ” ÌÊ” ÌÊ” ÌÊ”  ÌÊ”& ÌÊ ”' ÌÊ!”1 ÌÊ+”2 ÌÊ,”3 ÌÊ-Ü ” ÌË” ÌË” ÌË” ÌË” ÌË” ÌË” ÌË”" ÌË”$ ÌË”ÌB ÌË<”ÌE ÌË?”ÌF ÌËÌ@”ÌJ ÌËÌD”ÌK ÌËÌE”ÌN ÌËÌH”ÌO ÌËÌI”ÌQ ÌËÌK”ÌR ÌËÌL”ÌS ÌËÌM‘”	 ÌÌ”” ÌÌ” ÌÌ” ÌÌ” ÌÌ” ÌÍ” ÌÍ” ÌÍ” ÌÍ” ÌÍ” ÌÍ”  ÌÍ”# ÌÍ”% ÌÍ”ÌD ÌÍ>”ÌE ÌÍ?”ÌG ÌÍÌA”ÌH ÌÍÌB”ÌI ÌÍÌC‘”	 ÌÎ’” ÌÏ” ÌÏ‘” ÌĞš”  ÌÒ ” ÌÒ” ÌÒ” ÌÒ” ÌÒ” ÌÒ”# ÌÒ#”2 ÌÒ2”4 ÌÒ4”5 ÌÒ5ÔrH–§version¤file§sources®sourcesContent¥names¨mappingsÀ‘À‘ÀÜ Ï‘”    ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”  	 ‘”  
+ ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”    ‘”  ! ‘”  " ‘”  # ‘”  $ ‘”  % ‘”  & ‘”  ' ‘”  ( ‘”  ) ‘”  * ‘”  + ‘”  , ‘”  - ‘”  . ‘”  / ‘”  0 ‘”  1 ‘”  2 ‘”  3 ‘”  4 ‘”  5 ‘”  6 ‘”  7 ‘”  8 ‘”  9 ‘”  : ‘”  ; ‘”  < ‘”  = ‘”  > ‘”  ? ‘”  Ì@ ‘”  ÌA ‘”  ÌB ‘”  ÌC ‘”  ÌD ‘”  ÌE ‘”  ÌF ‘”  ÌG ‘”  ÌH ‘”  ÌI ‘”  ÌJ ‘”  ÌK ‘”  ÌL ‘”  ÌM ‘”  ÌN ‘”  ÌO ‘”  ÌP ‘”  ÌQ ‘”  ÌR ‘”  ÌS ‘”  ÌT ‘”  ÌU ‘”  ÌV ‘”  ÌW ‘”  ÌX ‘”  ÌY ‘”  ÌZ ‘”  Ì[ ‘”  Ì\ ‘”  Ì] ‘”  Ì^ ‘”  Ì_ ‘”  Ì` ‘”  Ìa ‘”  Ìb ‘”  Ìc ‘”  Ìd ‘”  Ìe ‘”  Ìf ‘”  Ìg ‘”  Ìh ‘”  Ìi ‘”  Ìj ‘”  Ìk ‘”  Ìl ‘”  Ìm ‘”  Ìn ‘”  Ìo ‘”  Ìp ‘”  Ìq ‘”  Ìr ‘”  Ìs ‘”  Ìt ‘”  Ìu ‘”  Ìv ‘”  Ìw ‘”  Ìx ‘”  Ìy ‘”  Ìz ‘”  Ì{ ‘”  Ì| ‘”  Ì} ‘”  Ì~ ‘”  Ì ‘”  Ì€ ‘”  Ì ‘”  Ì‚ ‘”  Ìƒ ‘”  Ì„ ‘”  Ì… ‘”  Ì† ‘”  Ì‡ ‘”  Ìˆ ‘”  Ì‰ ‘”  ÌŠ ‘”  Ì‹ ‘”  ÌŒ ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì‘ ‘”  Ì’ ‘”  Ì“ ‘”  Ì” ‘”  Ì• ‘”  Ì– ‘”  Ì— ‘”  Ì˜ ‘”  Ì™ ‘”  Ìš ‘”  Ì› ‘”  Ìœ ‘”  Ì ‘”  Ì ‘”  ÌŸ ‘”  Ì  ‘”  Ì¡ ‘”  Ì¢ ‘”  Ì£ ‘”  Ì¤ ‘”  Ì¥ ‘”  Ì¦ ‘”  Ì§ ‘”  Ì¨ ‘”  Ì© ‘”  Ìª ‘”  Ì« ‘”  Ì¬ ‘”  Ì­ ‘”  Ì® ‘”  Ì¯ ‘”  Ì° ‘”  Ì± ‘”  Ì² ‘”  Ì³ ‘”  Ì´ ‘”  Ìµ ‘”  Ì¶ ‘”  Ì· ‘”  Ì¸ ‘”  Ì¹ ‘”  Ìº ‘”  Ì» ‘”  Ì¼ ‘”  Ì½ ‘”  Ì¾ ‘”  Ì¿ ‘”  ÌÀ ‘”  ÌÁ ‘”  ÌÂ ‘”  ÌÃ ‘”  ÌÄ ‘”  ÌÅ ‘”  ÌÆ ‘”  ÌÇ ‘”  ÌÈ ‘”  ÌÉ ‘”  ÌÊ ‘”  ÌË ‘”  ÌÌ ‘”  ÌÍ ‘”  ÌÎ ÔrI’§missing¦pluginÃ¦genAbcÂÔ  ÔrJ”²dynamicImportCache¹exportAllDeclarationCache»exportNamedDeclarationCache«importCache‘ÔrK–¤type¥start£end«declarationªspecifiers¦source¶ExportNamedDeclarationÍ!¦Í!ÛÔrL•¤type¥start£end¬declarations¤kind³VariableDeclarationÍ!­Í!Û‘ÔrM•¤type¥start£end¢id¤init²VariableDeclaratorÍ!³Í!ÚÔrN”¤type¥start£end¤nameªIdentifierÍ!³Í!Â¯bookDataManagerÔrO•¤type¥start£end¦callee©arguments­NewExpressionÍ!ÅÍ!ÚNªIdentifierÍ!ÉÍ!Ø¯BookDataManager¥constÀ“ÔrP•¤type¥start£endªspecifiers¦source±ImportDeclarationÍnÍ§‘ÔrQ”¤type¥start£end¥local¶ImportDefaultSpecifierÍuÍ„NªIdentifierÍuÍ„¯relationalStoreÔrR•¤type¥start£end¥value£raw§LiteralÍŠÍ¦º@ohos.data.relationalStore¼"@ohos.data.relationalStore"P±ImportDeclarationÍ©ÍÉ‘Q¶ImportDefaultSpecifierÍ°ÍµNªIdentifierÍ°Íµ¥hilogR§LiteralÍ»ÍÈ«@ohos.hilog­"@ohos.hilog"P±ImportDeclarationÍËÍù‘ÔrS•¤type¥start£end¨imported¥local¯ImportSpecifierÍÔÍÜNªIdentifierÍÔÍÜ¨BookInfoNªIdentifierÍÔÍÜ¨BookInfoR§LiteralÍäÍø²../common/BookInfo´'../common/BookInfo'
