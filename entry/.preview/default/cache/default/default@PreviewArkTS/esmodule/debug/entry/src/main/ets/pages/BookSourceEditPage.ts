@@ -396,13 +396,26 @@ class BookSourceEditPage extends ViewV2 {
         };
         hilog.info(0x0000, TAG, `${this.isEdit ? '更新' : '保存'}书源: ${sourceData.bookSourceName}`);
         // 返回上一页并传递数据
-        router.back({
-            url: 'pages/BookSourcePage',
-            params: {
-                action: this.isEdit ? 'update' : 'add',
-                sourceData: sourceData
-            }
-        });
+        try {
+            router.replaceUrl({
+                url: 'pages/BookSourcePage',
+                params: {
+                    action: this.isEdit ? 'update' : 'add',
+                    sourceData: sourceData
+                }
+            }).then(() => {
+                hilog.info(0x0000, TAG, '成功返回书源管理页面');
+            }).catch((error: Error) => {
+                hilog.error(0x0000, TAG, '返回书源管理页面失败: ' + error.message);
+                // 如果replaceUrl失败，尝试使用back
+                router.back();
+            });
+        }
+        catch (error) {
+            hilog.error(0x0000, TAG, '页面跳转出错: ' + JSON.stringify(error));
+            // 最后的备选方案，直接返回
+            router.back();
+        }
     }
     /**
      * 返回上一页
@@ -416,7 +429,7 @@ class BookSourceEditPage extends ViewV2 {
     private buildHeader(parent = null): void {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(351:5)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(363:5)", "entry");
             Row.width('100%');
             Row.height(56);
             Row.padding({ left: 16, right: 16 });
@@ -431,7 +444,7 @@ class BookSourceEditPage extends ViewV2 {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 返回按钮
             Button.createWithChild();
-            Button.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(353:7)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(365:7)", "entry");
             // 返回按钮
             Button.width(40);
             // 返回按钮
@@ -445,7 +458,7 @@ class BookSourceEditPage extends ViewV2 {
         }, Button);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create('‹');
-            Text.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(354:9)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(366:9)", "entry");
             Text.fontSize(24);
             Text.fontColor('#2D3748');
             Text.fontWeight(FontWeight.Bold);
@@ -456,7 +469,7 @@ class BookSourceEditPage extends ViewV2 {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 标题
             Text.create(this.isEdit ? '编辑书源' : '新建书源');
-            Text.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(367:7)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(379:7)", "entry");
             // 标题
             Text.fontSize(20);
             // 标题
@@ -473,7 +486,7 @@ class BookSourceEditPage extends ViewV2 {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 保存按钮
             Button.createWithLabel('保存');
-            Button.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(375:7)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(387:7)", "entry");
             // 保存按钮
             Button.fontSize(16);
             // 保存按钮
@@ -495,7 +508,7 @@ class BookSourceEditPage extends ViewV2 {
     private buildTabBar(parent = null): void {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Scroll.create();
-            Scroll.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(400:5)", "entry");
+            Scroll.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(412:5)", "entry");
             Scroll.scrollable(ScrollDirection.Horizontal);
             Scroll.scrollBar(BarState.Off);
             Scroll.width('100%');
@@ -504,7 +517,7 @@ class BookSourceEditPage extends ViewV2 {
         }, Scroll);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(401:7)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(413:7)", "entry");
             Row.justifyContent(FlexAlign.Start);
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
@@ -513,7 +526,7 @@ class BookSourceEditPage extends ViewV2 {
                 const tab = _item;
                 this.observeComponentCreation2((elmtId, isInitialRender) => {
                     Text.create(tab);
-                    Text.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(403:11)", "entry");
+                    Text.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(415:11)", "entry");
                     Text.fontSize(14);
                     Text.fontColor(this.currentTab === index ? '#3182CE' : '#718096');
                     Text.fontWeight(this.currentTab === index ? FontWeight.Medium : FontWeight.Normal);
@@ -539,13 +552,13 @@ class BookSourceEditPage extends ViewV2 {
     private buildInputField(label: string, placeholder: string, value: string, onValueChange: (value: string) => void, multiline: boolean = false, parent = null): void {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(430:5)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(442:5)", "entry");
             Column.width('100%');
             Column.margin({ bottom: 16 });
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(label);
-            Text.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(431:7)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(443:7)", "entry");
             Text.fontSize(14);
             Text.fontColor('#4A5568');
             Text.width('100%');
@@ -559,7 +572,7 @@ class BookSourceEditPage extends ViewV2 {
                 this.ifElseBranchUpdateFunction(0, () => {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         TextArea.create({ placeholder: placeholder, text: value });
-                        TextArea.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(439:9)", "entry");
+                        TextArea.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(451:9)", "entry");
                         TextArea.fontSize(16);
                         TextArea.backgroundColor('#F7FAFC');
                         TextArea.borderRadius(8);
@@ -575,7 +588,7 @@ class BookSourceEditPage extends ViewV2 {
                 this.ifElseBranchUpdateFunction(1, () => {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         TextInput.create({ placeholder: placeholder, text: value });
-                        TextInput.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(449:9)", "entry");
+                        TextInput.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(461:9)", "entry");
                         TextInput.fontSize(16);
                         TextInput.backgroundColor('#F7FAFC');
                         TextInput.borderRadius(8);
@@ -596,19 +609,19 @@ class BookSourceEditPage extends ViewV2 {
     private buildSwitchField(label: string, description: string, value: boolean, onValueChange: (value: boolean) => void, parent = null): void {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(468:5)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(480:5)", "entry");
             Row.width('100%');
             Row.margin({ bottom: 16 });
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(469:7)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(481:7)", "entry");
             Column.layoutWeight(1);
             Column.alignItems(HorizontalAlign.Start);
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(label);
-            Text.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(470:9)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(482:9)", "entry");
             Text.fontSize(14);
             Text.fontColor('#4A5568');
             Text.width('100%');
@@ -621,7 +634,7 @@ class BookSourceEditPage extends ViewV2 {
                 this.ifElseBranchUpdateFunction(0, () => {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Text.create(description);
-                        Text.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(477:11)", "entry");
+                        Text.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(489:11)", "entry");
                         Text.fontSize(12);
                         Text.fontColor('#718096');
                         Text.width('100%');
@@ -640,7 +653,7 @@ class BookSourceEditPage extends ViewV2 {
         Column.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Toggle.create({ type: ToggleType.Switch, isOn: value });
-            Toggle.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(488:7)", "entry");
+            Toggle.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(500:7)", "entry");
             Toggle.onChange((isOn: boolean) => {
                 onValueChange(isOn);
             });
@@ -654,7 +667,7 @@ class BookSourceEditPage extends ViewV2 {
     private buildBasicInfoTab(parent = null): void {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(502:5)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(514:5)", "entry");
             Column.padding(16);
         }, Column);
         this.buildInputField.bind(this)('书源名称 *', '请输入书源名称', this.bookSourceName, (value: string) => {
@@ -701,22 +714,22 @@ class BookSourceEditPage extends ViewV2 {
     private buildSearchRuleTab(parent = null): void {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(559:5)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(571:5)", "entry");
             Column.padding(16);
         }, Column);
         this.buildInputField.bind(this)('书籍列表', '书籍列表选择器', this.searchBookList, (value: string) => {
             this.searchBookList = value;
         });
-        this.buildInputField.bind(this)('书籍名称', '书籍名称选择器', this.searchName, (value: string) => {
+        this.buildInputField.bind(this)('书籍名称 *', '书籍名称选择器', this.searchName, (value: string) => {
             this.searchName = value;
         });
-        this.buildInputField.bind(this)('作者', '作者选择器', this.searchAuthor, (value: string) => {
+        this.buildInputField.bind(this)('作者 *', '作者选择器', this.searchAuthor, (value: string) => {
             this.searchAuthor = value;
         });
-        this.buildInputField.bind(this)('书籍URL', '书籍URL选择器', this.searchBookUrl, (value: string) => {
+        this.buildInputField.bind(this)('书籍URL *', '书籍URL选择器', this.searchBookUrl, (value: string) => {
             this.searchBookUrl = value;
         });
-        this.buildInputField.bind(this)('封面URL', '封面URL选择器', this.searchCoverUrl, (value: string) => {
+        this.buildInputField.bind(this)('封面URL *', '封面URL选择器', this.searchCoverUrl, (value: string) => {
             this.searchCoverUrl = value;
         });
         this.buildInputField.bind(this)('最新章节', '最新章节选择器', this.searchLastChapter, (value: string) => {
@@ -739,7 +752,7 @@ class BookSourceEditPage extends ViewV2 {
     private buildExploreRuleTab(parent = null): void {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(604:5)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(616:5)", "entry");
             Column.padding(16);
         }, Column);
         this.buildInputField.bind(this)('书籍列表', '书籍列表选择器', this.exploreBookList, (value: string) => {
@@ -774,22 +787,22 @@ class BookSourceEditPage extends ViewV2 {
     private buildBookInfoRuleTab(parent = null): void {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(645:5)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(657:5)", "entry");
             Column.padding(16);
         }, Column);
-        this.buildInputField.bind(this)('书籍名称', '书籍名称选择器', this.bookInfoName, (value: string) => {
+        this.buildInputField.bind(this)('书籍名称 *', '书籍名称选择器', this.bookInfoName, (value: string) => {
             this.bookInfoName = value;
         });
-        this.buildInputField.bind(this)('作者', '作者选择器', this.bookInfoAuthor, (value: string) => {
+        this.buildInputField.bind(this)('作者 *', '作者选择器', this.bookInfoAuthor, (value: string) => {
             this.bookInfoAuthor = value;
         });
-        this.buildInputField.bind(this)('封面URL', '封面URL选择器', this.bookInfoCoverUrl, (value: string) => {
+        this.buildInputField.bind(this)('封面URL *', '封面URL选择器', this.bookInfoCoverUrl, (value: string) => {
             this.bookInfoCoverUrl = value;
         });
-        this.buildInputField.bind(this)('简介', '简介选择器', this.bookInfoIntro, (value: string) => {
+        this.buildInputField.bind(this)('简介 *', '简介选择器', this.bookInfoIntro, (value: string) => {
             this.bookInfoIntro = value;
         });
-        this.buildInputField.bind(this)('分类', '分类选择器', this.bookInfoKind, (value: string) => {
+        this.buildInputField.bind(this)('分类 *', '分类选择器', this.bookInfoKind, (value: string) => {
             this.bookInfoKind = value;
         });
         this.buildInputField.bind(this)('最新章节', '最新章节选择器', this.bookInfoLastChapter, (value: string) => {
@@ -812,16 +825,17 @@ class BookSourceEditPage extends ViewV2 {
     private buildTocRuleTab(parent = null): void {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(690:5)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(702:5)", "entry");
+            Column.justifyContent(FlexAlign.Start);
             Column.padding(16);
         }, Column);
-        this.buildInputField.bind(this)('章节列表', '章节列表选择器', this.tocChapterList, (value: string) => {
+        this.buildInputField.bind(this)('章节列表 *', '章节列表选择器', this.tocChapterList, (value: string) => {
             this.tocChapterList = value;
         });
-        this.buildInputField.bind(this)('章节名称', '章节名称选择器', this.tocChapterName, (value: string) => {
+        this.buildInputField.bind(this)('章节名称 *', '章节名称选择器', this.tocChapterName, (value: string) => {
             this.tocChapterName = value;
         });
-        this.buildInputField.bind(this)('章节URL', '章节URL选择器', this.tocChapterUrl, (value: string) => {
+        this.buildInputField.bind(this)('章节URL *', '章节URL选择器', this.tocChapterUrl, (value: string) => {
             this.tocChapterUrl = value;
         });
         this.buildInputField.bind(this)('下一页URL', '下一页URL选择器', this.tocNextTocUrl, (value: string) => {
@@ -835,7 +849,8 @@ class BookSourceEditPage extends ViewV2 {
     private buildContentRuleTab(parent = null): void {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(715:5)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(728:5)", "entry");
+            Column.justifyContent(FlexAlign.Start);
             Column.padding(16);
         }, Column);
         this.buildInputField.bind(this)('正文内容', '正文内容选择器', this.contentContent, (value: string) => {
@@ -852,7 +867,7 @@ class BookSourceEditPage extends ViewV2 {
     initialRender() {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(732:5)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(746:5)", "entry");
             Column.width('100%');
             Column.height('100%');
             Column.backgroundColor('#F7FAFC');
@@ -864,7 +879,7 @@ class BookSourceEditPage extends ViewV2 {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 内容区域
             Scroll.create();
-            Scroll.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(740:7)", "entry");
+            Scroll.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(754:7)", "entry");
             // 内容区域
             Scroll.layoutWeight(1);
             // 内容区域
@@ -872,7 +887,7 @@ class BookSourceEditPage extends ViewV2 {
         }, Scroll);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(741:9)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/BookSourceEditPage.ets(755:9)", "entry");
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             If.create();
@@ -925,4 +940,4 @@ class BookSourceEditPage extends ViewV2 {
     }
 }
 export { BookSourceEditPage };
-registerNamedRoute(() => new BookSourceEditPage(undefined, {}), "", { bundleName: "com.example.readerkitdemo", moduleName: "entry", pagePath: "pages/BookSourceEditPage", pageFullPath: "entry/src/main/ets/pages/BookSourceEditPage", integratedHsp: "false", moduleType: "followWithHap" });
+registerNamedRoute(() => new BookSourceEditPage(undefined, {}), "", { bundleName: "liubai.yuedu.hos", moduleName: "entry", pagePath: "pages/BookSourceEditPage", pageFullPath: "entry/src/main/ets/pages/BookSourceEditPage", integratedHsp: "false", moduleType: "followWithHap" });

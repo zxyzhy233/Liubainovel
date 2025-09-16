@@ -67,6 +67,10 @@ struct Reader {
   @State bookCover: PixelMap | null = null;
   @State bookTitle: string = '';
   @State author: string = '';
+  @State isLoading: boolean = true; // 加载状态
+  @State loadingProgress: string = '正在加载...'; // 加载进度文本
+  @State hasError: boolean = false; // 错误状态
+  @State errorMessage: string = ''; // 错误信息
   @State fontSize: string = '18';
   @State lineHeight: string = '';
   private fontList: Array<FontFileInfo> =
@@ -239,14 +243,23 @@ struct Reader {
 
   private async startPlay(path: string, resourceIndex: number, domPos: string) {
     try {
+      this.isLoading = true;
+      this.hasError = false;
+      this.loadingProgress = '正在初始化阅读器...';
+      
       const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
       const initPromise: Promise<void> = this.readerComponentController.init(context);
-      const defaultHandlerPromise: Promise<bookParser.BookParserHandler> = bookParser.getDefaultHandler(path);
-      const results = await Promise.all([defaultHandlerPromise, initPromise]);
-      const defaultHandler = results[0];
+      
+      // 使用默认处理器
+      hilog.info(0x0000, TAG, 'Using default handler for file');
+      this.loadingProgress = '正在解析书籍文件...';
+      const defaultHandler = await bookParser.getDefaultHandler(path);
+      
+      this.loadingProgress = '正在启动阅读器...';
+      await initPromise;
       this.defaultHandler = defaultHandler;
 
-      hilog.info(0x0000, TAG, 'startPlay getDefaultHandler end,result is:' + JSON.stringify(this.defaultHandler));
+      hilog.info(0x0000, TAG, 'startPlay handler initialized successfully');
       this.readerComponentController.registerBookParser(this.defaultHandler);
 
       // Register listeners
@@ -283,31 +296,55 @@ struct Reader {
 
       this.readerComponentController.setPageConfig(this.readerSetting);
 
-      // 优先从 Preferences 加载进度
+      // 优先从 Preferences 加载精确阅读进度
       const progressKey = `${this.filePath}_progress`;
       const savedProgress = await this.preference?.get(progressKey, '');
-      let startResourceIndex = resourceIndex || 0;
-      let startDomPos = domPos || '';
+      let startResourceIndex = 0;
+      let startDomPos = '';
+      
       if (typeof savedProgress === 'string' && savedProgress) {
         try {
           const savedProgressObj = JSON.parse(savedProgress) as ProgressData;
-          const savedResourceIndex = savedProgressObj.resourceIndex;
-          const savedDomPos = savedProgressObj.domPos;
-          startResourceIndex = savedResourceIndex;
-          startDomPos = savedDomPos;
-          hilog.info(0x0000, TAG, `Loaded progress from preferences: resourceIndex=${startResourceIndex}, domPos=${startDomPos}`);
+          startResourceIndex = savedProgressObj.resourceIndex;
+          startDomPos = savedProgressObj.domPos;
+          hilog.info(0x0000, TAG, `Loaded reading progress from preferences: resourceIndex=${startResourceIndex}, domPos=${startDomPos}`);
         } catch (e) {
           hilog.error(0x0000, TAG, `Failed to parse saved progress: ${savedProgress}`);
+          // 如果 Preferences 解析失败，使用传入的参数作为备用
+          startResourceIndex = resourceIndex || 0;
+          startDomPos = domPos || '';
+          hilog.info(0x0000, TAG, `Using fallback parameters: resourceIndex=${startResourceIndex}, domPos=${startDomPos}`);
         }
+      } else {
+        // 如果 Preferences 中没有保存的进度，使用传入的参数（通常是首次阅读）
+        startResourceIndex = resourceIndex || 0;
+        startDomPos = domPos || '';
+        hilog.info(0x0000, TAG, `No saved progress found, using initial parameters: resourceIndex=${startResourceIndex}, domPos=${startDomPos}`);
       }
 
+      this.loadingProgress = '正在加载内容...';
       this.readerComponentController.startPlay(startResourceIndex, startDomPos);
       
       // 获取目录列表
       this.catalogItemList = this.defaultHandler?.getCatalogList() || [];
       this.updateCurrentCatalogIndex();
+      
+      // 加载完成
+      this.isLoading = false;
+      this.loadingProgress = '';
+      hilog.info(0x0000, TAG, 'Reader initialization completed successfully');
      } catch (err) {
        hilog.error(0x0000, TAG, 'startPlay: err: ' + JSON.stringify(err));
+       this.hasError = true;
+       this.isLoading = false;
+       this.errorMessage = `加载失败: ${err instanceof Error ? err.message : '未知错误'}`;
+       
+       // 尝试提供解决建议
+       if (err instanceof Error && err.message.includes('memory')) {
+         this.errorMessage += '\n建议：文件过大，请尝试使用较小的文件或重启应用';
+       } else if (err instanceof Error && err.message.includes('timeout')) {
+         this.errorMessage += '\n建议：加载超时，请检查文件是否损坏或重试';
+       }
      }
   }
 
@@ -722,12 +759,90 @@ struct Reader {
 
   build() {
     Stack() {
+      // 加载状态显示
+      if (this.isLoading) {
+        Column() {
+          LoadingProgress()
+            .width(60)
+            .height(60)
+            .color(Color.Red)
+          
+          Text(this.loadingProgress)
+            .fontSize(16)
+            .fontColor(Color.Black)
+            .margin({ top: 20 })
+            .textAlign(TextAlign.Center)
+        }
+        .width('100%')
+        .height('100%')
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
+        .backgroundColor(Color.White)
+        .zIndex(10)
+      }
+      
+      // 错误状态显示
+      if (this.hasError) {
+        Column() {
+          SymbolGlyph($r('sys.symbol.exclamationmark_triangle'))
+            .width(80)
+            .height(80)
+            .margin({ bottom: 20 })
+            .fontColor([Color.Orange])
+          
+          Text('加载失败')
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(Color.Black)
+            .margin({ bottom: 10 })
+          
+          Text(this.errorMessage)
+            .fontSize(14)
+            .fontColor(Color.Gray)
+            .textAlign(TextAlign.Center)
+            .margin({ bottom: 30, left: 20, right: 20 })
+            .maxLines(5)
+          
+          Row({ space: 20 }) {
+            Button('返回')
+              .onClick(() => {
+                this.getUIContext().getRouter().back();
+              })
+              .backgroundColor(Color.Gray)
+              .fontColor(Color.White)
+            
+            Button('重试')
+              .onClick(() => {
+                this.retryLoading();
+              })
+              .backgroundColor(Color.Red)
+              .fontColor(Color.White)
+          }
+        }
+        .width('100%')
+        .height('100%')
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
+        .backgroundColor(Color.White)
+        .zIndex(10)
+      }
+      
+      // 阅读器组件
       ReadPageComponent({
         controller: this.readerComponentController,
         readerCallback: (err: BusinessError, data: readerCore.ReaderComponentController) => {
-          this.readerComponentController = data;
+          if (err) {
+            hilog.error(0x0000, TAG, `ReaderComponent callback error: ${err.message}`);
+            this.hasError = true;
+            this.isLoading = false;
+            this.errorMessage = `阅读器初始化失败: ${err.message}`;
+          } else {
+            this.readerComponentController = data;
+          }
         }
-      }).zIndex(1)
+      })
+      .zIndex(1)
+      .visibility(this.isLoading || this.hasError ? Visibility.Hidden : Visibility.Visible)
       // menu bar
       Column() {
         Column() {
@@ -783,9 +898,23 @@ struct Reader {
         this.closeModal();
       })
     }.width('100%').height('100%').onClick(() => {
-      this.showModal();
+      if (!this.isLoading && !this.hasError) {
+        this.showModal();
+      }
     })
+  }
 
+  /**
+   * 重试加载
+   */
+  private retryLoading(): void {
+    this.hasError = false;
+    this.errorMessage = '';
+    this.isLoading = true;
+    
+    // 重新获取参数并启动
+    let param = this.getUIContext().getRouter().getParams() as paramType;
+    this.startPlay(param.filePath, param.resourceIndex || 0, param.domPos || '');
   }
 
   private applyTheme(theme: string, index: number) {
@@ -828,7 +957,9 @@ struct Reader {
   }
 
   /**
-   * 保存阅读进度（改为记录章节名）
+   * 保存阅读进度和阅读记录
+   * 阅读进度：保存到 Preferences，用于精确恢复阅读位置
+   * 阅读记录：保存到数据库，用于书架显示已读章节名和进度百分比
    */
   private saveReadingProgress() {
     if (this.filePath && this.currentData && this.currentData.resourceIndex !== undefined) {
@@ -836,7 +967,7 @@ struct Reader {
       const domPos = this.currentData.startDomPos || '';
       const spineList = this.defaultHandler?.getSpineList() || [];
       
-      // 获取当前章节名
+      // 获取当前章节名用于显示
       let chapterName = '未知章节';
       if (spineList.length > 0 && resourceIndex >= 0 && resourceIndex < spineList.length) {
         const currentSpine = spineList[resourceIndex];
@@ -852,7 +983,14 @@ struct Reader {
         }
       }
 
-      // 保存到 Preferences
+      // 计算阅读进度百分比
+      let progressPercent = '0%';
+      if (spineList.length > 0) {
+        const progress = Math.round((resourceIndex / spineList.length) * 100);
+        progressPercent = `${progress}%`;
+      }
+
+      // 1. 保存精确阅读进度到 Preferences（用于恢复阅读位置）
       const progressKey = `${this.filePath}_progress`;
       const progressValue = JSON.stringify({ resourceIndex, domPos });
       this.preference?.put(progressKey, progressValue).then(() => {
@@ -860,15 +998,20 @@ struct Reader {
           if (err) {
             hilog.error(0x0000, TAG, `Failed to flush preferences, err: ${err}`);
           } else {
-            hilog.info(0x0000, TAG, `Saved progress to preferences: ${progressValue}`);
+            hilog.info(0x0000, TAG, `Saved reading progress to preferences: ${progressValue}`);
           }
         });
       });
 
-      // 更新数据库，保存章节名而不是进度百分比
+      // 2. 保存阅读记录到数据库（用于书架显示章节名）
       hilog.info(0x0000, TAG,
-        `Updating progress for ${this.filePath}: resourceIndex=${resourceIndex}, domPos=${domPos}, chapterName=${chapterName}`);
-      bookDataManager.updateBookProgress(this.filePath, resourceIndex, domPos, chapterName);
+        `Updating reading record for ${this.filePath}: chapterName=${chapterName}`);
+      bookDataManager.updateBookReadingRecord(this.filePath, chapterName);
+
+      // 3. 保存阅读进度百分比到数据库（用于书架显示进度）
+      hilog.info(0x0000, TAG,
+        `Updating reading progress for ${this.filePath}: progress=${progressPercent}`);
+      bookDataManager.updateBookProgress(this.filePath, progressPercent);
     }
   }
 
@@ -972,20 +1115,3 @@ struct Reader {
     // PageTransitionEnter and PageTransitionExit should be used in build method, not here
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

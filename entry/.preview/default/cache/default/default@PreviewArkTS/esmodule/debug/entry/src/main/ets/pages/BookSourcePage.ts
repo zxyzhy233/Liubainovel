@@ -7,7 +7,7 @@ import picker from "@ohos:file.picker";
 import type common from "@ohos:app.ability.common";
 import fileIo from "@ohos:file.fs";
 import util from "@ohos:util";
-import { bookSourceManager } from "@bundle:com.example.readerkitdemo/entry/ets/managers/BookSourceManager";
+import { bookSourceManager } from "@bundle:liubai.yuedu.hos/entry/ets/managers/BookSourceManager";
 import type { BookSourceInfo as BookSourceInfoModel } from '../models/BookSourceModel';
 const TAG: string = 'BookSourcePage';
 /**
@@ -228,6 +228,9 @@ class BookSourcePage extends ViewV2 {
         this.isLoading = false;
         this.showAddMenu = false;
         this.popupStateChangeListener = new PopupStateChangeListenerImpl();
+        this.handlePopupStateChange = (event: PopupStateChangeEvent): void => {
+            this.popupStateChangeListener.onStateChange(event);
+        };
         this.finalizeConstruction();
     }
     @Local
@@ -590,17 +593,40 @@ class BookSourcePage extends ViewV2 {
      * 跳转到新建书源页面
      */
     private navigateToAddSource(): void {
-        // 创建路由参数对象，避免对象字面量类型错误
-        const routerParams: RouterParams = {
-            isEdit: false
-        };
-        const routerOptions: RouterOptions = {
-            url: 'pages/BookSourceEditPage',
-            params: routerParams
-        };
-        router.pushUrl(routerOptions).catch((error: Error) => {
-            hilog.error(0x0000, TAG, '跳转到新建书源页面失败: ' + error.message);
-        });
+        try {
+            // 创建路由参数对象，避免对象字面量类型错误
+            const routerParams: RouterParams = {
+                isEdit: false
+            };
+            const routerOptions: RouterOptions = {
+                url: 'pages/BookSourceEditPage',
+                params: routerParams
+            };
+            hilog.info(0x0000, TAG, '准备跳转到新建书源页面');
+            router.pushUrl(routerOptions).then(() => {
+                hilog.info(0x0000, TAG, '成功跳转到新建书源页面');
+            }).catch((error: Error) => {
+                hilog.error(0x0000, TAG, '跳转到新建书源页面失败: ' + error.message);
+                // 显示错误提示
+                const toastOptions: ToastOptions = {
+                    message: '跳转失败: ' + error.message,
+                    duration: 2000
+                };
+                this.getUIContext()
+                    .getPromptAction()
+                    .showToast(toastOptions);
+            });
+        }
+        catch (error) {
+            hilog.error(0x0000, TAG, '创建路由参数时发生错误: ' + JSON.stringify(error));
+            const toastOptions: ToastOptions = {
+                message: '页面跳转出错',
+                duration: 2000
+            };
+            this.getUIContext()
+                .getPromptAction()
+                .showToast(toastOptions);
+        }
     }
     /**
      * 跳转到编辑书源页面
@@ -662,16 +688,14 @@ class BookSourcePage extends ViewV2 {
      * 弹窗状态变化处理函数
      * @param event 状态变化事件
      */
-    private handlePopupStateChange(event: PopupStateChangeEvent): void {
-        this.popupStateChangeListener.onStateChange(event);
-    }
+    private handlePopupStateChange;
     /**
      * 创建弹窗配置选项
      * @returns 弹窗配置选项对象
      */
     private createPopupOptions(): PopupOptions {
         const options: PopupOptions = {
-            builder: this.popupWithButtonBuilder,
+            builder: () => { this.popupWithButtonBuilder(); },
             placement: Placement.Bottom,
             maskColor: Color.Transparent,
             popupColor: Color.White,
@@ -873,10 +897,11 @@ class BookSourcePage extends ViewV2 {
      * @returns Toggle配置选项对象
      */
     private createToggleOptions(isOn: boolean): ToggleOptions {
-        return {
+        const options: ToggleOptions = {
             type: ToggleType.Switch,
             isOn: isOn
         };
+        return options;
     }
     /**
      * 创建Image配置选项
@@ -884,27 +909,30 @@ class BookSourcePage extends ViewV2 {
      * @returns Image配置选项对象
      */
     private createImageOptions(src: ResourceStr): ImageOptions {
-        return {
+        const options: ImageOptions = {
             src: src
         };
+        return options;
     }
     /**
      * 创建Column配置选项
      * @returns Column配置选项对象
      */
     private createColumnOptions(): ColumnOptions {
-        return {
+        const options: ColumnOptions = {
             space: undefined
         };
+        return options;
     }
     /**
      * 创建Row配置选项
      * @returns Row配置选项对象
      */
     private createRowOptions(): RowOptions {
-        return {
+        const options: RowOptions = {
             space: undefined
         };
+        return options;
     }
     /**
      * 返回上一页
@@ -918,7 +946,7 @@ class BookSourcePage extends ViewV2 {
     private buildHeader(parent = null): void {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(999:5)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1026:5)", "entry");
             Row.width('100%');
             Row.height(this.getNavBarHeight());
             Row.padding(this.createPaddingOptions());
@@ -929,7 +957,7 @@ class BookSourcePage extends ViewV2 {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 返回按钮
             Button.createWithChild();
-            Button.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1001:7)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1028:7)", "entry");
             // 返回按钮
             Button.width(this.getButtonSize());
             // 返回按钮
@@ -943,7 +971,7 @@ class BookSourcePage extends ViewV2 {
         }, Button);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create('‹');
-            Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1002:9)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1029:9)", "entry");
             Text.fontSize(24);
             Text.fontColor('#2D3748');
             Text.fontWeight(FontWeight.Bold);
@@ -954,7 +982,7 @@ class BookSourcePage extends ViewV2 {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 标题
             Text.create('书源管理');
-            Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1015:7)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1042:7)", "entry");
             // 标题
             Text.fontSize(20);
             // 标题
@@ -971,7 +999,7 @@ class BookSourcePage extends ViewV2 {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 添加按钮
             Button.createWithChild();
-            Button.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1023:7)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1050:7)", "entry");
             // 添加按钮
             Button.width(this.getButtonSize());
             // 添加按钮
@@ -987,7 +1015,7 @@ class BookSourcePage extends ViewV2 {
         }, Button);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create('+');
-            Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1024:9)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1051:9)", "entry");
             Text.fontSize(24);
             Text.fontColor('#2D3748');
             Text.fontWeight(FontWeight.Bold);
@@ -1003,7 +1031,7 @@ class BookSourcePage extends ViewV2 {
     private buildBookSourceCard(source: BookSource, parent = null): void {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1050:5)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1077:5)", "entry");
             Column.width('100%');
             Column.padding(this.getCardPadding());
             Column.backgroundColor(Color.White);
@@ -1014,7 +1042,7 @@ class BookSourcePage extends ViewV2 {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 书源信息行
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1052:7)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1079:7)", "entry");
             // 书源信息行
             Row.width('100%');
             // 书源信息行
@@ -1022,14 +1050,14 @@ class BookSourcePage extends ViewV2 {
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1053:9)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1080:9)", "entry");
             Column.layoutWeight(1);
             Column.alignItems(HorizontalAlign.Start);
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 书源名称
             Text.create(source.name);
-            Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1055:11)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1082:11)", "entry");
             // 书源名称
             Text.fontSize(16);
             // 书源名称
@@ -1046,7 +1074,7 @@ class BookSourcePage extends ViewV2 {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 书源URL
             Text.create(source.url);
-            Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1063:11)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1090:11)", "entry");
             // 书源URL
             Text.fontSize(12);
             // 书源URL
@@ -1068,7 +1096,7 @@ class BookSourcePage extends ViewV2 {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 启用开关
             Toggle.create(this.createToggleOptions(source.enabled));
-            Toggle.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1076:9)", "entry");
+            Toggle.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1103:9)", "entry");
             // 启用开关
             Toggle.onChange((isOn: boolean) => {
                 this.toggleBookSource(source);
@@ -1081,7 +1109,7 @@ class BookSourcePage extends ViewV2 {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 描述和更新时间
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1085:7)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1112:7)", "entry");
             // 描述和更新时间
             Row.width('100%');
             // 描述和更新时间
@@ -1089,7 +1117,7 @@ class BookSourcePage extends ViewV2 {
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(source.description);
-            Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1086:9)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1113:9)", "entry");
             Text.fontSize(12);
             Text.fontColor('#4A5568');
             Text.layoutWeight(1);
@@ -1099,7 +1127,7 @@ class BookSourcePage extends ViewV2 {
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create('更新: ' + source.lastUpdate);
-            Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1093:9)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1120:9)", "entry");
             Text.fontSize(10);
             Text.fontColor('#A0AEC0');
         }, Text);
@@ -1109,13 +1137,13 @@ class BookSourcePage extends ViewV2 {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 操作按钮
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1101:7)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1128:7)", "entry");
             // 操作按钮
             Row.width('100%');
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Button.createWithLabel('测试');
-            Button.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1102:9)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1129:9)", "entry");
             Button.fontSize(12);
             Button.fontColor('#3182CE');
             Button.backgroundColor('#EBF8FF');
@@ -1128,7 +1156,7 @@ class BookSourcePage extends ViewV2 {
         Button.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Button.createWithLabel('编辑');
-            Button.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1112:9)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1139:9)", "entry");
             Button.fontSize(12);
             Button.fontColor('#38A169');
             Button.backgroundColor('#C6F6D5');
@@ -1142,12 +1170,12 @@ class BookSourcePage extends ViewV2 {
         Button.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Blank.create();
-            Blank.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1123:9)", "entry");
+            Blank.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1150:9)", "entry");
         }, Blank);
         Blank.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Button.createWithLabel('删除');
-            Button.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1125:9)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1152:9)", "entry");
             Button.fontSize(12);
             Button.fontColor('#E53E3E');
             Button.backgroundColor('#FED7D7');
@@ -1221,60 +1249,60 @@ class BookSourcePage extends ViewV2 {
     /**
      * 构建弹出菜单
      */
-    private popupWithButtonBuilder(parent = null) {
+    popupWithButtonBuilder(parent = null) {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1214:5)", "entry");
-            Column.width(this.getPopupMenuWidth());
+            Column.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1241:5)", "entry");
+            Column.width(160);
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1215:7)", "entry");
-            Row.height(this.getMenuItemHeight());
+            Row.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1242:7)", "entry");
+            Row.height(50);
             Row.width('100%');
             Row.justifyContent(FlexAlign.Start);
             Row.alignItems(VerticalAlign.Center);
-            Row.padding(this.createMenuPaddingOptions());
+            Row.padding({ left: 16, right: 16, top: 0, bottom: 0 });
             Row.onClick(() => {
                 this.showAddMenu = false;
                 this.navigateToAddSource();
             });
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Image.create({ "id": 16777275, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
-            Image.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1216:9)", "entry");
+            Image.create({ "id": 16777275, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
+            Image.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1243:9)", "entry");
             Image.width(20);
             Image.height(20);
         }, Image);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create('新建书源');
-            Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1217:9)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1246:9)", "entry");
             Text.fontSize(18);
         }, Text);
         Text.pop();
         Row.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1229:7)", "entry");
-            Row.height(this.getMenuItemHeight());
+            Row.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1259:7)", "entry");
+            Row.height(50);
             Row.width('100%');
             Row.justifyContent(FlexAlign.Start);
             Row.alignItems(VerticalAlign.Center);
-            Row.padding(this.createMenuPaddingOptions());
+            Row.padding({ left: 16, right: 16, top: 0, bottom: 0 });
             Row.onClick(() => {
                 this.showAddMenu = false;
                 this.importBookSources();
             });
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Image.create({ "id": 16777274, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
-            Image.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1230:9)", "entry");
+            Image.create({ "id": 16777274, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
+            Image.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1260:9)", "entry");
             Image.width(20);
             Image.height(20);
         }, Image);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create('导入书源');
-            Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1231:9)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1263:9)", "entry");
             Text.fontSize(18);
         }, Text);
         Text.pop();
@@ -1284,7 +1312,7 @@ class BookSourcePage extends ViewV2 {
     initialRender() {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1246:5)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1280:5)", "entry");
             Column.width('100%');
             Column.height('100%');
             Column.backgroundColor('#F7FAFC');
@@ -1299,7 +1327,7 @@ class BookSourcePage extends ViewV2 {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         // 加载状态
                         Column.create();
-                        Column.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1253:9)", "entry");
+                        Column.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1287:9)", "entry");
                         // 加载状态
                         Column.width('100%');
                         // 加载状态
@@ -1309,14 +1337,14 @@ class BookSourcePage extends ViewV2 {
                     }, Column);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Progress.create(this.createProgressOptions());
-                        Progress.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1254:9)", "entry");
+                        Progress.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1288:9)", "entry");
                         Progress.width(this.getButtonSize());
                         Progress.height(this.getButtonSize());
                         Progress.color('#3182CE');
                     }, Progress);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Text.create('正在加载书源...');
-                        Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1258:11)", "entry");
+                        Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1292:11)", "entry");
                         Text.fontSize(14);
                         Text.fontColor('#718096');
                         Text.margin(this.createTopMarginOptions());
@@ -1331,7 +1359,7 @@ class BookSourcePage extends ViewV2 {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         // 空状态
                         Column.create();
-                        Column.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1268:9)", "entry");
+                        Column.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1302:9)", "entry");
                         // 空状态
                         Column.width('100%');
                         // 空状态
@@ -1341,14 +1369,14 @@ class BookSourcePage extends ViewV2 {
                     }, Column);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Text.create('📚');
-                        Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1269:11)", "entry");
+                        Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1303:11)", "entry");
                         Text.fontSize(48);
                         Text.margin(this.createTopMarginOptions());
                     }, Text);
                     Text.pop();
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Text.create('暂无书源');
-                        Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1272:11)", "entry");
+                        Text.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1306:11)", "entry");
                         Text.fontSize(16);
                         Text.fontColor('#718096');
                         Text.margin(this.createBottom16MarginOptions());
@@ -1356,7 +1384,7 @@ class BookSourcePage extends ViewV2 {
                     Text.pop();
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Button.createWithLabel('添加书源');
-                        Button.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1276:11)", "entry");
+                        Button.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1310:11)", "entry");
                         Button.fontSize(14);
                         Button.fontColor(Color.White);
                         Button.backgroundColor('#3182CE');
@@ -1376,7 +1404,7 @@ class BookSourcePage extends ViewV2 {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         // 书源列表
                         List.create();
-                        List.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1291:9)", "entry");
+                        List.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1325:9)", "entry");
                         // 书源列表
                         List.width('100%');
                         // 书源列表
@@ -1401,7 +1429,7 @@ class BookSourcePage extends ViewV2 {
                                 };
                                 const itemCreation2 = (elmtId, isInitialRender) => {
                                     ListItem.create(deepRenderFunction, true);
-                                    ListItem.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1293:13)", "entry");
+                                    ListItem.debugLine("entry/src/main/ets/pages/BookSourcePage.ets(1327:13)", "entry");
                                 };
                                 const deepRenderFunction = (elmtId, isInitialRender) => {
                                     itemCreation(elmtId, isInitialRender);
@@ -1431,4 +1459,4 @@ class BookSourcePage extends ViewV2 {
     }
 }
 export { BookSourcePage };
-registerNamedRoute(() => new BookSourcePage(undefined, {}), "", { bundleName: "com.example.readerkitdemo", moduleName: "entry", pagePath: "pages/BookSourcePage", pageFullPath: "entry/src/main/ets/pages/BookSourcePage", integratedHsp: "false", moduleType: "followWithHap" });
+registerNamedRoute(() => new BookSourcePage(undefined, {}), "", { bundleName: "liubai.yuedu.hos", moduleName: "entry", pagePath: "pages/BookSourcePage", pageFullPath: "entry/src/main/ets/pages/BookSourcePage", integratedHsp: "false", moduleType: "followWithHap" });

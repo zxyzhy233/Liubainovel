@@ -4,9 +4,9 @@ if (!("finalizeConstruction" in ViewPU.prototype)) {
 interface MainPage_Params {
     currentIndex?: number;
 }
-import { Index } from "@bundle:com.example.readerkitdemo/entry/ets/pages/Index";
-import { MinePage } from "@bundle:com.example.readerkitdemo/entry/ets/pages/Mine";
-import { RecommendPage } from "@bundle:com.example.readerkitdemo/entry/ets/pages/RecommendPage";
+import { Index } from "@bundle:liubai.yuedu.hos/entry/ets/pages/Index";
+import { MinePage } from "@bundle:liubai.yuedu.hos/entry/ets/pages/Mine";
+import { RecommendPage } from "@bundle:liubai.yuedu.hos/entry/ets/pages/RecommendPage";
 class MainPage extends ViewPU {
     constructor(parent, params, __localStorage, elmtId = -1, paramsLambda = undefined, extraInfo) {
         super(parent, __localStorage, elmtId, extraInfo);
@@ -50,11 +50,11 @@ class MainPage extends ViewPU {
             Image.create(icon);
             Image.width(24);
             Image.height(24);
-            Image.fillColor(this.currentIndex === targetIndex ? '#243154' : { "id": 16777237, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.fillColor(this.currentIndex === targetIndex ? '#243154' : { "id": 16777237, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
         }, Image);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(title);
-            Text.fontColor(this.currentIndex === targetIndex ? '#243154' : { "id": 16777237, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Text.fontColor(this.currentIndex === targetIndex ? '#243154' : { "id": 16777237, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Text.fontSize(12);
         }, Text);
         Text.pop();
@@ -88,7 +88,7 @@ class MainPage extends ViewPU {
                 }
             });
             TabContent.tabBar({ builder: () => {
-                    this.TabBuilder.call(this, '书架', 0, { "id": 16777272, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                    this.TabBuilder.call(this, '书架', 0, { "id": 16777272, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                 } });
         }, TabContent);
         TabContent.pop();
@@ -111,7 +111,7 @@ class MainPage extends ViewPU {
                 }
             });
             TabContent.tabBar({ builder: () => {
-                    this.TabBuilder.call(this, '推荐', 1, { "id": 16777276, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                    this.TabBuilder.call(this, '推荐', 1, { "id": 16777276, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                 } });
         }, TabContent);
         TabContent.pop();
@@ -134,7 +134,7 @@ class MainPage extends ViewPU {
                 }
             });
             TabContent.tabBar({ builder: () => {
-                    this.TabBuilder.call(this, '我的', 2, { "id": 16777294, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                    this.TabBuilder.call(this, '我的', 2, { "id": 16777294, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                 } });
         }, TabContent);
         TabContent.pop();
@@ -147,4 +147,4 @@ class MainPage extends ViewPU {
         return "MainPage";
     }
 }
-registerNamedRoute(() => new MainPage(undefined, {}), "", { bundleName: "com.example.readerkitdemo", moduleName: "entry", pagePath: "pages/MainPage", pageFullPath: "entry/src/main/ets/pages/MainPage", integratedHsp: "false", moduleType: "followWithHap" });
+registerNamedRoute(() => new MainPage(undefined, {}), "", { bundleName: "liubai.yuedu.hos", moduleName: "entry", pagePath: "pages/MainPage", pageFullPath: "entry/src/main/ets/pages/MainPage", integratedHsp: "false", moduleType: "followWithHap" });

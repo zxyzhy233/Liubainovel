@@ -17,16 +17,16 @@ interface Index_Params {
     isDensityChange?: boolean;
 }
 import picker from "@ohos:file.picker";
-import { WindowAbility } from "@bundle:com.example.readerkitdemo/entry/ets/entryability/WindowAbility";
-import { LocalBookImporter } from "@bundle:com.example.readerkitdemo/entry/ets/common/LocalBookImporter";
+import { WindowAbility } from "@bundle:liubai.yuedu.hos/entry/ets/entryability/WindowAbility";
+import { LocalBookImporter } from "@bundle:liubai.yuedu.hos/entry/ets/common/LocalBookImporter";
 import { bookParser as bookParser } from "@hms:core.readerservice.bookParser";
 import hilog from "@ohos:hilog";
-import { BookUtils } from "@bundle:com.example.readerkitdemo/entry/ets/utils/BookUtils";
+import { BookUtils } from "@bundle:liubai.yuedu.hos/entry/ets/utils/BookUtils";
 import type common from "@ohos:app.ability.common";
-import { bookDataManager } from "@bundle:com.example.readerkitdemo/entry/ets/utils/BookDataManager";
-import { BookInfo } from "@bundle:com.example.readerkitdemo/entry/ets/common/BookInfo";
+import { bookDataManager } from "@bundle:liubai.yuedu.hos/entry/ets/utils/BookDataManager";
+import { BookInfo } from "@bundle:liubai.yuedu.hos/entry/ets/common/BookInfo";
 import router from "@ohos:router";
-import { bookSourceManager } from "@bundle:com.example.readerkitdemo/entry/ets/managers/BookSourceManager";
+import { bookSourceManager } from "@bundle:liubai.yuedu.hos/entry/ets/managers/BookSourceManager";
 import type { NovelInfo } from '../models/BookSourceModel';
 const TAG: string = 'IndexPage';
 class Index extends ViewPU {
@@ -274,7 +274,7 @@ class Index extends ViewPU {
             hilog.info(0x0000, TAG, 'loadBook bookParserInfo parse succeeded,dest path is: ' + newBook.filePath);
             this.getUIContext()
                 .getPromptAction()
-                .showToast({ message: { "id": 16777227, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" }, duration: 2000 });
+                .showToast({ message: { "id": 16777227, "type": 10003, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" }, duration: 2000 });
         }
         catch (err) {
             hilog.error(0x0000, TAG, 'loadBook failed, error is: ' + err);
@@ -309,16 +309,6 @@ class Index extends ViewPU {
             Blank.create();
         }, Blank);
         Blank.pop();
-        this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Button.createWithLabel('×');
-            Button.fontSize(20);
-            Button.fontColor('#718096');
-            Button.backgroundColor(Color.Transparent);
-            Button.onClick(() => {
-                this.showSearchSheet = false;
-            });
-        }, Button);
-        Button.pop();
         // 弹窗标题
         Row.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
@@ -785,7 +775,7 @@ class Index extends ViewPU {
                         // 否则显示书架页面
                         Column.width('100%');
                         // 否则显示书架页面
-                        Column.backgroundColor({ "id": 16777258, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                        Column.backgroundColor({ "id": 16777258, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                         // 否则显示书架页面
                         Column.padding({ left: 16, right: 16 });
                         // 否则显示书架页面
@@ -816,7 +806,7 @@ class Index extends ViewPU {
                         Row.create({ space: 16 });
                     }, Row);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        Image.create({ "id": 16777290, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                        Image.create({ "id": 16777290, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                         Image.width(32);
                         Image.height(32);
                         Image.onClick(() => {
@@ -824,7 +814,7 @@ class Index extends ViewPU {
                         });
                     }, Image);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        Image.create({ "id": 16777298, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                        Image.create({ "id": 16777298, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                         Image.width(32);
                         Image.height(32);
                         Image.onClick(() => {
@@ -931,18 +921,18 @@ class Index extends ViewPU {
                                                     Stack.create({ alignContent: Alignment.TopEnd });
                                                 }, Stack);
                                                 this.observeComponentCreation2((elmtId, isInitialRender) => {
-                                                    Image.create(book.coverPath || { "id": 16777299, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                                                    Image.create(book.coverPath || { "id": 16777299, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                                                     Image.width('100%');
                                                     Image.aspectRatio(0.75);
                                                     Image.borderRadius(8);
-                                                    Image.backgroundColor({ "id": 16777236, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                                                    Image.backgroundColor({ "id": 16777236, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                                                 }, Image);
                                                 this.observeComponentCreation2((elmtId, isInitialRender) => {
                                                     If.create();
                                                     if (this.isEditMode) {
                                                         this.ifElseBranchUpdateFunction(0, () => {
                                                             this.observeComponentCreation2((elmtId, isInitialRender) => {
-                                                                Image.create(this.selectedBooks.includes(book.id) ? { "id": 16777262, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" } : { "id": 16777263, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                                                                Image.create(this.selectedBooks.includes(book.id) ? { "id": 16777262, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" } : { "id": 16777263, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                                                                 Image.width(24);
                                                                 Image.height(24);
                                                                 Image.margin({ top: 4, right: 4 });
@@ -1011,11 +1001,11 @@ class Index extends ViewPU {
                                                     });
                                                 }, Row);
                                                 this.observeComponentCreation2((elmtId, isInitialRender) => {
-                                                    Image.create(book.coverPath || { "id": 16777299, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                                                    Image.create(book.coverPath || { "id": 16777299, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                                                     Image.width(60);
                                                     Image.aspectRatio(0.75);
                                                     Image.borderRadius(4);
-                                                    Image.backgroundColor({ "id": 16777236, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                                                    Image.backgroundColor({ "id": 16777236, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                                                 }, Image);
                                                 this.observeComponentCreation2((elmtId, isInitialRender) => {
                                                     Column.create({ space: 4 });
@@ -1033,15 +1023,15 @@ class Index extends ViewPU {
                                                 this.observeComponentCreation2((elmtId, isInitialRender) => {
                                                     Text.create(book.author || '未知');
                                                     Text.fontSize(14);
-                                                    Text.fontColor({ "id": 16777237, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                                                    Text.fontColor({ "id": 16777237, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                                                     Text.maxLines(1);
                                                     Text.textOverflow({ overflow: TextOverflow.Ellipsis });
                                                 }, Text);
                                                 Text.pop();
                                                 this.observeComponentCreation2((elmtId, isInitialRender) => {
-                                                    Text.create(`已读: ${book.progress}`);
+                                                    Text.create(`已读: ${book.currentChapter || book.progress || '未开始'}`);
                                                     Text.fontSize(12);
-                                                    Text.fontColor({ "id": 16777237, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                                                    Text.fontColor({ "id": 16777237, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                                                 }, Text);
                                                 Text.pop();
                                                 Column.pop();
@@ -1083,7 +1073,7 @@ class Index extends ViewPU {
             });
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Image.create({ "id": 16777290, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.create({ "id": 16777290, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Image.width(20);
             Image.height(20);
         }, Image);
@@ -1103,7 +1093,7 @@ class Index extends ViewPU {
             });
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Image.create({ "id": 16777277, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.create({ "id": 16777277, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Image.width(20);
             Image.height(20);
         }, Image);
@@ -1123,7 +1113,7 @@ class Index extends ViewPU {
             });
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Image.create({ "id": 16777264, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.create({ "id": 16777264, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Image.width(20);
             Image.height(20);
         }, Image);
@@ -1147,7 +1137,7 @@ class Index extends ViewPU {
             });
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Image.create({ "id": 16777268, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.create({ "id": 16777268, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Image.width(20);
             Image.height(20);
         }, Image);
@@ -1166,7 +1156,7 @@ class Index extends ViewPU {
             });
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Image.create({ "id": 16777267, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.create({ "id": 16777267, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Image.width(20);
             Image.height(20);
         }, Image);
@@ -1185,7 +1175,7 @@ class Index extends ViewPU {
             });
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Image.create({ "id": 16777266, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.create({ "id": 16777266, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Image.width(20);
             Image.height(20);
         }, Image);
@@ -1235,9 +1225,23 @@ class Index extends ViewPU {
     private openNovelDetail(novel: NovelInfo): void {
         hilog.info(0x0000, TAG, '打开小说详情: ' + novel.title);
         // 构建完整的书籍详情URL
-        const fullBookUrl = novel.link.startsWith('http') ?
-            novel.link :
-            'https://www.bqg128.com' + novel.link;
+        let fullBookUrl = novel.link;
+        // 如果链接不是完整的URL，则需要拼接书源的基础URL
+        if (!novel.link.startsWith('http')) {
+            // 获取启用的书源列表
+            const enabledSources = bookSourceManager.getEnabledBookSources();
+            if (enabledSources.length > 0) {
+                // 使用第一个启用的书源作为基础URL
+                const baseUrl = enabledSources[0].bookSourceUrl;
+                fullBookUrl = baseUrl + novel.link;
+                hilog.info(0x0000, TAG, `使用书源 ${enabledSources[0].bookSourceName} 的基础URL: ${baseUrl}`);
+            }
+            else {
+                // 如果没有启用的书源，使用默认的笔趣阁URL
+                fullBookUrl = 'https://www.bqg128.com' + novel.link;
+                hilog.warn(0x0000, TAG, '没有启用的书源，使用默认URL');
+            }
+        }
         hilog.info(0x0000, TAG, '书籍详情链接: ' + fullBookUrl);
         // 跳转到书籍详情页面
         router.pushUrl({
@@ -1299,4 +1303,4 @@ class Index extends ViewPU {
     }
 }
 export { Index };
-registerNamedRoute(() => new Index(undefined, {}), "", { bundleName: "com.example.readerkitdemo", moduleName: "entry", pagePath: "pages/Index", pageFullPath: "entry/src/main/ets/pages/Index", integratedHsp: "false", moduleType: "followWithHap" });
+registerNamedRoute(() => new Index(undefined, {}), "", { bundleName: "liubai.yuedu.hos", moduleName: "entry", pagePath: "pages/Index", pageFullPath: "entry/src/main/ets/pages/Index", integratedHsp: "false", moduleType: "followWithHap" });

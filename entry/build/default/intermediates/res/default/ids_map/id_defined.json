@@ -343,5 +343,13 @@
 			"type":	"profile",
 			"name":	"main_pages",
 			"id":	"0x01000055"
+		}, {
+			"type":	"media",
+			"name":	"icon",
+			"id":	"0x01000056"
+		}, {
+			"type":	"media",
+			"name":	"icon_startwindow",
+			"id":	"0x01000057"
 		}]
 }

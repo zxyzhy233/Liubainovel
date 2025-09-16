@@ -3,7 +3,7 @@ if (!("finalizeConstruction" in ViewPU.prototype)) {
 }
 import hilog from "@ohos:hilog";
 import router from "@ohos:router";
-import { bookSourceManager } from "@bundle:com.example.readerkitdemo/entry/ets/managers/BookSourceManager";
+import { bookSourceManager } from "@bundle:liubai.yuedu.hos/entry/ets/managers/BookSourceManager";
 import type { BookDetailInfo, ChapterInfo } from '../models/BookSourceModel';
 const TAG: string = 'BookDetailPage';
 /**
@@ -261,7 +261,7 @@ class BookDetailPage extends ViewV2 {
                     }, Row);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         // 封面图片
-                        Image.create(this.bookCover || { "id": 16777262, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                        Image.create(this.bookCover || { "id": 16777262, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                         Image.debugLine("entry/src/main/ets/pages/BookDetailPage.ets(214:11)", "entry");
                         // 封面图片
                         Image.width(100);
@@ -1049,4 +1049,4 @@ class BookDetailPage extends ViewV2 {
     }
 }
 export { BookDetailPage };
-registerNamedRoute(() => new BookDetailPage(undefined, {}), "", { bundleName: "com.example.readerkitdemo", moduleName: "entry", pagePath: "pages/BookDetailPage", pageFullPath: "entry/src/main/ets/pages/BookDetailPage", integratedHsp: "false", moduleType: "followWithHap" });
+registerNamedRoute(() => new BookDetailPage(undefined, {}), "", { bundleName: "liubai.yuedu.hos", moduleName: "entry", pagePath: "pages/BookDetailPage", pageFullPath: "entry/src/main/ets/pages/BookDetailPage", integratedHsp: "false", moduleType: "followWithHap" });

@@ -9,6 +9,8 @@ interface RecommendPage_Params {
 }
 import http from "@ohos:net.http";
 import hilog from "@ohos:hilog";
+import type common from "@ohos:app.ability.common";
+import type Want from "@ohos:app.ability.Want";
 const TAG: string = 'RecommendPage';
 /**
  * 小说信息接口
@@ -321,9 +323,11 @@ class RecommendPage extends ViewPU {
                         // 小说信息遮罩 - 与封面底部对齐
                         Column.width('100%');
                         // 小说信息遮罩 - 与封面底部对齐
+                        Column.align(Alignment.Top);
+                        // 小说信息遮罩 - 与封面底部对齐
                         Column.backgroundColor('#80000000');
                         // 小说信息遮罩 - 与封面底部对齐
-                        Column.align(Alignment.Top);
+                        Column.alignSelf(ItemAlign.End);
                         // 小说信息遮罩 - 与封面底部对齐
                         Column.borderRadius({ bottomLeft: 12, bottomRight: 12 });
                     }, Column);
@@ -362,21 +366,22 @@ class RecommendPage extends ViewPU {
                     // 轮播图内容
                     Stack.pop();
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        // 左右切换按钮 - 移动到图片下方
+                        // 左右切换按钮 - 移动到图片下方，增加间距
                         Row.create();
-                        Row.debugLine("entry/src/main/ets/pages/RecommendPage.ets(275:9)", "entry");
-                        // 左右切换按钮 - 移动到图片下方
-                        Row.justifyContent(FlexAlign.Center);
-                        // 左右切换按钮 - 移动到图片下方
+                        Row.debugLine("entry/src/main/ets/pages/RecommendPage.ets(276:9)", "entry");
+                        // 左右切换按钮 - 移动到图片下方，增加间距
+                        Row.width('90%');
+                        // 左右切换按钮 - 移动到图片下方，增加间距
+                        Row.justifyContent(FlexAlign.SpaceBetween);
+                        // 左右切换按钮 - 移动到图片下方，增加间距
                         Row.margin({ top: 16 });
                     }, Row);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Button.createWithLabel('←');
-                        Button.debugLine("entry/src/main/ets/pages/RecommendPage.ets(276:11)", "entry");
+                        Button.debugLine("entry/src/main/ets/pages/RecommendPage.ets(277:11)", "entry");
                         Button.onClick(() => {
                             this.prevNovel();
                         });
-                        Button.margin({ right: 20 });
                         Button.backgroundColor('#E0E0E0');
                         Button.fontColor('#333333');
                         Button.borderRadius(8);
@@ -385,8 +390,13 @@ class RecommendPage extends ViewPU {
                     }, Button);
                     Button.pop();
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Blank.create();
+                        Blank.debugLine("entry/src/main/ets/pages/RecommendPage.ets(287:11)", "entry");
+                    }, Blank);
+                    Blank.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Button.createWithLabel('→');
-                        Button.debugLine("entry/src/main/ets/pages/RecommendPage.ets(287:11)", "entry");
+                        Button.debugLine("entry/src/main/ets/pages/RecommendPage.ets(289:11)", "entry");
                         Button.onClick(() => {
                             this.nextNovel();
                         });
@@ -397,12 +407,12 @@ class RecommendPage extends ViewPU {
                         Button.height(40);
                     }, Button);
                     Button.pop();
-                    // 左右切换按钮 - 移动到图片下方
+                    // 左右切换按钮 - 移动到图片下方，增加间距
                     Row.pop();
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         // 刷新按钮 - 移动到图片下方
                         Button.createWithLabel('刷新推荐');
-                        Button.debugLine("entry/src/main/ets/pages/RecommendPage.ets(301:9)", "entry");
+                        Button.debugLine("entry/src/main/ets/pages/RecommendPage.ets(304:9)", "entry");
                         // 刷新按钮 - 移动到图片下方
                         Button.onClick(() => {
                             this.loadRecommendNovels();
@@ -444,15 +454,34 @@ class RecommendPage extends ViewPU {
      * 打开小说详情
      * @param novel 小说信息
      */
-    private openNovelDetail(novel: NovelInfo) {
-        // 这里可以跳转到详情页面或者使用浏览器打开
-        hilog.info(0x0000, TAG, '打开小说详情: ' + novel.title);
-        // 实际项目中可以添加路由跳转逻辑
+    private async openNovelDetail(novel: NovelInfo) {
+        try {
+            hilog.info(0x0000, TAG, '准备打开小说详情: ' + novel.title + ', 链接: ' + novel.link);
+            // 获取应用上下文
+            const context = getContext(this) as common.UIAbilityContext;
+            // 创建Intent，使用系统浏览器打开小说详情页面
+            const wantInfo: Want = {
+                action: 'ohos.want.action.viewData',
+                entities: ['entity.system.browsable'],
+                uri: novel.link
+            };
+            // 启动浏览器
+            await context.startAbility(wantInfo);
+            hilog.info(0x0000, TAG, '成功打开小说详情页面');
+        }
+        catch (error) {
+            hilog.error(0x0000, TAG, '打开小说详情失败: ' + JSON.stringify(error));
+            // 如果系统浏览器打开失败，尝试显示提示信息
+            this.errorMessage = '无法打开浏览器，请检查系统设置';
+            setTimeout(() => {
+                this.errorMessage = '';
+            }, 3000);
+        }
     }
     initialRender() {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/RecommendPage.ets(340:5)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/RecommendPage.ets(366:5)", "entry");
             Column.width('100%');
             Column.height('100%');
             Column.justifyContent(FlexAlign.Center);
@@ -462,7 +491,7 @@ class RecommendPage extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 标题
             Text.create('小说推荐');
-            Text.debugLine("entry/src/main/ets/pages/RecommendPage.ets(342:7)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/RecommendPage.ets(368:7)", "entry");
             // 标题
             Text.fontSize(24);
             // 标题
@@ -479,17 +508,17 @@ class RecommendPage extends ViewPU {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         // 加载中状态
                         Column.create();
-                        Column.debugLine("entry/src/main/ets/pages/RecommendPage.ets(349:9)", "entry");
+                        Column.debugLine("entry/src/main/ets/pages/RecommendPage.ets(375:9)", "entry");
                     }, Column);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Progress.create({ value: 0, total: 100, type: ProgressType.Ring });
-                        Progress.debugLine("entry/src/main/ets/pages/RecommendPage.ets(350:11)", "entry");
+                        Progress.debugLine("entry/src/main/ets/pages/RecommendPage.ets(376:11)", "entry");
                         Progress.width(40);
                         Progress.height(40);
                     }, Progress);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Text.create('正在加载推荐小说...');
-                        Text.debugLine("entry/src/main/ets/pages/RecommendPage.ets(353:11)", "entry");
+                        Text.debugLine("entry/src/main/ets/pages/RecommendPage.ets(379:11)", "entry");
                         Text.margin({ top: 16 });
                     }, Text);
                     Text.pop();
@@ -502,7 +531,7 @@ class RecommendPage extends ViewPU {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         // 错误状态
                         Text.create(this.errorMessage);
-                        Text.debugLine("entry/src/main/ets/pages/RecommendPage.ets(358:9)", "entry");
+                        Text.debugLine("entry/src/main/ets/pages/RecommendPage.ets(384:9)", "entry");
                         // 错误状态
                         Text.fontColor('#FF0000');
                         // 错误状态
@@ -512,7 +541,7 @@ class RecommendPage extends ViewPU {
                     Text.pop();
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Button.createWithLabel('重试');
-                        Button.debugLine("entry/src/main/ets/pages/RecommendPage.ets(361:9)", "entry");
+                        Button.debugLine("entry/src/main/ets/pages/RecommendPage.ets(387:9)", "entry");
                         Button.onClick(() => {
                             this.loadRecommendNovels();
                         });
@@ -525,11 +554,11 @@ class RecommendPage extends ViewPU {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         // 空状态
                         Column.create();
-                        Column.debugLine("entry/src/main/ets/pages/RecommendPage.ets(367:9)", "entry");
+                        Column.debugLine("entry/src/main/ets/pages/RecommendPage.ets(393:9)", "entry");
                     }, Column);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Text.create('暂无推荐小说');
-                        Text.debugLine("entry/src/main/ets/pages/RecommendPage.ets(368:11)", "entry");
+                        Text.debugLine("entry/src/main/ets/pages/RecommendPage.ets(394:11)", "entry");
                         Text.fontSize(16);
                         Text.fontColor('#808080');
                     }, Text);
@@ -556,4 +585,4 @@ class RecommendPage extends ViewPU {
     }
 }
 export { RecommendPage };
-registerNamedRoute(() => new RecommendPage(undefined, {}), "", { bundleName: "com.example.readerkitdemo", moduleName: "entry", pagePath: "pages/RecommendPage", pageFullPath: "entry/src/main/ets/pages/RecommendPage", integratedHsp: "false", moduleType: "followWithHap" });
+registerNamedRoute(() => new RecommendPage(undefined, {}), "", { bundleName: "liubai.yuedu.hos", moduleName: "entry", pagePath: "pages/RecommendPage", pageFullPath: "entry/src/main/ets/pages/RecommendPage", integratedHsp: "false", moduleType: "followWithHap" });

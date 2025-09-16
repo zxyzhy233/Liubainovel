@@ -4,9 +4,9 @@ import UIAbility from "@ohos:app.ability.UIAbility";
 import type Want from "@ohos:app.ability.Want";
 import hilog from "@ohos:hilog";
 import window from "@ohos:window";
-import { WindowAbility } from "@bundle:com.example.readerkitdemo/entry/ets/entryability/WindowAbility";
+import { WindowAbility } from "@bundle:liubai.yuedu.hos/entry/ets/entryability/WindowAbility";
 import deviceInfo from "@ohos:deviceInfo";
-import { bookSourceManager } from "@bundle:com.example.readerkitdemo/entry/ets/managers/BookSourceManager";
+import { bookSourceManager } from "@bundle:liubai.yuedu.hos/entry/ets/managers/BookSourceManager";
 const TAG: string = 'EntryAbility';
 export default class EntryAbility extends UIAbility {
     private windowStage: window.WindowStage | null = null;

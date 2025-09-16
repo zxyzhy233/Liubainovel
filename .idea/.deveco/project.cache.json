@@ -7,9 +7,9 @@
 	},
 	"BuildOptions":{
 		"SELECT_BUILD_PRODUCT":"default",
-		"BUNDLE_NAME":"com.example.readerkitdemo",
+		"BUNDLE_NAME":"liubai.yuedu.hos",
 		"BUILD_PATH":{
-			"OUTPUT_PATH":"D:\\ST\\ReaderKitDemo\\build\\outputs\\default"
+			"OUTPUT_PATH":"D:\\liubaixiaoshuo\\Liubainovel\\build\\outputs\\default"
 		},
 		"SELECT_BUILD_MODE":""
 	}

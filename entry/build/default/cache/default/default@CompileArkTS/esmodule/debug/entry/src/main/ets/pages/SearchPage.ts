@@ -6,7 +6,7 @@ interface SearchPage_Params {
     searchResult?: BookInfo[];
 }
 import type { BookInfo } from '../common/BookInfo';
-import { bookDataManager } from "@bundle:com.example.readerkitdemo/entry/ets/utils/BookDataManager";
+import { bookDataManager } from "@bundle:liubai.yuedu.hos/entry/ets/utils/BookDataManager";
 import hilog from "@ohos:hilog";
 const TAG: string = 'SearchPage';
 class SearchPage extends ViewPU {
@@ -80,7 +80,7 @@ class SearchPage extends ViewPU {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create('取消');
             Text.fontSize(16);
-            Text.fontColor({ "id": 16777239, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Text.fontColor({ "id": 16777239, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Text.onClick(() => {
                 this.getUIContext().getRouter().back();
             });
@@ -147,4 +147,4 @@ class SearchPage extends ViewPU {
         return "SearchPage";
     }
 }
-registerNamedRoute(() => new SearchPage(undefined, {}), "", { bundleName: "com.example.readerkitdemo", moduleName: "entry", pagePath: "pages/SearchPage", pageFullPath: "entry/src/main/ets/pages/SearchPage", integratedHsp: "false", moduleType: "followWithHap" });
+registerNamedRoute(() => new SearchPage(undefined, {}), "", { bundleName: "liubai.yuedu.hos", moduleName: "entry", pagePath: "pages/SearchPage", pageFullPath: "entry/src/main/ets/pages/SearchPage", integratedHsp: "false", moduleType: "followWithHap" });

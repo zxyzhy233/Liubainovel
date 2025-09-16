@@ -30,6 +30,7 @@ const SQL_CREATE_TABLE = `
     filePath TEXT NOT NULL UNIQUE,
     coverPath TEXT,
     progress TEXT,
+    currentChapter TEXT,
     lastReadTime INTEGER,
     resourceIndex INTEGER,
     domPos TEXT
@@ -50,21 +51,31 @@ class BookDataManager {
       };
       this.rdbStore = await relationalStore.getRdbStore(context, storeConfig);
       await this.rdbStore.executeSql(SQL_CREATE_TABLE);
-      // Check if 'author' column exists
+      
+      // Check if required columns exist and add them if missing
       const columns = await this.rdbStore.querySql(`PRAGMA table_info(${TABLE_NAME})`);
       let hasAuthorColumn = false;
+      let hasCurrentChapterColumn = false;
+      
       while(columns.goToNextRow()) {
-        if (columns.getString(columns.getColumnIndex('name')) === 'author') {
+        const columnName = columns.getString(columns.getColumnIndex('name'));
+        if (columnName === 'author') {
           hasAuthorColumn = true;
-          break;
+        } else if (columnName === 'currentChapter') {
+          hasCurrentChapterColumn = true;
         }
       }
       columns.close();
 
-      // If 'author' column does not exist, add it
+      // Add missing columns
       if (!hasAuthorColumn) {
         await this.rdbStore.executeSql(`ALTER TABLE ${TABLE_NAME} ADD COLUMN author TEXT`);
         hilog.info(0x0000, TAG, 'Database schema updated: added author column.');
+      }
+      
+      if (!hasCurrentChapterColumn) {
+        await this.rdbStore.executeSql(`ALTER TABLE ${TABLE_NAME} ADD COLUMN currentChapter TEXT`);
+        hilog.info(0x0000, TAG, 'Database schema updated: added currentChapter column.');
       }
       hilog.info(0x0000, TAG, 'Database init success.');
     } catch (e) {
@@ -113,6 +124,12 @@ class BookDataManager {
           book.filePath = resultSet.getString(resultSet.getColumnIndex('filePath'));
           book.coverPath = resultSet.getString(resultSet.getColumnIndex('coverPath'));
           book.progress = resultSet.getString(resultSet.getColumnIndex('progress'));
+          // 尝试读取 currentChapter 字段，如果不存在则使用空字符串
+          try {
+            book.currentChapter = resultSet.getString(resultSet.getColumnIndex('currentChapter')) || '';
+          } catch (e) {
+            book.currentChapter = '';
+          }
           book.lastReadTime = resultSet.getLong(resultSet.getColumnIndex('lastReadTime'));
           book.resourceIndex = resultSet.getLong(resultSet.getColumnIndex('resourceIndex'));
           book.domPos = resultSet.getString(resultSet.getColumnIndex('domPos'));
@@ -147,6 +164,12 @@ class BookDataManager {
           book.filePath = resultSet.getString(resultSet.getColumnIndex('filePath'));
           book.coverPath = resultSet.getString(resultSet.getColumnIndex('coverPath'));
           book.progress = resultSet.getString(resultSet.getColumnIndex('progress'));
+          // 尝试读取 currentChapter 字段，如果不存在则使用空字符串
+          try {
+            book.currentChapter = resultSet.getString(resultSet.getColumnIndex('currentChapter')) || '';
+          } catch (e) {
+            book.currentChapter = '';
+          }
           book.lastReadTime = resultSet.getLong(resultSet.getColumnIndex('lastReadTime'));
           book.resourceIndex = resultSet.getLong(resultSet.getColumnIndex('resourceIndex'));
           book.domPos = resultSet.getString(resultSet.getColumnIndex('domPos'));
@@ -163,31 +186,53 @@ class BookDataManager {
   }
 
   /**
-   * 更新书籍阅读进度（改为记录章节名）
+   * 更新书籍阅读记录（用于书架显示章节名）
    * @param filePath 文件路径
-   * @param resourceIndex 资源索引
-   * @param domPos DOM位置
-   * @param chapterName 章节名（替代原来的进度百分比）
+   * @param chapterName 章节名（用于书架显示已读章节）
    */
-  async updateBookProgress(filePath: string, resourceIndex: number, domPos: string, chapterName: string): Promise<void> {
+  async updateBookReadingRecord(filePath: string, chapterName: string): Promise<void> {
     if (!this.rdbStore) {
       hilog.error(0x0000, TAG, 'RdbStore is not initialized.');
       return;
     }
     try {
       const valueBucket: relationalStore.ValuesBucket = {
-        resourceIndex: resourceIndex,
-        domPos: domPos,
-        progress: chapterName
+        currentChapter: chapterName,
+        lastReadTime: new Date().getTime()
       };
       const predicates = new relationalStore.RdbPredicates(TABLE_NAME);
       predicates.equalTo('filePath', filePath);
       await this.rdbStore.update(valueBucket, predicates);
-      hilog.info(0x0000, TAG, `Updated book progress: ${filePath}, resourceIndex=${resourceIndex}, domPos=${domPos}, chapterName=${chapterName}`);
+      hilog.info(0x0000, TAG, `Updated book reading record: ${filePath}, chapterName=${chapterName}`);
+    } catch (err) {
+      hilog.error(0x0000, TAG, `Failed to update book reading record: ${JSON.stringify(err)}`);
+    }
+  }
+
+  /**
+   * 更新书籍阅读进度百分比（用于书架显示进度）
+   * @param filePath 文件路径
+   * @param progressPercent 进度百分比（如 "25%" 或 "已读50页"）
+   */
+  async updateBookProgress(filePath: string, progressPercent: string): Promise<void> {
+    if (!this.rdbStore) {
+      hilog.error(0x0000, TAG, 'RdbStore is not initialized.');
+      return;
+    }
+    try {
+      const valueBucket: relationalStore.ValuesBucket = {
+        progress: progressPercent,
+        lastReadTime: new Date().getTime()
+      };
+      const predicates = new relationalStore.RdbPredicates(TABLE_NAME);
+      predicates.equalTo('filePath', filePath);
+      await this.rdbStore.update(valueBucket, predicates);
+      hilog.info(0x0000, TAG, `Updated book progress: ${filePath}, progress=${progressPercent}`);
     } catch (err) {
       hilog.error(0x0000, TAG, `Failed to update book progress: ${JSON.stringify(err)}`);
     }
   }
+
 
   async deleteBooksByIds(ids: number[]): Promise<void> {
     if (!this.rdbStore) {

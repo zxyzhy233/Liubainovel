@@ -18,6 +18,10 @@ interface Reader_Params {
     bookCover?: PixelMap | null;
     bookTitle?: string;
     author?: string;
+    isLoading?: boolean;
+    loadingProgress?: string;
+    hasError?: boolean;
+    errorMessage?: string;
     fontSize?: string;
     lineHeight?: string;
     fontList?: Array<FontFileInfo>;
@@ -31,15 +35,15 @@ interface Reader_Params {
     screenDensityCallBack?: Callback<number> | null;
     resourceRequest?: bookParser.CallbackRes<string, ArrayBuffer>;
 }
-import { WindowAbility } from "@bundle:com.example.readerkitdemo/entry/ets/entryability/WindowAbility";
+import { WindowAbility } from "@bundle:liubai.yuedu.hos/entry/ets/entryability/WindowAbility";
 import display from "@ohos:display";
 import fs from "@ohos:file.fs";
 import image from "@ohos:multimedia.image";
 import type { BusinessError as BusinessError } from "@ohos:base";
-import { FontFileInfo } from "@bundle:com.example.readerkitdemo/entry/ets/common/FontFileInfo";
+import { FontFileInfo } from "@bundle:liubai.yuedu.hos/entry/ets/common/FontFileInfo";
 import hilog from "@ohos:hilog";
-import { bookDataManager } from "@bundle:com.example.readerkitdemo/entry/ets/utils/BookDataManager";
-import { settingsManager } from "@bundle:com.example.readerkitdemo/entry/ets/utils/SettingsManager";
+import { bookDataManager } from "@bundle:liubai.yuedu.hos/entry/ets/utils/BookDataManager";
+import { settingsManager } from "@bundle:liubai.yuedu.hos/entry/ets/utils/SettingsManager";
 import preferences from "@ohos:data.preferences";
 import { ReadPageComponent as ReadPageComponent } from "@hms:core.readerservice.readerComponent";
 import { readerCore as readerCore } from "@hms:core.readerservice.readerComponent";
@@ -79,11 +83,15 @@ class Reader extends ViewPU {
         this.__bookCover = new ObservedPropertyObjectPU(null, this, "bookCover");
         this.__bookTitle = new ObservedPropertySimplePU('', this, "bookTitle");
         this.__author = new ObservedPropertySimplePU('', this, "author");
+        this.__isLoading = new ObservedPropertySimplePU(true, this, "isLoading");
+        this.__loadingProgress = new ObservedPropertySimplePU('正在加载...', this, "loadingProgress");
+        this.__hasError = new ObservedPropertySimplePU(false, this, "hasError");
+        this.__errorMessage = new ObservedPropertySimplePU('', this, "errorMessage");
         this.__fontSize = new ObservedPropertySimplePU('18', this, "fontSize");
         this.__lineHeight = new ObservedPropertySimplePU('', this, "lineHeight");
-        this.fontList = [new FontFileInfo(this.getUIContext().getHostContext()!.resourceManager.getStringSync({ "id": 16777233, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" }), ''),
+        this.fontList = [new FontFileInfo(this.getUIContext().getHostContext()!.resourceManager.getStringSync({ "id": 16777233, "type": 10003, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" }), ''),
             new FontFileInfo(this.getUIContext()
-                .getHostContext()!.resourceManager.getStringSync({ "id": 16777232, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" }), 'fonts/SourceHanSerifCN-VF.ttf')];
+                .getHostContext()!.resourceManager.getStringSync({ "id": 16777232, "type": 10003, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" }), 'fonts/SourceHanSerifCN-VF.ttf')];
         this.__selectFontPath = new ObservedPropertySimplePU('', this, "selectFontPath");
         this.__themeList = new ObservedPropertyObjectPU([
             'white',
@@ -95,13 +103,13 @@ class Reader extends ViewPU {
             'darkSky'
         ], this, "themeList");
         this.THEME_BUTTON_BACKGROUND = {
-            'white': { "id": 16777255, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
-            'yellow': { "id": 16777256, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
-            'pink': { "id": 16777252, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
-            'green': { "id": 16777251, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
-            'dark': { "id": 16777250, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
-            'whiteSky': { "id": 16777255, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
-            'darkSky': { "id": 16777250, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" }
+            'white': { "id": 16777255, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" },
+            'yellow': { "id": 16777256, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" },
+            'pink': { "id": 16777252, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" },
+            'green': { "id": 16777251, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" },
+            'dark': { "id": 16777250, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" },
+            'whiteSky': { "id": 16777255, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" },
+            'darkSky': { "id": 16777250, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" }
         };
         this.THEME_PAGE_COLOR = {
             'white': '#FFFFFF',
@@ -113,17 +121,17 @@ class Reader extends ViewPU {
             'darkSky': '#202224'
         };
         this.themeBorderColor = {
-            0: { "id": 16777247, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
-            1: { "id": 16777248, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
-            2: { "id": 16777246, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
-            3: { "id": 16777245, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
-            4: { "id": 16777247, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
-            5: { "id": 16777247, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" },
-            6: { "id": 16777247, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" }
+            0: { "id": 16777247, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" },
+            1: { "id": 16777248, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" },
+            2: { "id": 16777246, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" },
+            3: { "id": 16777245, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" },
+            4: { "id": 16777247, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" },
+            5: { "id": 16777247, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" },
+            6: { "id": 16777247, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" }
         };
         this.__themeSelectIndex = new ObservedPropertySimplePU(0, this, "themeSelectIndex");
         this.readerSetting = {
-            fontName: this.getUIContext().getHostContext()!.resourceManager.getStringSync({ "id": 16777233, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" }),
+            fontName: this.getUIContext().getHostContext()!.resourceManager.getStringSync({ "id": 16777233, "type": 10003, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" }),
             fontPath: '',
             fontSize: Number.parseInt(this.fontSize),
             fontColor: '#000000',
@@ -207,6 +215,18 @@ class Reader extends ViewPU {
         if (params.author !== undefined) {
             this.author = params.author;
         }
+        if (params.isLoading !== undefined) {
+            this.isLoading = params.isLoading;
+        }
+        if (params.loadingProgress !== undefined) {
+            this.loadingProgress = params.loadingProgress;
+        }
+        if (params.hasError !== undefined) {
+            this.hasError = params.hasError;
+        }
+        if (params.errorMessage !== undefined) {
+            this.errorMessage = params.errorMessage;
+        }
         if (params.fontSize !== undefined) {
             this.fontSize = params.fontSize;
         }
@@ -257,6 +277,10 @@ class Reader extends ViewPU {
         this.__bookCover.purgeDependencyOnElmtId(rmElmtId);
         this.__bookTitle.purgeDependencyOnElmtId(rmElmtId);
         this.__author.purgeDependencyOnElmtId(rmElmtId);
+        this.__isLoading.purgeDependencyOnElmtId(rmElmtId);
+        this.__loadingProgress.purgeDependencyOnElmtId(rmElmtId);
+        this.__hasError.purgeDependencyOnElmtId(rmElmtId);
+        this.__errorMessage.purgeDependencyOnElmtId(rmElmtId);
         this.__fontSize.purgeDependencyOnElmtId(rmElmtId);
         this.__lineHeight.purgeDependencyOnElmtId(rmElmtId);
         this.__selectFontPath.purgeDependencyOnElmtId(rmElmtId);
@@ -274,6 +298,10 @@ class Reader extends ViewPU {
         this.__bookCover.aboutToBeDeleted();
         this.__bookTitle.aboutToBeDeleted();
         this.__author.aboutToBeDeleted();
+        this.__isLoading.aboutToBeDeleted();
+        this.__loadingProgress.aboutToBeDeleted();
+        this.__hasError.aboutToBeDeleted();
+        this.__errorMessage.aboutToBeDeleted();
         this.__fontSize.aboutToBeDeleted();
         this.__lineHeight.aboutToBeDeleted();
         this.__selectFontPath.aboutToBeDeleted();
@@ -363,6 +391,34 @@ class Reader extends ViewPU {
     }
     set author(newValue: string) {
         this.__author.set(newValue);
+    }
+    private __isLoading: ObservedPropertySimplePU<boolean>; // 加载状态
+    get isLoading() {
+        return this.__isLoading.get();
+    }
+    set isLoading(newValue: boolean) {
+        this.__isLoading.set(newValue);
+    }
+    private __loadingProgress: ObservedPropertySimplePU<string>; // 加载进度文本
+    get loadingProgress() {
+        return this.__loadingProgress.get();
+    }
+    set loadingProgress(newValue: string) {
+        this.__loadingProgress.set(newValue);
+    }
+    private __hasError: ObservedPropertySimplePU<boolean>; // 错误状态
+    get hasError() {
+        return this.__hasError.get();
+    }
+    set hasError(newValue: boolean) {
+        this.__hasError.set(newValue);
+    }
+    private __errorMessage: ObservedPropertySimplePU<string>; // 错误信息
+    get errorMessage() {
+        return this.__errorMessage.get();
+    }
+    set errorMessage(newValue: string) {
+        this.__errorMessage.set(newValue);
     }
     private __fontSize: ObservedPropertySimplePU<string>;
     get fontSize() {
@@ -482,13 +538,19 @@ class Reader extends ViewPU {
     private resourceRequest: bookParser.CallbackRes<string, ArrayBuffer>;
     private async startPlay(path: string, resourceIndex: number, domPos: string) {
         try {
+            this.isLoading = true;
+            this.hasError = false;
+            this.loadingProgress = '正在初始化阅读器...';
             const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
             const initPromise: Promise<void> = this.readerComponentController.init(context);
-            const defaultHandlerPromise: Promise<bookParser.BookParserHandler> = bookParser.getDefaultHandler(path);
-            const results = await Promise.all([defaultHandlerPromise, initPromise]);
-            const defaultHandler = results[0];
+            // 使用默认处理器
+            hilog.info(0x0000, TAG, 'Using default handler for file');
+            this.loadingProgress = '正在解析书籍文件...';
+            const defaultHandler = await bookParser.getDefaultHandler(path);
+            this.loadingProgress = '正在启动阅读器...';
+            await initPromise;
             this.defaultHandler = defaultHandler;
-            hilog.info(0x0000, TAG, 'startPlay getDefaultHandler end,result is:' + JSON.stringify(this.defaultHandler));
+            hilog.info(0x0000, TAG, 'startPlay handler initialized successfully');
             this.readerComponentController.registerBookParser(this.defaultHandler);
             // Register listeners
             this.readerComponentController.on('resourceRequest', this.resourceRequest);
@@ -520,31 +582,54 @@ class Reader extends ViewPU {
                 }
             });
             this.readerComponentController.setPageConfig(this.readerSetting);
-            // 优先从 Preferences 加载进度
+            // 优先从 Preferences 加载精确阅读进度
             const progressKey = `${this.filePath}_progress`;
             const savedProgress = await this.preference?.get(progressKey, '');
-            let startResourceIndex = resourceIndex || 0;
-            let startDomPos = domPos || '';
+            let startResourceIndex = 0;
+            let startDomPos = '';
             if (typeof savedProgress === 'string' && savedProgress) {
                 try {
                     const savedProgressObj = JSON.parse(savedProgress) as ProgressData;
-                    const savedResourceIndex = savedProgressObj.resourceIndex;
-                    const savedDomPos = savedProgressObj.domPos;
-                    startResourceIndex = savedResourceIndex;
-                    startDomPos = savedDomPos;
-                    hilog.info(0x0000, TAG, `Loaded progress from preferences: resourceIndex=${startResourceIndex}, domPos=${startDomPos}`);
+                    startResourceIndex = savedProgressObj.resourceIndex;
+                    startDomPos = savedProgressObj.domPos;
+                    hilog.info(0x0000, TAG, `Loaded reading progress from preferences: resourceIndex=${startResourceIndex}, domPos=${startDomPos}`);
                 }
                 catch (e) {
                     hilog.error(0x0000, TAG, `Failed to parse saved progress: ${savedProgress}`);
+                    // 如果 Preferences 解析失败，使用传入的参数作为备用
+                    startResourceIndex = resourceIndex || 0;
+                    startDomPos = domPos || '';
+                    hilog.info(0x0000, TAG, `Using fallback parameters: resourceIndex=${startResourceIndex}, domPos=${startDomPos}`);
                 }
             }
+            else {
+                // 如果 Preferences 中没有保存的进度，使用传入的参数（通常是首次阅读）
+                startResourceIndex = resourceIndex || 0;
+                startDomPos = domPos || '';
+                hilog.info(0x0000, TAG, `No saved progress found, using initial parameters: resourceIndex=${startResourceIndex}, domPos=${startDomPos}`);
+            }
+            this.loadingProgress = '正在加载内容...';
             this.readerComponentController.startPlay(startResourceIndex, startDomPos);
             // 获取目录列表
             this.catalogItemList = this.defaultHandler?.getCatalogList() || [];
             this.updateCurrentCatalogIndex();
+            // 加载完成
+            this.isLoading = false;
+            this.loadingProgress = '';
+            hilog.info(0x0000, TAG, 'Reader initialization completed successfully');
         }
         catch (err) {
             hilog.error(0x0000, TAG, 'startPlay: err: ' + JSON.stringify(err));
+            this.hasError = true;
+            this.isLoading = false;
+            this.errorMessage = `加载失败: ${err instanceof Error ? err.message : '未知错误'}`;
+            // 尝试提供解决建议
+            if (err instanceof Error && err.message.includes('memory')) {
+                this.errorMessage += '\n建议：文件过大，请尝试使用较小的文件或重启应用';
+            }
+            else if (err instanceof Error && err.message.includes('timeout')) {
+                this.errorMessage += '\n建议：加载超时，请检查文件是否损坏或重试';
+            }
         }
     }
     private async getBookInfo() {
@@ -623,8 +708,8 @@ class Reader extends ViewPU {
             });
         }, Stack);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            SymbolGlyph.create({ "id": 125831487, "type": 40000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
-            SymbolGlyph.fontColor([{ "id": 16777257, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" }]);
+            SymbolGlyph.create({ "id": 125831487, "type": 40000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
+            SymbolGlyph.fontColor([{ "id": 16777257, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" }]);
             SymbolGlyph.width(18);
             SymbolGlyph.fontSize(18);
             SymbolGlyph.fontWeight(600);
@@ -658,11 +743,11 @@ class Reader extends ViewPU {
             Image.aspectRatio(3 / 4);
             Image.borderRadius(2);
             Image.zIndex(1);
-            Image.alt({ "id": 16777275, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
-            Image.backgroundColor({ "id": 125829129, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.alt({ "id": 16777275, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
+            Image.backgroundColor({ "id": 125829129, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
         }, Image);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Image.create({ "id": 16777291, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.create({ "id": 16777291, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Image.draggable(false);
             Image.aspectRatio(3 / 4);
             Image.width(42);
@@ -671,7 +756,7 @@ class Reader extends ViewPU {
             Image.position({ x: 0, y: 0 });
         }, Image);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Image.create({ "id": 16777273, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.create({ "id": 16777273, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Image.draggable(false);
             Image.width(42);
             Image.opacity(0.7);
@@ -682,7 +767,7 @@ class Reader extends ViewPU {
         Stack.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(this.bookTitle);
-            Text.fontSize({ "id": 125829684, "type": 10002, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Text.fontSize({ "id": 125829684, "type": 10002, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Text.textOverflow({ overflow: TextOverflow.Ellipsis });
             Text.maxLines(1);
             Text.margin({ right: 12, left: 12 });
@@ -735,7 +820,7 @@ class Reader extends ViewPU {
                                 top: 6,
                                 bottom: 6
                             });
-                            Column.backgroundColor(index === this.currentCatalogIndex ? { "id": 16777243, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" } : Color.Transparent);
+                            Column.backgroundColor(index === this.currentCatalogIndex ? { "id": 16777243, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" } : Color.Transparent);
                             Column.onClick(async () => {
                                 this.jumpToCatalogItem(item);
                             });
@@ -753,13 +838,13 @@ class Reader extends ViewPU {
                         this.observeComponentCreation2((elmtId, isInitialRender) => {
                             Text.create(' · ');
                             Text.fontSize(14);
-                            Text.fontColor({ "id": 16777238, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                            Text.fontColor({ "id": 16777238, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                         }, Text);
                         Text.pop();
                         this.observeComponentCreation2((elmtId, isInitialRender) => {
                             Text.create(item.catalogName);
                             Text.fontSize(14);
-                            Text.fontColor(index === this.currentCatalogIndex ? Color.Red : { "id": 16777238, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                            Text.fontColor(index === this.currentCatalogIndex ? Color.Red : { "id": 16777238, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                             Text.textOverflow({ overflow: TextOverflow.Ellipsis });
                             Text.padding({ top: 8, bottom: 8 });
                             Text.maxLines(2);
@@ -848,8 +933,8 @@ class Reader extends ViewPU {
                     Text.fontColor(this.selectFontPath !== data.getPath() ? Color.Black :
                         Color.Red);
                     Text.textAlign(TextAlign.Center);
-                    Text.backgroundColor(this.selectFontPath !== data.getPath() ? { "id": 16777242, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" } : { "id": 16777241, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
-                    Text.borderColor(this.selectFontPath !== data.getPath() ? { "id": 16777240, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" } : { "id": 16777247, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                    Text.backgroundColor(this.selectFontPath !== data.getPath() ? { "id": 16777242, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" } : { "id": 16777241, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
+                    Text.borderColor(this.selectFontPath !== data.getPath() ? { "id": 16777240, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" } : { "id": 16777247, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                 }, Text);
                 Text.pop();
                 Column.pop();
@@ -864,7 +949,7 @@ class Reader extends ViewPU {
             Text.width('92%');
             Text.height(1);
             Text.margin({ left: 16, top: 12, right: 16 });
-            Text.backgroundColor({ "id": 16777242, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Text.backgroundColor({ "id": 16777242, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
         }, Text);
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
@@ -888,7 +973,7 @@ class Reader extends ViewPU {
             });
         }, Radio);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Text.create({ "id": 16777223, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Text.create({ "id": 16777223, "type": 10003, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Text.fontSize(16);
             Text.lineHeight(21);
         }, Text);
@@ -910,7 +995,7 @@ class Reader extends ViewPU {
             });
         }, Radio);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Text.create({ "id": 16777234, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Text.create({ "id": 16777234, "type": 10003, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Text.fontSize(16);
             Text.lineHeight(21);
         }, Text);
@@ -921,7 +1006,7 @@ class Reader extends ViewPU {
             Text.width('92%');
             Text.height(1);
             Text.margin({ left: 16, top: 12, right: 16 });
-            Text.backgroundColor({ "id": 16777242, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Text.backgroundColor({ "id": 16777242, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
         }, Text);
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
@@ -972,7 +1057,7 @@ class Reader extends ViewPU {
                     Row.width('100%');
                     Row.height(40);
                     Row.borderWidth(this.themeSelectIndex !== index ? 1 : 2);
-                    Row.borderColor(this.themeSelectIndex !== index ? { "id": 16777249, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" } :
+                    Row.borderColor(this.themeSelectIndex !== index ? { "id": 16777249, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" } :
                         this.themeBorderColor[this.themeSelectIndex]);
                     Row.backgroundImage(this.getBackgroundImage(item));
                     Row.backgroundColor(this.THEME_BUTTON_BACKGROUND[item.toString()]);
@@ -994,18 +1079,18 @@ class Reader extends ViewPU {
             Text.width('92%');
             Text.height(1);
             Text.margin({ left: 16, top: 12, right: 16 });
-            Text.backgroundColor({ "id": 16777242, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Text.backgroundColor({ "id": 16777242, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
         }, Text);
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            TextInput.create({ placeholder: { "id": 16777224, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" }, text: this.fontSize });
+            TextInput.create({ placeholder: { "id": 16777224, "type": 10003, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" }, text: this.fontSize });
             TextInput.margin({
                 left: 16,
                 top: 10,
                 right: 16,
                 bottom: 10
             });
-            TextInput.backgroundColor({ "id": 16777254, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            TextInput.backgroundColor({ "id": 16777254, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             TextInput.placeholderColor("#666666");
             TextInput.type(InputType.Number);
             TextInput.fontSize(16);
@@ -1014,9 +1099,9 @@ class Reader extends ViewPU {
             });
         }, TextInput);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            TextInput.create({ placeholder: { "id": 16777228, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" }, text: this.lineHeight });
+            TextInput.create({ placeholder: { "id": 16777228, "type": 10003, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" }, text: this.lineHeight });
             TextInput.margin({ left: 16, right: 16, bottom: 10 });
-            TextInput.backgroundColor({ "id": 16777254, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            TextInput.backgroundColor({ "id": 16777254, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             TextInput.placeholderColor("#666666");
             TextInput.type(InputType.NUMBER_DECIMAL);
             TextInput.fontSize(16);
@@ -1025,7 +1110,7 @@ class Reader extends ViewPU {
             });
         }, TextInput);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Button.createWithLabel({ "id": 16777235, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Button.createWithLabel({ "id": 16777235, "type": 10003, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Button.onClick(async () => {
                 hilog.info(0x0000, TAG, 'click : update page setting, fontSize = ' + this.fontSize + ' ,lineHeight = ' + this.lineHeight);
                 if (!isNaN(Number.parseInt(this.fontSize))) {
@@ -1040,7 +1125,7 @@ class Reader extends ViewPU {
             Button.fontSize(16);
             Button.width('92%');
             Button.fontColor(Color.Red);
-            Button.backgroundColor({ "id": 16777254, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Button.backgroundColor({ "id": 16777254, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Button.padding({ top: 10, bottom: 10 });
             Button.margin({ left: 16, right: 16, bottom: 30 });
         }, Button);
@@ -1053,28 +1138,157 @@ class Reader extends ViewPU {
             Stack.width('100%');
             Stack.height('100%');
             Stack.onClick(() => {
-                this.showModal();
+                if (!this.isLoading && !this.hasError) {
+                    this.showModal();
+                }
             });
         }, Stack);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
+            If.create();
+            // 加载状态显示
+            if (this.isLoading) {
+                this.ifElseBranchUpdateFunction(0, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Column.create();
+                        Column.width('100%');
+                        Column.height('100%');
+                        Column.justifyContent(FlexAlign.Center);
+                        Column.alignItems(HorizontalAlign.Center);
+                        Column.backgroundColor(Color.White);
+                        Column.zIndex(10);
+                    }, Column);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        LoadingProgress.create();
+                        LoadingProgress.width(60);
+                        LoadingProgress.height(60);
+                        LoadingProgress.color(Color.Red);
+                    }, LoadingProgress);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create(this.loadingProgress);
+                        Text.fontSize(16);
+                        Text.fontColor(Color.Black);
+                        Text.margin({ top: 20 });
+                        Text.textAlign(TextAlign.Center);
+                    }, Text);
+                    Text.pop();
+                    Column.pop();
+                });
+            }
+            // 错误状态显示
+            else {
+                this.ifElseBranchUpdateFunction(1, () => {
+                });
+            }
+        }, If);
+        If.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            If.create();
+            // 错误状态显示
+            if (this.hasError) {
+                this.ifElseBranchUpdateFunction(0, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Column.create();
+                        Column.width('100%');
+                        Column.height('100%');
+                        Column.justifyContent(FlexAlign.Center);
+                        Column.alignItems(HorizontalAlign.Center);
+                        Column.backgroundColor(Color.White);
+                        Column.zIndex(10);
+                    }, Column);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        SymbolGlyph.create({ "id": 125832652, "type": 40000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
+                        SymbolGlyph.width(80);
+                        SymbolGlyph.height(80);
+                        SymbolGlyph.margin({ bottom: 20 });
+                        SymbolGlyph.fontColor([Color.Orange]);
+                    }, SymbolGlyph);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create('加载失败');
+                        Text.fontSize(20);
+                        Text.fontWeight(FontWeight.Bold);
+                        Text.fontColor(Color.Black);
+                        Text.margin({ bottom: 10 });
+                    }, Text);
+                    Text.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create(this.errorMessage);
+                        Text.fontSize(14);
+                        Text.fontColor(Color.Gray);
+                        Text.textAlign(TextAlign.Center);
+                        Text.margin({ bottom: 30, left: 20, right: 20 });
+                        Text.maxLines(5);
+                    }, Text);
+                    Text.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Row.create({ space: 20 });
+                    }, Row);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Button.createWithLabel('返回');
+                        Button.onClick(() => {
+                            this.getUIContext().getRouter().back();
+                        });
+                        Button.backgroundColor(Color.Gray);
+                        Button.fontColor(Color.White);
+                    }, Button);
+                    Button.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Button.createWithLabel('重试');
+                        Button.onClick(() => {
+                            this.retryLoading();
+                        });
+                        Button.backgroundColor(Color.Red);
+                        Button.fontColor(Color.White);
+                    }, Button);
+                    Button.pop();
+                    Row.pop();
+                    Column.pop();
+                });
+            }
+            // 阅读器组件
+            else {
+                this.ifElseBranchUpdateFunction(1, () => {
+                });
+            }
+        }, If);
+        If.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
             __Common__.create();
             __Common__.zIndex(1);
+            __Common__.visibility(this.isLoading || this.hasError ? Visibility.Hidden : Visibility.Visible);
         }, __Common__);
         {
             this.observeComponentCreation2((elmtId, isInitialRender) => {
                 if (isInitialRender) {
-                    let componentCall = new ReadPageComponent(this, {
+                    let componentCall = new 
+                    // 阅读器组件
+                    ReadPageComponent(this, {
                         controller: this.readerComponentController,
                         readerCallback: (err: BusinessError, data: readerCore.ReaderComponentController) => {
-                            this.readerComponentController = data;
+                            if (err) {
+                                hilog.error(0x0000, TAG, `ReaderComponent callback error: ${err.message}`);
+                                this.hasError = true;
+                                this.isLoading = false;
+                                this.errorMessage = `阅读器初始化失败: ${err.message}`;
+                            }
+                            else {
+                                this.readerComponentController = data;
+                            }
                         }
-                    }, undefined, elmtId, () => { }, { page: "entry/src/main/ets/pages/Reader.ets", line: 725, col: 7 });
+                    }, undefined, elmtId, () => { }, { page: "entry/src/main/ets/pages/Reader.ets", line: 831, col: 7 });
                     ViewPU.create(componentCall);
                     let paramsLambda = () => {
                         return {
                             controller: this.readerComponentController,
                             readerCallback: (err: BusinessError, data: readerCore.ReaderComponentController) => {
-                                this.readerComponentController = data;
+                                if (err) {
+                                    hilog.error(0x0000, TAG, `ReaderComponent callback error: ${err.message}`);
+                                    this.hasError = true;
+                                    this.isLoading = false;
+                                    this.errorMessage = `阅读器初始化失败: ${err.message}`;
+                                }
+                                else {
+                                    this.readerComponentController = data;
+                                }
                             }
                         };
                     };
@@ -1136,7 +1350,7 @@ class Reader extends ViewPU {
             Row.backgroundColor(Color.White);
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Text.create({ "id": 16777221, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Text.create({ "id": 16777221, "type": 10003, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Text.width('50%');
             Text.height('100%');
             Text.onClick(() => {
@@ -1147,7 +1361,7 @@ class Reader extends ViewPU {
         }, Text);
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Text.create({ "id": 16777231, "type": 10003, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Text.create({ "id": 16777231, "type": 10003, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Text.width('50%');
             Text.height('100%');
             Text.onClick(() => {
@@ -1161,6 +1375,17 @@ class Reader extends ViewPU {
         // menu bar
         Column.pop();
         Stack.pop();
+    }
+    /**
+     * 重试加载
+     */
+    private retryLoading(): void {
+        this.hasError = false;
+        this.errorMessage = '';
+        this.isLoading = true;
+        // 重新获取参数并启动
+        let param = this.getUIContext().getRouter().getParams() as paramType;
+        this.startPlay(param.filePath, param.resourceIndex || 0, param.domPos || '');
     }
     private applyTheme(theme: string, index: number) {
         this.readerSetting.themeColor = this.THEME_PAGE_COLOR[theme];
@@ -1202,14 +1427,16 @@ class Reader extends ViewPU {
         this.showModalBanner = true;
     }
     /**
-     * 保存阅读进度（改为记录章节名）
+     * 保存阅读进度和阅读记录
+     * 阅读进度：保存到 Preferences，用于精确恢复阅读位置
+     * 阅读记录：保存到数据库，用于书架显示已读章节名和进度百分比
      */
     private saveReadingProgress() {
         if (this.filePath && this.currentData && this.currentData.resourceIndex !== undefined) {
             const resourceIndex = this.currentData.resourceIndex;
             const domPos = this.currentData.startDomPos || '';
             const spineList = this.defaultHandler?.getSpineList() || [];
-            // 获取当前章节名
+            // 获取当前章节名用于显示
             let chapterName = '未知章节';
             if (spineList.length > 0 && resourceIndex >= 0 && resourceIndex < spineList.length) {
                 const currentSpine = spineList[resourceIndex];
@@ -1221,7 +1448,13 @@ class Reader extends ViewPU {
                     chapterName = matchingCatalog.catalogName;
                 }
             }
-            // 保存到 Preferences
+            // 计算阅读进度百分比
+            let progressPercent = '0%';
+            if (spineList.length > 0) {
+                const progress = Math.round((resourceIndex / spineList.length) * 100);
+                progressPercent = `${progress}%`;
+            }
+            // 1. 保存精确阅读进度到 Preferences（用于恢复阅读位置）
             const progressKey = `${this.filePath}_progress`;
             const progressValue = JSON.stringify({ resourceIndex, domPos });
             this.preference?.put(progressKey, progressValue).then(() => {
@@ -1230,13 +1463,16 @@ class Reader extends ViewPU {
                         hilog.error(0x0000, TAG, `Failed to flush preferences, err: ${err}`);
                     }
                     else {
-                        hilog.info(0x0000, TAG, `Saved progress to preferences: ${progressValue}`);
+                        hilog.info(0x0000, TAG, `Saved reading progress to preferences: ${progressValue}`);
                     }
                 });
             });
-            // 更新数据库，保存章节名而不是进度百分比
-            hilog.info(0x0000, TAG, `Updating progress for ${this.filePath}: resourceIndex=${resourceIndex}, domPos=${domPos}, chapterName=${chapterName}`);
-            bookDataManager.updateBookProgress(this.filePath, resourceIndex, domPos, chapterName);
+            // 2. 保存阅读记录到数据库（用于书架显示章节名）
+            hilog.info(0x0000, TAG, `Updating reading record for ${this.filePath}: chapterName=${chapterName}`);
+            bookDataManager.updateBookReadingRecord(this.filePath, chapterName);
+            // 3. 保存阅读进度百分比到数据库（用于书架显示进度）
+            hilog.info(0x0000, TAG, `Updating reading progress for ${this.filePath}: progress=${progressPercent}`);
+            bookDataManager.updateBookProgress(this.filePath, progressPercent);
         }
     }
     /**
@@ -1297,10 +1533,10 @@ class Reader extends ViewPU {
     }
     getBackgroundImage(themeType: string): Resource | string {
         if (themeType === 'whiteSky') {
-            return { "id": 16777295, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" };
+            return { "id": 16777295, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" };
         }
         else if (themeType === 'darkSky') {
-            return { "id": 16777274, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" };
+            return { "id": 16777274, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" };
         }
         return '';
     }
@@ -1341,4 +1577,4 @@ class Reader extends ViewPU {
         return "Reader";
     }
 }
-registerNamedRoute(() => new Reader(undefined, {}), "", { bundleName: "com.example.readerkitdemo", moduleName: "entry", pagePath: "pages/Reader", pageFullPath: "entry/src/main/ets/pages/Reader", integratedHsp: "false", moduleType: "followWithHap" });
+registerNamedRoute(() => new Reader(undefined, {}), "", { bundleName: "liubai.yuedu.hos", moduleName: "entry", pagePath: "pages/Reader", pageFullPath: "entry/src/main/ets/pages/Reader", integratedHsp: "false", moduleType: "followWithHap" });

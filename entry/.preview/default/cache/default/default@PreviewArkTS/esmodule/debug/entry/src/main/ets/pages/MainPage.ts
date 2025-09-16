@@ -4,9 +4,9 @@ if (!("finalizeConstruction" in ViewPU.prototype)) {
 interface MainPage_Params {
     currentIndex?: number;
 }
-import { Index } from "@bundle:com.example.readerkitdemo/entry/ets/pages/Index";
-import { MinePage } from "@bundle:com.example.readerkitdemo/entry/ets/pages/Mine";
-import { RecommendPage } from "@bundle:com.example.readerkitdemo/entry/ets/pages/RecommendPage";
+import { Index } from "@bundle:liubai.yuedu.hos/entry/ets/pages/Index";
+import { MinePage } from "@bundle:liubai.yuedu.hos/entry/ets/pages/Mine";
+import { RecommendPage } from "@bundle:liubai.yuedu.hos/entry/ets/pages/RecommendPage";
 class MainPage extends ViewPU {
     constructor(parent, params, __localStorage, elmtId = -1, paramsLambda = undefined, extraInfo) {
         super(parent, __localStorage, elmtId, extraInfo);
@@ -52,12 +52,12 @@ class MainPage extends ViewPU {
             Image.debugLine("entry/src/main/ets/pages/MainPage.ets(27:7)", "entry");
             Image.width(24);
             Image.height(24);
-            Image.fillColor(this.currentIndex === targetIndex ? '#243154' : { "id": 16777239, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.fillColor(this.currentIndex === targetIndex ? '#243154' : { "id": 16777239, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
         }, Image);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(title);
             Text.debugLine("entry/src/main/ets/pages/MainPage.ets(31:7)", "entry");
-            Text.fontColor(this.currentIndex === targetIndex ? '#243154' : { "id": 16777239, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Text.fontColor(this.currentIndex === targetIndex ? '#243154' : { "id": 16777239, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Text.fontSize(12);
         }, Text);
         Text.pop();
@@ -92,7 +92,7 @@ class MainPage extends ViewPU {
                 }
             });
             TabContent.tabBar({ builder: () => {
-                    this.TabBuilder.call(this, '书架', 0, { "id": 16777281, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                    this.TabBuilder.call(this, '书架', 0, { "id": 16777281, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                 } });
             TabContent.debugLine("entry/src/main/ets/pages/MainPage.ets(42:7)", "entry");
         }, TabContent);
@@ -116,7 +116,7 @@ class MainPage extends ViewPU {
                 }
             });
             TabContent.tabBar({ builder: () => {
-                    this.TabBuilder.call(this, '推荐', 1, { "id": 16777302, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                    this.TabBuilder.call(this, '推荐', 1, { "id": 16777302, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                 } });
             TabContent.debugLine("entry/src/main/ets/pages/MainPage.ets(47:7)", "entry");
         }, TabContent);
@@ -140,7 +140,7 @@ class MainPage extends ViewPU {
                 }
             });
             TabContent.tabBar({ builder: () => {
-                    this.TabBuilder.call(this, '我的', 2, { "id": 16777283, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+                    this.TabBuilder.call(this, '我的', 2, { "id": 16777283, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                 } });
             TabContent.debugLine("entry/src/main/ets/pages/MainPage.ets(52:7)", "entry");
         }, TabContent);
@@ -154,4 +154,4 @@ class MainPage extends ViewPU {
         return "MainPage";
     }
 }
-registerNamedRoute(() => new MainPage(undefined, {}), "", { bundleName: "com.example.readerkitdemo", moduleName: "entry", pagePath: "pages/MainPage", pageFullPath: "entry/src/main/ets/pages/MainPage", integratedHsp: "false", moduleType: "followWithHap" });
+registerNamedRoute(() => new MainPage(undefined, {}), "", { bundleName: "liubai.yuedu.hos", moduleName: "entry", pagePath: "pages/MainPage", pageFullPath: "entry/src/main/ets/pages/MainPage", integratedHsp: "false", moduleType: "followWithHap" });

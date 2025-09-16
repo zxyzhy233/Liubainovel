@@ -642,17 +642,40 @@ struct BookSourcePage {
    * 跳转到新建书源页面
    */
   private navigateToAddSource(): void {
-    // 创建路由参数对象，避免对象字面量类型错误
-    const routerParams: RouterParams = {
-      isEdit: false
-    };
-    const routerOptions: RouterOptions = {
-      url: 'pages/BookSourceEditPage',
-      params: routerParams
-    };
-    router.pushUrl(routerOptions).catch((error: Error) => {
-      hilog.error(0x0000, TAG, '跳转到新建书源页面失败: ' + error.message);
-    });
+    try {
+      // 创建路由参数对象，避免对象字面量类型错误
+      const routerParams: RouterParams = {
+        isEdit: false
+      };
+      const routerOptions: RouterOptions = {
+        url: 'pages/BookSourceEditPage',
+        params: routerParams
+      };
+      
+      hilog.info(0x0000, TAG, '准备跳转到新建书源页面');
+      router.pushUrl(routerOptions).then(() => {
+        hilog.info(0x0000, TAG, '成功跳转到新建书源页面');
+      }).catch((error: Error) => {
+        hilog.error(0x0000, TAG, '跳转到新建书源页面失败: ' + error.message);
+        // 显示错误提示
+        const toastOptions: ToastOptions = {
+          message: '跳转失败: ' + error.message,
+          duration: 2000
+        };
+        this.getUIContext()
+          .getPromptAction()
+          .showToast(toastOptions);
+      });
+    } catch (error) {
+      hilog.error(0x0000, TAG, '创建路由参数时发生错误: ' + JSON.stringify(error));
+      const toastOptions: ToastOptions = {
+        message: '页面跳转出错',
+        duration: 2000
+      };
+      this.getUIContext()
+        .getPromptAction()
+        .showToast(toastOptions);
+    }
   }
 
   /**
@@ -718,7 +741,7 @@ struct BookSourcePage {
    * 弹窗状态变化处理函数
    * @param event 状态变化事件
    */
-  private handlePopupStateChange(event: PopupStateChangeEvent): void {
+  private handlePopupStateChange = (event: PopupStateChangeEvent): void => {
     this.popupStateChangeListener.onStateChange(event);
   }
 
@@ -728,7 +751,7 @@ struct BookSourcePage {
    */
   private createPopupOptions(): PopupOptions {
     const options: PopupOptions = {
-      builder: this.popupWithButtonBuilder,
+      builder: () => { this.popupWithButtonBuilder() },
       placement: Placement.Bottom,
       maskColor: Color.Transparent,
       popupColor: Color.White,
@@ -947,10 +970,11 @@ struct BookSourcePage {
    * @returns Toggle配置选项对象
    */
   private createToggleOptions(isOn: boolean): ToggleOptions {
-    return {
+    const options: ToggleOptions = {
       type: ToggleType.Switch,
       isOn: isOn
     };
+    return options;
   }
 
   /**
@@ -959,9 +983,10 @@ struct BookSourcePage {
    * @returns Image配置选项对象
    */
   private createImageOptions(src: ResourceStr): ImageOptions {
-    return {
+    const options: ImageOptions = {
       src: src
     };
+    return options;
   }
 
   /**
@@ -969,9 +994,10 @@ struct BookSourcePage {
    * @returns Column配置选项对象
    */
   private createColumnOptions(): ColumnOptions {
-    return {
+    const options: ColumnOptions = {
       space: undefined
     };
+    return options;
   }
 
   /**
@@ -979,9 +1005,10 @@ struct BookSourcePage {
    * @returns Row配置选项对象
    */
   private createRowOptions(): RowOptions {
-    return {
+    const options: RowOptions = {
       space: undefined
     };
+    return options;
   }
 
   /**
@@ -1210,36 +1237,43 @@ struct BookSourcePage {
    * 构建弹出菜单
    */
   @Builder
-  private popupWithButtonBuilder() {
+  popupWithButtonBuilder() {
     Column() {
       Row() {
-        Image($r("app.media.Plus")).width(20).height(20)
-        Text('新建书源').fontSize(18)
+        Image($r("app.media.Plus"))
+          .width(20)
+          .height(20)
+        Text('新建书源')
+          .fontSize(18)
       }
-      .height(this.getMenuItemHeight())
+      .height(50)
       .width('100%')
       .justifyContent(FlexAlign.Start)
       .alignItems(VerticalAlign.Center)
-      .padding(this.createMenuPaddingOptions())
+      .padding({ left: 16, right: 16, top: 0, bottom: 0 })
       .onClick(() => {
         this.showAddMenu = false;
         this.navigateToAddSource();
       })
       
       Row() {
-        Image($r("app.media.SignIn")).width(20).height(20)
-        Text('导入书源').fontSize(18)
+        Image($r("app.media.SignIn"))
+          .width(20)
+          .height(20)
+        Text('导入书源')
+          .fontSize(18)
       }
-      .height(this.getMenuItemHeight())
+      .height(50)
       .width('100%')
       .justifyContent(FlexAlign.Start)
       .alignItems(VerticalAlign.Center)
-      .padding(this.createMenuPaddingOptions())
+      .padding({ left: 16, right: 16, top: 0, bottom: 0 })
       .onClick(() => {
         this.showAddMenu = false;
         this.importBookSources();
       })
-    }.width(this.getPopupMenuWidth())
+    }
+    .width(160)
   }
 
   build() {

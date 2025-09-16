@@ -1,6 +1,6 @@
 import relationalStore from "@ohos:data.relationalStore";
 import hilog from "@ohos:hilog";
-import { BookInfo } from "@bundle:com.example.readerkitdemo/entry/ets/common/BookInfo";
+import { BookInfo } from "@bundle:liubai.yuedu.hos/entry/ets/common/BookInfo";
 import type common from "@ohos:app.ability.common";
 const TAG: string = 'BookDataManager';
 const DB_NAME = 'BookShelf.db';
@@ -143,31 +143,36 @@ class BookDataManager {
         }
     }
     /**
-     * 更新书籍阅读进度（改为记录章节名）
+     * 更新书籍阅读记录（仅用于书架显示）
      * @param filePath 文件路径
-     * @param resourceIndex 资源索引
-     * @param domPos DOM位置
-     * @param chapterName 章节名（替代原来的进度百分比）
+     * @param chapterName 章节名（用于书架显示已读章节）
      */
-    async updateBookProgress(filePath: string, resourceIndex: number, domPos: string, chapterName: string): Promise<void> {
+    async updateBookReadingRecord(filePath: string, chapterName: string): Promise<void> {
         if (!this.rdbStore) {
             hilog.error(0x0000, TAG, 'RdbStore is not initialized.');
             return;
         }
         try {
             const valueBucket: relationalStore.ValuesBucket = {
-                resourceIndex: resourceIndex,
-                domPos: domPos,
-                progress: chapterName
+                progress: chapterName,
+                lastReadTime: new Date().getTime()
             };
             const predicates = new relationalStore.RdbPredicates(TABLE_NAME);
             predicates.equalTo('filePath', filePath);
             await this.rdbStore.update(valueBucket, predicates);
-            hilog.info(0x0000, TAG, `Updated book progress: ${filePath}, resourceIndex=${resourceIndex}, domPos=${domPos}, chapterName=${chapterName}`);
+            hilog.info(0x0000, TAG, `Updated book reading record: ${filePath}, chapterName=${chapterName}`);
         }
         catch (err) {
-            hilog.error(0x0000, TAG, `Failed to update book progress: ${JSON.stringify(err)}`);
+            hilog.error(0x0000, TAG, `Failed to update book reading record: ${JSON.stringify(err)}`);
         }
+    }
+    /**
+     * 更新书籍阅读进度（已废弃，保留用于兼容性）
+     * @deprecated 使用 updateBookReadingRecord 替代
+     */
+    async updateBookProgress(filePath: string, resourceIndex: number, domPos: string, chapterName: string): Promise<void> {
+        hilog.warn(0x0000, TAG, 'updateBookProgress is deprecated, use updateBookReadingRecord instead');
+        await this.updateBookReadingRecord(filePath, chapterName);
     }
     async deleteBooksByIds(ids: number[]): Promise<void> {
         if (!this.rdbStore) {

@@ -327,13 +327,25 @@ struct BookSourceEditPage {
     hilog.info(0x0000, TAG, `${this.isEdit ? '更新' : '保存'}书源: ${sourceData.bookSourceName}`);
     
     // 返回上一页并传递数据
-    router.back({
-      url: 'pages/BookSourcePage',
-      params: {
-        action: this.isEdit ? 'update' : 'add',
-        sourceData: sourceData
-      }
-    });
+    try {
+      router.replaceUrl({
+        url: 'pages/BookSourcePage',
+        params: {
+          action: this.isEdit ? 'update' : 'add',
+          sourceData: sourceData
+        }
+      }).then(() => {
+        hilog.info(0x0000, TAG, '成功返回书源管理页面');
+      }).catch((error: Error) => {
+        hilog.error(0x0000, TAG, '返回书源管理页面失败: ' + error.message);
+        // 如果replaceUrl失败，尝试使用back
+        router.back();
+      });
+    } catch (error) {
+      hilog.error(0x0000, TAG, '页面跳转出错: ' + JSON.stringify(error));
+      // 最后的备选方案，直接返回
+      router.back();
+    }
   }
 
   /**
@@ -561,19 +573,19 @@ struct BookSourceEditPage {
         this.searchBookList = value;
       })
       
-      this.buildInputField('书籍名称', '书籍名称选择器', this.searchName, (value: string) => {
+      this.buildInputField('书籍名称 *', '书籍名称选择器', this.searchName, (value: string) => {
         this.searchName = value;
       })
       
-      this.buildInputField('作者', '作者选择器', this.searchAuthor, (value: string) => {
+      this.buildInputField('作者 *', '作者选择器', this.searchAuthor, (value: string) => {
         this.searchAuthor = value;
       })
       
-      this.buildInputField('书籍URL', '书籍URL选择器', this.searchBookUrl, (value: string) => {
+      this.buildInputField('书籍URL *', '书籍URL选择器', this.searchBookUrl, (value: string) => {
         this.searchBookUrl = value;
       })
       
-      this.buildInputField('封面URL', '封面URL选择器', this.searchCoverUrl, (value: string) => {
+      this.buildInputField('封面URL *', '封面URL选择器', this.searchCoverUrl, (value: string) => {
         this.searchCoverUrl = value;
       })
       
@@ -643,23 +655,23 @@ struct BookSourceEditPage {
   @Builder
   private buildBookInfoRuleTab(): void {
     Column() {
-      this.buildInputField('书籍名称', '书籍名称选择器', this.bookInfoName, (value: string) => {
+      this.buildInputField('书籍名称 *', '书籍名称选择器', this.bookInfoName, (value: string) => {
         this.bookInfoName = value;
       })
       
-      this.buildInputField('作者', '作者选择器', this.bookInfoAuthor, (value: string) => {
+      this.buildInputField('作者 *', '作者选择器', this.bookInfoAuthor, (value: string) => {
         this.bookInfoAuthor = value;
       })
       
-      this.buildInputField('封面URL', '封面URL选择器', this.bookInfoCoverUrl, (value: string) => {
+      this.buildInputField('封面URL *', '封面URL选择器', this.bookInfoCoverUrl, (value: string) => {
         this.bookInfoCoverUrl = value;
       })
       
-      this.buildInputField('简介', '简介选择器', this.bookInfoIntro, (value: string) => {
+      this.buildInputField('简介 *', '简介选择器', this.bookInfoIntro, (value: string) => {
         this.bookInfoIntro = value;
       })
       
-      this.buildInputField('分类', '分类选择器', this.bookInfoKind, (value: string) => {
+      this.buildInputField('分类 *', '分类选择器', this.bookInfoKind, (value: string) => {
         this.bookInfoKind = value;
       })
       
@@ -688,15 +700,15 @@ struct BookSourceEditPage {
   @Builder
   private buildTocRuleTab(): void {
     Column() {
-      this.buildInputField('章节列表', '章节列表选择器', this.tocChapterList, (value: string) => {
+      this.buildInputField('章节列表 *', '章节列表选择器', this.tocChapterList, (value: string) => {
         this.tocChapterList = value;
       })
       
-      this.buildInputField('章节名称', '章节名称选择器', this.tocChapterName, (value: string) => {
+      this.buildInputField('章节名称 *', '章节名称选择器', this.tocChapterName, (value: string) => {
         this.tocChapterName = value;
       })
       
-      this.buildInputField('章节URL', '章节URL选择器', this.tocChapterUrl, (value: string) => {
+      this.buildInputField('章节URL *', '章节URL选择器', this.tocChapterUrl, (value: string) => {
         this.tocChapterUrl = value;
       })
       
@@ -704,6 +716,7 @@ struct BookSourceEditPage {
         this.tocNextTocUrl = value;
       })
     }
+    .justifyContent(FlexAlign.Start)
     .padding(16)
   }
 
@@ -725,6 +738,7 @@ struct BookSourceEditPage {
         this.contentReplaceRegex = value;
       }, true)
     }
+    .justifyContent(FlexAlign.Start)
     .padding(16)
   }
 

@@ -7,7 +7,7 @@ import picker from "@ohos:file.picker";
 import type common from "@ohos:app.ability.common";
 import fileIo from "@ohos:file.fs";
 import util from "@ohos:util";
-import { bookSourceManager } from "@bundle:com.example.readerkitdemo/entry/ets/managers/BookSourceManager";
+import { bookSourceManager } from "@bundle:liubai.yuedu.hos/entry/ets/managers/BookSourceManager";
 import type { BookSourceInfo as BookSourceInfoModel } from '../models/BookSourceModel';
 const TAG: string = 'BookSourcePage';
 /**
@@ -228,6 +228,9 @@ class BookSourcePage extends ViewV2 {
         this.isLoading = false;
         this.showAddMenu = false;
         this.popupStateChangeListener = new PopupStateChangeListenerImpl();
+        this.handlePopupStateChange = (event: PopupStateChangeEvent): void => {
+            this.popupStateChangeListener.onStateChange(event);
+        };
         this.finalizeConstruction();
     }
     @Local
@@ -590,17 +593,40 @@ class BookSourcePage extends ViewV2 {
      * 跳转到新建书源页面
      */
     private navigateToAddSource(): void {
-        // 创建路由参数对象，避免对象字面量类型错误
-        const routerParams: RouterParams = {
-            isEdit: false
-        };
-        const routerOptions: RouterOptions = {
-            url: 'pages/BookSourceEditPage',
-            params: routerParams
-        };
-        router.pushUrl(routerOptions).catch((error: Error) => {
-            hilog.error(0x0000, TAG, '跳转到新建书源页面失败: ' + error.message);
-        });
+        try {
+            // 创建路由参数对象，避免对象字面量类型错误
+            const routerParams: RouterParams = {
+                isEdit: false
+            };
+            const routerOptions: RouterOptions = {
+                url: 'pages/BookSourceEditPage',
+                params: routerParams
+            };
+            hilog.info(0x0000, TAG, '准备跳转到新建书源页面');
+            router.pushUrl(routerOptions).then(() => {
+                hilog.info(0x0000, TAG, '成功跳转到新建书源页面');
+            }).catch((error: Error) => {
+                hilog.error(0x0000, TAG, '跳转到新建书源页面失败: ' + error.message);
+                // 显示错误提示
+                const toastOptions: ToastOptions = {
+                    message: '跳转失败: ' + error.message,
+                    duration: 2000
+                };
+                this.getUIContext()
+                    .getPromptAction()
+                    .showToast(toastOptions);
+            });
+        }
+        catch (error) {
+            hilog.error(0x0000, TAG, '创建路由参数时发生错误: ' + JSON.stringify(error));
+            const toastOptions: ToastOptions = {
+                message: '页面跳转出错',
+                duration: 2000
+            };
+            this.getUIContext()
+                .getPromptAction()
+                .showToast(toastOptions);
+        }
     }
     /**
      * 跳转到编辑书源页面
@@ -662,16 +688,14 @@ class BookSourcePage extends ViewV2 {
      * 弹窗状态变化处理函数
      * @param event 状态变化事件
      */
-    private handlePopupStateChange(event: PopupStateChangeEvent): void {
-        this.popupStateChangeListener.onStateChange(event);
-    }
+    private handlePopupStateChange;
     /**
      * 创建弹窗配置选项
      * @returns 弹窗配置选项对象
      */
     private createPopupOptions(): PopupOptions {
         const options: PopupOptions = {
-            builder: this.popupWithButtonBuilder,
+            builder: () => { this.popupWithButtonBuilder(); },
             placement: Placement.Bottom,
             maskColor: Color.Transparent,
             popupColor: Color.White,
@@ -873,10 +897,11 @@ class BookSourcePage extends ViewV2 {
      * @returns Toggle配置选项对象
      */
     private createToggleOptions(isOn: boolean): ToggleOptions {
-        return {
+        const options: ToggleOptions = {
             type: ToggleType.Switch,
             isOn: isOn
         };
+        return options;
     }
     /**
      * 创建Image配置选项
@@ -884,27 +909,30 @@ class BookSourcePage extends ViewV2 {
      * @returns Image配置选项对象
      */
     private createImageOptions(src: ResourceStr): ImageOptions {
-        return {
+        const options: ImageOptions = {
             src: src
         };
+        return options;
     }
     /**
      * 创建Column配置选项
      * @returns Column配置选项对象
      */
     private createColumnOptions(): ColumnOptions {
-        return {
+        const options: ColumnOptions = {
             space: undefined
         };
+        return options;
     }
     /**
      * 创建Row配置选项
      * @returns Row配置选项对象
      */
     private createRowOptions(): RowOptions {
-        return {
+        const options: RowOptions = {
             space: undefined
         };
+        return options;
     }
     /**
      * 返回上一页
@@ -1201,25 +1229,25 @@ class BookSourcePage extends ViewV2 {
     /**
      * 构建弹出菜单
      */
-    private popupWithButtonBuilder(parent = null) {
+    popupWithButtonBuilder(parent = null) {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.width(this.getPopupMenuWidth());
+            Column.width(160);
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Row.create();
-            Row.height(this.getMenuItemHeight());
+            Row.height(50);
             Row.width('100%');
             Row.justifyContent(FlexAlign.Start);
             Row.alignItems(VerticalAlign.Center);
-            Row.padding(this.createMenuPaddingOptions());
+            Row.padding({ left: 16, right: 16, top: 0, bottom: 0 });
             Row.onClick(() => {
                 this.showAddMenu = false;
                 this.navigateToAddSource();
             });
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Image.create({ "id": 16777264, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.create({ "id": 16777264, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Image.width(20);
             Image.height(20);
         }, Image);
@@ -1231,18 +1259,18 @@ class BookSourcePage extends ViewV2 {
         Row.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Row.create();
-            Row.height(this.getMenuItemHeight());
+            Row.height(50);
             Row.width('100%');
             Row.justifyContent(FlexAlign.Start);
             Row.alignItems(VerticalAlign.Center);
-            Row.padding(this.createMenuPaddingOptions());
+            Row.padding({ left: 16, right: 16, top: 0, bottom: 0 });
             Row.onClick(() => {
                 this.showAddMenu = false;
                 this.importBookSources();
             });
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Image.create({ "id": 16777266, "type": 20000, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Image.create({ "id": 16777266, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Image.width(20);
             Image.height(20);
         }, Image);
@@ -1394,4 +1422,4 @@ class BookSourcePage extends ViewV2 {
     }
 }
 export { BookSourcePage };
-registerNamedRoute(() => new BookSourcePage(undefined, {}), "", { bundleName: "com.example.readerkitdemo", moduleName: "entry", pagePath: "pages/BookSourcePage", pageFullPath: "entry/src/main/ets/pages/BookSourcePage", integratedHsp: "false", moduleType: "followWithHap" });
+registerNamedRoute(() => new BookSourcePage(undefined, {}), "", { bundleName: "liubai.yuedu.hos", moduleName: "entry", pagePath: "pages/BookSourcePage", pageFullPath: "entry/src/main/ets/pages/BookSourcePage", integratedHsp: "false", moduleType: "followWithHap" });

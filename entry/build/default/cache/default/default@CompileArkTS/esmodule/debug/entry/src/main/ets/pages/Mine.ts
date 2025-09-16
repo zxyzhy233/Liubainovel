@@ -150,7 +150,7 @@ class MinePage extends ViewPU {
             Column.create();
             Column.width('100%');
             Column.height('100%');
-            Column.backgroundColor({ "id": 16777258, "type": 10001, params: [], "bundleName": "com.example.readerkitdemo", "moduleName": "entry" });
+            Column.backgroundColor({ "id": 16777258, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 顶部标题
@@ -210,4 +210,4 @@ class MinePage extends ViewPU {
     }
 }
 export { MinePage };
-registerNamedRoute(() => new MinePage(undefined, {}), "", { bundleName: "com.example.readerkitdemo", moduleName: "entry", pagePath: "pages/Mine", pageFullPath: "entry/src/main/ets/pages/Mine", integratedHsp: "false", moduleType: "followWithHap" });
+registerNamedRoute(() => new MinePage(undefined, {}), "", { bundleName: "liubai.yuedu.hos", moduleName: "entry", pagePath: "pages/Mine", pageFullPath: "entry/src/main/ets/pages/Mine", integratedHsp: "false", moduleType: "followWithHap" });

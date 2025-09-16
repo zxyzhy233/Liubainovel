@@ -130,14 +130,6 @@ struct Index {
           .fontColor('#2D3748')
         
         Blank()
-        
-        Button('×')
-          .fontSize(20)
-          .fontColor('#718096')
-          .backgroundColor(Color.Transparent)
-          .onClick(() => {
-            this.showSearchSheet = false;
-          })
       }
       .width('100%')
       .margin({ bottom: 20 })
@@ -535,7 +527,7 @@ struct Index {
                     .fontColor($r('app.color.black_60_opacity'))
                     .maxLines(1)
                     .textOverflow({ overflow: TextOverflow.Ellipsis })
-                  Text(`已读: ${book.progress}`)
+                  Text(`已读: ${book.currentChapter || book.progress || '未开始'}`)
                     .fontSize(12)
                     .fontColor($r('app.color.black_60_opacity'))
                 }
@@ -661,9 +653,23 @@ struct Index {
     hilog.info(0x0000, TAG, '打开小说详情: ' + novel.title);
     
     // 构建完整的书籍详情URL
-    const fullBookUrl = novel.link.startsWith('http') ? 
-      novel.link : 
-      'https://www.bqg128.com' + novel.link;
+    let fullBookUrl = novel.link;
+    
+    // 如果链接不是完整的URL，则需要拼接书源的基础URL
+    if (!novel.link.startsWith('http')) {
+      // 获取启用的书源列表
+      const enabledSources = bookSourceManager.getEnabledBookSources();
+      if (enabledSources.length > 0) {
+        // 使用第一个启用的书源作为基础URL
+        const baseUrl = enabledSources[0].bookSourceUrl;
+        fullBookUrl = baseUrl + novel.link;
+        hilog.info(0x0000, TAG, `使用书源 ${enabledSources[0].bookSourceName} 的基础URL: ${baseUrl}`);
+      } else {
+        // 如果没有启用的书源，使用默认的笔趣阁URL
+        fullBookUrl = 'https://www.bqg128.com' + novel.link;
+        hilog.warn(0x0000, TAG, '没有启用的书源，使用默认URL');
+      }
+    }
     
     hilog.info(0x0000, TAG, '书籍详情链接: ' + fullBookUrl);
     

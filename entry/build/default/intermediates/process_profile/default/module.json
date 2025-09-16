@@ -1,6 +1,6 @@
 {
 	"app": {
-		"bundleName": "com.example.readerkitdemo",
+		"bundleName": "liubai.yuedu.hos",
 		"vendor": "example",
 		"versionCode": 1000000,
 		"versionName": "1.0.0",
@@ -34,7 +34,7 @@
 				"name": "EntryAbility",
 				"srcEntry": "./ets/entryability/EntryAbility.ets",
 				"description": "$string:EntryAbility_desc",
-				"icon": "$media:layered_image",
+				"icon": "$media:icon",
 				"label": "$string:EntryAbility_label",
 				"startWindowIcon": "$media:startIcon",
 				"startWindowBackground": "$color:start_window_background",

@@ -215,92 +215,75 @@ struct RecommendPage {
       }
     } else {
       Column() {
-        // 轮播图指示器
-        Row() {
-          ForEach(this.novelList, (item: NovelInfo, index: number) => {
-            Circle({ width: 8, height: 8 })
-              .fill(index === this.currentIndex ? '#FF0000' : '#808080')
-              .margin({ right: 4 })
-          })
+        // 使用 Swiper 组件替代自定义轮播图
+        Swiper() {
+          ForEach(this.novelList, (novel: NovelInfo, index: number) => {
+            // 轮播图内容
+            Stack({ alignContent: Alignment.Bottom }) {
+              // 小说封面
+              Image(novel.cover)
+                .width('100%')
+                .height(480)
+                .objectFit(ImageFit.Cover)
+                .borderRadius(12)
+
+              // 小说信息遮罩 - 与封面底部对齐
+              Column() {
+                Text(novel.title)
+                  .fontSize(18)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor('#FFFFFF')
+                  .margin({ bottom: 8 })
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+                Text('作者: ' + novel.author)
+                  .fontSize(14)
+                  .fontColor('#FFFFFF')
+                  .margin({ bottom: 8 })
+                  .opacity(0.9)
+
+                Text(novel.description)
+                  .fontSize(12)
+                  .fontColor('#FFFFFF')
+                  .maxLines(2)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  .opacity(0.8)
+              }
+              .padding(16)
+              .width('100%')
+              .align(Alignment.Top)
+              .backgroundColor('#80000000') // 半透明黑色背景
+              .alignSelf(ItemAlign.End) // 与Stack底部对齐
+              .borderRadius({ bottomLeft: 12, bottomRight: 12 }) // 与封面底部圆角保持一致
+            }
+            .height(480) // 与封面高度一致
+            .width('90%')
+            .onClick(() => {
+              // 点击跳转到小说详情
+              this.openNovelDetail(novel);
+            })
+          }, (novel: NovelInfo) => novel.link)
         }
-        .justifyContent(FlexAlign.Center)
-        .margin({ bottom: 16 })
-
-        // 轮播图内容
-        Stack({ alignContent: Alignment.Bottom }) {
-          // 小说封面
-          Image(this.novelList[this.currentIndex].cover)
-            .width('100%')
-            .height(480)
-            .objectFit(ImageFit.Cover)
-            .borderRadius(12)
-
-          // 小说信息遮罩 - 与封面底部对齐
-          Column() {
-            Text(this.novelList[this.currentIndex].title)
-              .fontSize(18)
-              .fontWeight(FontWeight.Bold)
-              .fontColor('#FFFFFF')
-              .margin({ bottom: 8 })
-              .maxLines(1)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-
-            Text('作者: ' + this.novelList[this.currentIndex].author)
-              .fontSize(14)
-              .fontColor('#FFFFFF')
-              .margin({ bottom: 8 })
-              .opacity(0.9)
-
-            Text(this.novelList[this.currentIndex].description)
-              .fontSize(12)
-              .fontColor('#FFFFFF')
-              .maxLines(2)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .opacity(0.8)
-          }
-          .padding(16)
-          .width('100%')
-          .align(Alignment.Top)
-          .backgroundColor('#80000000') // 半透明黑色背景
-          .alignSelf(ItemAlign.End) // 与Stack底部对齐
-          .borderRadius({ bottomLeft: 12, bottomRight: 12 }) // 与封面底部圆角保持一致
-        }
-        .height(480) // 与封面高度一致
         .width('90%')
-        .onClick(() => {
-          // 点击跳转到小说详情
-          this.openNovelDetail(this.novelList[this.currentIndex]);
+        .height(480)
+        .vertical(false) // 水平滑动
+        .autoPlay(true) // 自动播放
+        .interval(4000) // 自动播放间隔4秒
+        .displayArrow(false) // 不显示箭头
+        .effectMode(EdgeEffect.None) // 无边缘效果
+        .indicator(new DotIndicator()
+          .itemWidth(8)
+          .itemHeight(8)
+          .selectedItemWidth(12)
+          .selectedItemHeight(8)
+          .color('#80808080') // 未选中指示器颜色
+          .selectedColor('#FFFF0000')) // 选中指示器颜色（红色）
+        .onChange((index: number) => {
+          this.currentIndex = index;
         })
 
-        // 左右切换按钮 - 移动到图片下方，增加间距
-        Row() {
-          Button('←')
-            .onClick(() => {
-              this.prevNovel();
-            })
-            .backgroundColor('#E0E0E0')
-            .fontColor('#333333')
-            .borderRadius(8)
-            .width(50)
-            .height(40)
-
-          Blank() // 使用Blank组件填充中间空间，让按钮分布在两端
-
-          Button('→')
-            .onClick(() => {
-              this.nextNovel();
-            })
-            .backgroundColor('#E0E0E0')
-            .fontColor('#333333')
-            .borderRadius(8)
-            .width(50)
-            .height(40)
-        }
-        .width('90%')
-        .justifyContent(FlexAlign.SpaceBetween) // 两端对齐，最大化间距
-        .margin({ top: 16 })
-
-        // 刷新按钮 - 移动到图片下方
+        // 刷新按钮
         Button('刷新推荐')
           .onClick(() => {
             this.loadRecommendNovels();
@@ -315,19 +298,6 @@ struct RecommendPage {
     }
   }
 
-  /**
-   * 切换到上一本小说
-   */
-  private prevNovel() {
-    this.currentIndex = (this.currentIndex - 1 + this.novelList.length) % this.novelList.length;
-  }
-
-  /**
-   * 切换到下一本小说
-   */
-  private nextNovel() {
-    this.currentIndex = (this.currentIndex + 1) % this.novelList.length;
-  }
 
   /**
    * 打开小说详情

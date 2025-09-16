@@ -63,6 +63,8 @@ media fenlei 0x01000048
 media foreground 0x01000030
 media guanbi 0x01000051
 media home 0x0100004d
+media icon 0x01000039
+media icon_startwindow 0x01000057
 media jilu 0x01000052
 media layered_image 0x0100002d
 media mulu 0x01000054

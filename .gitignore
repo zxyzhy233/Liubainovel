@@ -1,0 +1,46 @@
+# HarmonyOS项目忽略文件
+
+# 构建产物
+build/
+*.hap
+*.har
+*.hsp
+
+# IDE相关
+.idea/
+.vscode/
+*.iml
+
+# 构建缓存
+.hvigor/
+build-cache/
+
+# 依赖模块
+oh_modules/
+
+# 本地配置
+local.properties
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+*.tmp
+*.temp
+
+# 测试报告
+test-reports/
+coverage/
+
+# 缓存文件
+*.cache
+.cache/
+
+# 备份文件
+*.bak
+*.backup
