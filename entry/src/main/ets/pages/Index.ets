@@ -25,6 +25,10 @@ import { BookInfo } from '../common/BookInfo';
 import { router } from '@kit.ArkUI';
 import { bookSourceManager } from '../managers/BookSourceManager';
 import { NovelInfo } from '../models/BookSourceModel';
+import { onlineBookDataManager } from '../utils/OnlineBookDataManager';
+import { OnlineBookInfo } from '../models/OnlineBookModel';
+import { bookListManager } from '../utils/BookListManager';
+import { fileIo as fs } from '@kit.CoreFileKit';
 
 const TAG: string = 'IndexPage';
 
@@ -33,10 +37,15 @@ const TAG: string = 'IndexPage';
 struct Index {
   @State isShow: boolean = false;
   @State books: BookInfo[] = [];
+  @State onlineBooks: OnlineBookInfo[] = [];
   @State searchText: string = '';
   @State isEditMode: boolean = false;
   @State selectedBooks: number[] = [];
+  @State selectedOnlineBooks: number[] = [];
   @State isGridView: boolean = true;
+  @State isRefreshing: boolean = false; // 下拉刷新状态
+  @State isExportMode: boolean = false; // 导出模式
+  @State selectedExportBooks: number[] = []; // 导出模式下选中的在线书籍ID
   
   // 在线搜索相关状态
   @State searchKeyword: string = ''; // 搜索关键词
@@ -46,6 +55,11 @@ struct Index {
   @State searchErrorMessage: string = ''; // 搜索错误信息
   @State showSearchResults: boolean = false; // 显示搜索结果页面
   
+  // 添加在线书籍相关状态
+  @State showAddOnlineBookSheet: boolean = false; // 添加在线书籍弹窗显示状态
+  @State bookUrlInput: string = ''; // 输入的书籍URL
+  @State isParsingUrl: boolean = false; // 是否正在解析URL
+  
   /**
    * System font scaled density is changed? If it has changed, the reader needs to be restarted.
    */
@@ -54,16 +68,36 @@ struct Index {
   async aboutToAppear() {
     hilog.info(0x0000, TAG, 'aboutToAppear');
     WindowAbility.getInstance().toggleWindowSystemBar(['status', 'navigation'], this.getUIContext().getHostContext());
-    await bookDataManager.init(this.getUIContext().getHostContext() as common.UIAbilityContext);
+    const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    await bookDataManager.init(context);
+    await onlineBookDataManager.init(context);
+    await bookListManager.init(context);
     this.loadBooksFromDB();
   }
 
   async loadBooksFromDB() {
     this.books = await bookDataManager.queryAllBooks();
+    this.onlineBooks = await onlineBookDataManager.queryAllOnlineBooks();
+    hilog.info(0x0000, TAG, `加载书籍: 本地${this.books.length}本, 在线${this.onlineBooks.length}本`);
+  }
+
+  /**
+   * 刷新书架数据
+   */
+  private async refreshBookshelf(): Promise<void> {
+    this.isRefreshing = true;
+    try {
+      await this.loadBooksFromDB();
+      hilog.info(0x0000, TAG, '书架刷新完成');
+    } catch (error) {
+      hilog.error(0x0000, TAG, '刷新书架失败: ' + JSON.stringify(error));
+    } finally {
+      this.isRefreshing = false;
+    }
   }
 
   onPageShow(): void {
-    this.loadBooksFromDB(); // Refresh bookshelf data when returning to the page
+    this.refreshBookshelf(); // Refresh bookshelf data when returning to the page
     WindowAbility.getInstance().toggleWindowSystemBar(['status', 'navigation'], this.getUIContext().getHostContext());
     if (this.isDensityChange) {
       // Restart the reader page
@@ -116,196 +150,6 @@ struct Index {
     }
   }
 
-  /**
-   * 构建搜索弹窗
-   */
-  @Builder
-  private buildSearchSheet(): void {
-    Column() {
-      // 弹窗标题
-      Row() {
-        Text('搜索小说')
-          .fontSize(18)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#2D3748')
-        
-        Blank()
-      }
-      .width('100%')
-      .margin({ bottom: 20 })
-      
-      // 搜索输入框
-      TextInput({ placeholder: '请输入书名、作者或主角名', text: $$this.searchKeyword })
-        .fontSize(16)
-        .backgroundColor('#F7FAFC')
-        .borderRadius(8)
-        .padding({ left: 12, right: 12, top: 12, bottom: 12 })
-        .margin({ bottom: 20 })
-        .onSubmit(() => {
-          this.performOnlineSearch();
-        })
-      
-      // 搜索按钮
-      Button('搜索')
-        .fontSize(16)
-        .fontColor(Color.White)
-        .backgroundColor('#E53E3E')
-        .borderRadius(8)
-        .width('100%')
-        .height(44)
-        .onClick(() => {
-          this.performOnlineSearch();
-        })
-    }
-    .padding(20)
-    .backgroundColor(Color.White)
-    .borderRadius({ topLeft: 16, topRight: 16 })
-  }
-
-  /**
-   * 构建搜索结果页面
-   */
-  @Builder
-  private buildSearchResultsPage(): void {
-    Column() {
-      // 搜索结果页面标题栏
-      Row() {
-        Button() {
-          Text('‹')
-            .fontSize(24)
-            .fontColor('#2D3748')
-            .fontWeight(FontWeight.Bold)
-        }
-        .width(40)
-        .height(40)
-        .backgroundColor(Color.Transparent)
-        .onClick(() => {
-          this.backToBookshelf();
-        })
-        
-        Text(`搜索结果: ${this.searchKeyword}`)
-          .fontSize(18)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#2D3748')
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-        
-        Button()
-          .width(40)
-          .height(40)
-          .backgroundColor(Color.Transparent)
-      }
-      .width('100%')
-      .height(56)
-      .padding({ left: 16, right: 16 })
-      .margin({ top: 44 })
-      .backgroundColor(Color.White)
-      .shadow({
-        radius: 2,
-        color: '#10000000',
-        offsetY: 1
-      })
-      
-      // 搜索结果内容
-      if (this.isSearching) {
-        // 搜索中状态
-        Column() {
-          Progress({ type: ProgressType.Ring, value: 0 })
-            .width(40)
-            .height(40)
-            .color('#E53E3E')
-          Text('正在搜索小说...')
-            .fontSize(14)
-            .fontColor('#718096')
-            .margin({ top: 12 })
-        }
-        .width('100%')
-        .layoutWeight(1)
-        .justifyContent(FlexAlign.Center)
-        .backgroundColor('#F7FAFC')
-      } else if (this.searchErrorMessage) {
-        // 搜索错误状态
-        Column() {
-          Text('😔')
-            .fontSize(48)
-            .margin({ bottom: 12 })
-          Text(this.searchErrorMessage)
-            .fontSize(14)
-            .fontColor('#E53E3E')
-            .margin({ bottom: 16 })
-          Button('重新搜索')
-            .fontSize(14)
-            .fontColor(Color.White)
-            .backgroundColor('#E53E3E')
-            .borderRadius(20)
-            .padding({ left: 20, right: 20, top: 8, bottom: 8 })
-            .onClick(() => {
-              this.performOnlineSearch();
-            })
-        }
-        .width('100%')
-        .layoutWeight(1)
-        .justifyContent(FlexAlign.Center)
-        .backgroundColor('#F7FAFC')
-      } else if (this.onlineSearchResults.length === 0) {
-        // 无搜索结果状态
-        Column() {
-          Text('📚')
-            .fontSize(48)
-            .margin({ bottom: 12 })
-          Text('未找到相关小说')
-            .fontSize(14)
-            .fontColor('#718096')
-            .margin({ bottom: 16 })
-          Button('重新搜索')
-            .fontSize(14)
-            .fontColor('#3182CE')
-            .backgroundColor('#EBF8FF')
-            .borderRadius(20)
-            .padding({ left: 20, right: 20, top: 8, bottom: 8 })
-            .onClick(() => {
-              this.showSearchSheet = true;
-            })
-        }
-        .width('100%')
-        .layoutWeight(1)
-        .justifyContent(FlexAlign.Center)
-        .backgroundColor('#F7FAFC')
-      } else {
-        // 搜索结果列表
-        Scroll() {
-          Column() {
-            // 结果统计
-            Text(`找到 ${this.onlineSearchResults.length} 本相关小说`)
-              .fontSize(14)
-              .fontColor('#718096')
-              .width('100%')
-              .textAlign(TextAlign.Center)
-              .margin({ top: 16, bottom: 16 })
-            
-            // 小说列表
-            ForEach(this.onlineSearchResults, (novel: NovelInfo, index: number) => {
-              this.buildNovelCard(novel)
-            })
-            
-            // 底部提示
-            Text('已显示全部搜索结果')
-              .fontSize(12)
-              .fontColor('#A0AEC0')
-              .margin({ top: 20, bottom: 20 })
-          }
-        }
-        .layoutWeight(1)
-        .scrollBar(BarState.Off)
-        .backgroundColor('#F7FAFC')
-      }
-    }
-    .width('100%')
-    .height('100%')
-    .backgroundColor('#F7FAFC')
-  }
 
   /**
    * 构建小说卡片
@@ -399,10 +243,6 @@ struct Index {
   }
 
   build() {
-    // 如果显示搜索结果页面，则显示搜索结果
-    if (this.showSearchResults) {
-      this.buildSearchResultsPage()
-    } else {
       // 否则显示书架页面
       Column() {
       Row() {
@@ -443,8 +283,14 @@ struct Index {
           Text('删除')
             .fontColor(Color.Red)
             .onClick(async () => {
+              // 删除本地书籍
               await bookDataManager.deleteBooksByIds(this.selectedBooks);
+              // 删除在线书籍
+              for (const bookId of this.selectedOnlineBooks) {
+                await onlineBookDataManager.deleteOnlineBook(bookId);
+              }
               this.selectedBooks = [];
+              this.selectedOnlineBooks = [];
               this.isEditMode = false;
               await this.loadBooksFromDB();
             })
@@ -452,6 +298,7 @@ struct Index {
           Text('取消')
             .onClick(() => {
               this.selectedBooks = [];
+              this.selectedOnlineBooks = [];
               this.isEditMode = false;
             })
         }
@@ -461,8 +308,31 @@ struct Index {
         .justifyContent(FlexAlign.SpaceBetween)
       }
 
-      if (this.isGridView) {
-        Grid() {
+      if (this.isExportMode) {
+        Row() {
+          Text('导出')
+            .fontColor('#9F6548')
+            .onClick(async () => {
+              await this.exportSelectedBooks();
+            })
+          Blank()
+          Text('取消')
+            .onClick(() => {
+              this.selectedExportBooks = [];
+              this.isExportMode = false;
+            })
+        }
+        .width('100%')
+        .height(56)
+        .padding({ left: 16, right: 16 })
+        .justifyContent(FlexAlign.SpaceBetween)
+      }
+
+      // 使用Refresh组件包裹内容区域
+      Refresh({ refreshing: $$this.isRefreshing }) {
+        if (this.isGridView) {
+          Grid() {
+            // 本地书籍
           ForEach(this.books, (book: BookInfo) => {
             GridItem() {
               Column({ space: 8 }) {
@@ -499,6 +369,65 @@ struct Index {
               })
             }
           })
+          
+          // 在线书籍
+          ForEach(this.onlineBooks, (book: OnlineBookInfo) => {
+            GridItem() {
+              Column({ space: 8 }) {
+                Stack({ alignContent: Alignment.TopEnd }) {
+                  Image(book.cover || $r('app.media.zwfm'))
+                    .width('100%')
+                    .aspectRatio(0.75)
+                    .borderRadius(8)
+                    .backgroundColor($r('app.color.black_5_opacity'))
+                  if (this.isEditMode) {
+                    Image(this.selectedOnlineBooks.includes(book.id) ? $r('app.media.CheckCircle') : $r('app.media.Circle'))
+                      .width(24)
+                      .height(24)
+                      .margin({ top: 4, right: 4 })
+                  }
+                  if (this.isExportMode) {
+                    Image(this.selectedExportBooks.includes(book.id) ? $r('app.media.CheckCircle') : $r('app.media.Circle'))
+                      .width(24)
+                      .height(24)
+                      .margin({ top: 4, right: 4 })
+                  }
+                  // 在线标识
+                  Text('在线')
+                    .fontSize(10)
+                    .fontColor(Color.White)
+                    .backgroundColor('#FF6B6B')
+                    .padding({ left: 4, right: 4, top: 2, bottom: 2 })
+                    .borderRadius(4)
+                    .position({ x: 4, y: 4 })
+                }
+                Text(book.title)
+                  .fontSize(14)
+                  .maxLines(2)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+              }
+              .padding(8)
+              .onClick(() => {
+                if (this.isEditMode) {
+                  const index = this.selectedOnlineBooks.indexOf(book.id);
+                  if (index > -1) {
+                    this.selectedOnlineBooks.splice(index, 1);
+                  } else {
+                    this.selectedOnlineBooks.push(book.id);
+                  }
+                } else if (this.isExportMode) {
+                  const index = this.selectedExportBooks.indexOf(book.id);
+                  if (index > -1) {
+                    this.selectedExportBooks.splice(index, 1);
+                  } else {
+                    this.selectedExportBooks.push(book.id);
+                  }
+                } else {
+                  this.openOnlineBook(book);
+                }
+              })
+            }
+          })
         }
         .columnsTemplate('1fr 1fr 1fr')
         .columnsGap(16)
@@ -508,6 +437,7 @@ struct Index {
       } else {
         // List布局
         List({ space: 12 }) {
+          // 本地书籍
           ForEach(this.books, (book: BookInfo) => {
             ListItem() {
               Row({ space: 12 }) {
@@ -540,38 +470,146 @@ struct Index {
               })
             }
           })
+          
+          // 在线书籍
+          ForEach(this.onlineBooks, (book: OnlineBookInfo) => {
+            ListItem() {
+              Row({ space: 12 }) {
+                Stack() {
+                  Image(book.cover || $r('app.media.zwfm'))
+                    .width(60)
+                    .aspectRatio(0.75)
+                    .borderRadius(4)
+                    .backgroundColor($r('app.color.black_5_opacity'))
+                  Text('在线')
+                    .fontSize(10)
+                    .fontColor(Color.White)
+                    .backgroundColor('#FF6B6B')
+                    .padding({ left: 4, right: 4, top: 2, bottom: 2 })
+                    .borderRadius(4)
+                    .position({ x: 2, y: 2 })
+                }
+                .width(60)
+                
+                Column({ space: 4 }) {
+                  Text(book.title)
+                    .fontSize(16)
+                    .fontWeight(FontWeight.Bold)
+                    .maxLines(1)
+                    .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  Text(book.author || '未知')
+                    .fontSize(14)
+                    .fontColor($r('app.color.black_60_opacity'))
+                    .maxLines(1)
+                    .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  Text(`已读: ${book.currentChapter || book.progress || '未开始'}`)
+                    .fontSize(12)
+                    .fontColor($r('app.color.black_60_opacity'))
+                }
+                .alignItems(HorizontalAlign.Start)
+                .layoutWeight(1)
+              }
+              .padding({ top: 8, bottom: 8 })
+              .onClick(() => {
+                this.openOnlineBook(book);
+              })
+            }
+          })
         }
         .layoutWeight(1)
         .padding({ top: 20 })
+        }
       }
+      .onRefreshing(() => {
+        this.refreshBookshelf();
+      })
+      .layoutWeight(1)
     }
     .height('100%')
     .width('100%')
     .backgroundColor($r('app.color.page_background'))
     .padding({ left: 16, right: 16 })
-    .bindSheet($$this.showSearchSheet, this.buildSearchSheet(), {
+    .bindSheet($$this.showAddOnlineBookSheet, this.buildAddOnlineBookSheet(), {
       height: 300,
       dragBar: true,
-      backgroundColor: Color.White,
-      onAppear: () => {
-        hilog.info(0x0000, TAG, '搜索弹窗出现');
-      },
-      onDisappear: () => {
-        hilog.info(0x0000, TAG, '搜索弹窗消失');
-      }
+      backgroundColor: Color.White
     })
     }
+
+
+
+  /**
+   * 构建添加在线书籍弹窗
+   */
+  @Builder
+  buildAddOnlineBookSheet(): void {
+    Column() {
+      // 标题
+      Text('添加在线书籍')
+        .fontSize(18)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#2D3748')
+        .width('100%')
+        .textAlign(TextAlign.Center)
+        .margin({ bottom: 20 })
+      
+      // 输入框和解析按钮
+      Row() {
+        TextInput({ placeholder: '请输入书籍链接', text: this.bookUrlInput })
+          .layoutWeight(1)
+          .height(44)
+          .fontSize(14)
+          .borderRadius(8)
+          .backgroundColor('#F7FAFC')
+          .onChange((value: string) => {
+            this.bookUrlInput = value;
+          })
+        
+        Button('解析')
+          .fontSize(14)
+          .fontColor(Color.White)
+          .backgroundColor('#9F6548')
+          .borderRadius(8)
+          .height(44)
+          .width(80)
+          .margin({ left: 12 })
+          .enabled(!this.isParsingUrl)
+          .onClick(() => {
+            this.parseBookUrl();
+          })
+      }
+      .width('100%')
+      
+      // 提示信息
+      Text('支持笔趣阁等小说网站的书籍详情页链接')
+        .fontSize(12)
+        .fontColor('#718096')
+        .width('100%')
+        .textAlign(TextAlign.Start)
+        .margin({ top: 12 })
+      
+      // 示例链接
+      Text('示例: https://www.bqg128.cc/book/12345/')
+        .fontSize(12)
+        .fontColor('#A0AEC0')
+        .width('100%')
+        .textAlign(TextAlign.Start)
+        .margin({ top: 4 })
+    }
+    .padding(20)
+    .backgroundColor(Color.White)
+    .borderRadius({ topLeft: 16, topRight: 16 })
   }
 
   @Builder
   popupWithButtonBuilder() {
     Column() {
       Row({ space: 16 }) {
-        Image($r("app.media.sousuo")).width(20).height(20)
-        Text('在线搜索').fontSize(18)
+        Image($r("app.media.Globe")).width(20).height(20)
+        Text('添加在线书籍').fontSize(18)
       }.height(50).width('100%').onClick(() => {
         this.isShow = false;
-        this.showSearchSheet = true;
+        this.showAddOnlineBookSheet = true;
       })
       Row({ space: 16 }) {
         Image($r("app.media.fenlei")).width(20).height(20)
@@ -603,47 +641,18 @@ struct Index {
         Text('导出书单').fontSize(18)
       }.height(50).width('100%').onClick(() => {
         this.isShow = false;
+        this.startExportMode();
       })
       Row({ space: 16 }) {
         Image($r("app.media.SignIn")).width(20).height(20)
         Text('导入书单').fontSize(18)
       }.height(50).width('100%').onClick(() => {
         this.isShow = false;
+        this.importBookList();
       })
     }.width(160)
   }
 
-  /**
-   * 执行在线搜索
-   */
-  private async performOnlineSearch(): Promise<void> {
-    if (this.searchKeyword.trim()) {
-      hilog.info(0x0000, TAG, '在线搜索关键词: ' + this.searchKeyword);
-      this.showSearchSheet = false;
-      
-      try {
-        this.isSearching = true;
-        this.searchErrorMessage = '';
-        
-        // 使用书源管理器搜索小说
-        const result = await bookSourceManager.searchNovels(this.searchKeyword.trim());
-        
-        if (result.success && result.data) {
-          this.onlineSearchResults = result.data;
-          this.showSearchResults = true;
-          hilog.info(0x0000, TAG, `在线搜索成功，找到 ${result.data.length} 本小说`);
-        } else {
-          this.searchErrorMessage = result.error || '搜索失败';
-          hilog.error(0x0000, TAG, '在线搜索失败: ' + this.searchErrorMessage);
-        }
-      } catch (error) {
-        hilog.error(0x0000, TAG, '在线搜索出错: ' + JSON.stringify(error));
-        this.searchErrorMessage = '搜索出错，请重试';
-      } finally {
-        this.isSearching = false;
-      }
-    }
-  }
 
   /**
    * 打开小说详情
@@ -666,7 +675,7 @@ struct Index {
         hilog.info(0x0000, TAG, `使用书源 ${enabledSources[0].bookSourceName} 的基础URL: ${baseUrl}`);
       } else {
         // 如果没有启用的书源，使用默认的笔趣阁URL
-        fullBookUrl = 'https://www.bqg128.com' + novel.link;
+        fullBookUrl = 'https://www.bqg128.cc' + novel.link;
         hilog.warn(0x0000, TAG, '没有启用的书源，使用默认URL');
       }
     }
@@ -690,6 +699,50 @@ struct Index {
   }
 
   /**
+   * 解析书籍URL并跳转到详情页
+   */
+  private async parseBookUrl(): Promise<void> {
+    if (!this.bookUrlInput.trim()) {
+      this.getUIContext()
+        .getPromptAction()
+        .showToast({ message: '请输入书籍链接', duration: 2000 });
+      return;
+    }
+
+    this.isParsingUrl = true;
+    hilog.info(0x0000, TAG, '开始解析书籍URL: ' + this.bookUrlInput);
+
+    try {
+      // 关闭弹窗
+      this.showAddOnlineBookSheet = false;
+
+      // 直接跳转到BookDetailPage，让详情页自己解析
+      router.pushUrl({
+        url: 'pages/BookDetailPage',
+        params: {
+          bookUrl: this.bookUrlInput.trim()
+        }
+      }).then(() => {
+        hilog.info(0x0000, TAG, '成功跳转到书籍详情页面');
+        // 清空输入框
+        this.bookUrlInput = '';
+      }).catch((error: Error) => {
+        hilog.error(0x0000, TAG, '跳转失败: ' + error.message);
+        this.getUIContext()
+          .getPromptAction()
+          .showToast({ message: '跳转失败: ' + error.message, duration: 2000 });
+      });
+    } catch (error) {
+      hilog.error(0x0000, TAG, '解析书籍URL失败: ' + JSON.stringify(error));
+      this.getUIContext()
+        .getPromptAction()
+        .showToast({ message: '解析失败，请检查链接是否正确', duration: 2000 });
+    } finally {
+      this.isParsingUrl = false;
+    }
+  }
+
+  /**
    * 返回书架
    */
   private backToBookshelf(): void {
@@ -697,6 +750,28 @@ struct Index {
     this.onlineSearchResults = [];
     this.searchKeyword = '';
     this.searchErrorMessage = '';
+  }
+
+  /**
+   * 打开在线书籍
+   */
+  private openOnlineBook(book: OnlineBookInfo): void {
+    hilog.info(0x0000, TAG, `打开在线书籍: ${book.title}`);
+    
+    // 跳转到书籍详情页
+    router.pushUrl({
+      url: 'pages/BookDetailPage',
+      params: {
+        bookUrl: book.bookUrl,
+        bookTitle: book.title,
+        bookAuthor: book.author,
+        bookCover: book.cover
+      }
+    }).then(() => {
+      hilog.info(0x0000, TAG, '成功跳转到书籍详情页面');
+    }).catch((error: Error) => {
+      hilog.error(0x0000, TAG, '跳转失败: ' + error.message);
+    });
   }
 
   private jumper(book: BookInfo) {
@@ -711,6 +786,145 @@ struct Index {
       }
     })
     // Router addObserver 方法已移除，因为Router类型没有这个属性
+  }
+
+  /**
+   * 开始导出模式
+   */
+  private startExportMode(): void {
+    if (this.onlineBooks.length === 0) {
+      this.getUIContext()
+        .getPromptAction()
+        .showToast({ message: '没有可导出的在线书籍', duration: 2000 });
+      return;
+    }
+    
+    this.isExportMode = true;
+    this.selectedExportBooks = [];
+    // 自动切换到网格视图以便显示选择框
+    if (!this.isGridView) {
+      this.isGridView = true;
+    }
+  }
+
+  /**
+   * 导出选中的书籍
+   */
+  private async exportSelectedBooks(): Promise<void> {
+    if (this.selectedExportBooks.length === 0) {
+      this.getUIContext()
+        .getPromptAction()
+        .showToast({ message: '请至少选择一本书籍', duration: 2000 });
+      return;
+    }
+
+    try {
+      // 获取选中的书籍信息
+      const selectedBooks = this.onlineBooks.filter((book: OnlineBookInfo): boolean => {
+        return this.selectedExportBooks.includes(book.id);
+      });
+
+      hilog.info(0x0000, TAG, `准备导出${selectedBooks.length}本书籍`);
+
+      // 导出书单到JSON文件
+      const filePath = await bookListManager.exportBookList(selectedBooks);
+
+      // 使用Share Kit分享文件
+      await this.shareBookListFile(filePath);
+
+      // 重置状态
+      this.selectedExportBooks = [];
+      this.isExportMode = false;
+
+      this.getUIContext()
+        .getPromptAction()
+        .showToast({ message: `成功导出${selectedBooks.length}本书籍`, duration: 2000 });
+    } catch (error) {
+      hilog.error(0x0000, TAG, `导出书单失败: ${JSON.stringify(error)}`);
+      this.getUIContext()
+        .getPromptAction()
+        .showToast({ message: '导出失败: ' + error, duration: 2000 });
+    }
+  }
+
+  /**
+   * 分享书单文件
+   * @param filePath 文件路径
+   */
+  private async shareBookListFile(filePath: string): Promise<void> {
+    try {
+      hilog.info(0x0000, TAG, `准备分享文件: ${filePath}`);
+
+      // 使用文件选择器保存文件
+      const documentSaveOptions = new picker.DocumentSaveOptions();
+      documentSaveOptions.newFileNames = [`booklist_${Date.now()}.json`];
+      
+      const documentPicker = new picker.DocumentViewPicker();
+      const documentSaveResult = await documentPicker.save(documentSaveOptions);
+      
+      if (documentSaveResult && documentSaveResult.length > 0) {
+        const destPath = decodeURI(documentSaveResult[0]);
+        hilog.info(0x0000, TAG, `用户选择保存路径: ${destPath}`);
+        
+        // 读取源文件
+        const srcFile = fs.openSync(filePath, fs.OpenMode.READ_ONLY);
+        const stat = fs.statSync(filePath);
+        const buffer = new ArrayBuffer(stat.size);
+        fs.readSync(srcFile.fd, buffer);
+        fs.closeSync(srcFile);
+        
+        // 写入目标文件
+        const destFile = fs.openSync(destPath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY);
+        fs.writeSync(destFile.fd, buffer);
+        fs.closeSync(destFile);
+        
+        hilog.info(0x0000, TAG, '文件保存成功');
+      } else {
+        hilog.info(0x0000, TAG, '用户取消保存');
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(0x0000, TAG, `分享文件失败: ${errorMsg}`);
+      throw new Error('分享文件失败: ' + errorMsg);
+    }
+  }
+
+  /**
+   * 导入书单
+   */
+  private async importBookList(): Promise<void> {
+    try {
+      // 初始化文件选择器
+      let documentSelectOptions = new picker.DocumentSelectOptions();
+      // 设置文件类型为JSON
+      documentSelectOptions.fileSuffixFilters = ['.json'];
+      let documentPicker = new picker.DocumentViewPicker();
+      let documentSelectResult = await documentPicker.select(documentSelectOptions);
+      
+      if (!documentSelectResult || documentSelectResult.length <= 0) {
+        hilog.info(0x0000, TAG, '用户取消选择文件');
+        return;
+      }
+
+      // 获取文件路径
+      let filePath: string = decodeURI(documentSelectResult[0]);
+      hilog.info(0x0000, TAG, `选择的文件: ${filePath}`);
+
+      // 导入书单
+      const importCount = await bookListManager.importBookList(filePath);
+
+      // 刷新书架
+      await this.loadBooksFromDB();
+
+      this.getUIContext()
+        .getPromptAction()
+        .showToast({ message: `成功导入${importCount}本书籍`, duration: 2000 });
+    } catch (error) {
+      hilog.error(0x0000, TAG, `导入书单失败: ${JSON.stringify(error)}`);
+      this.getUIContext()
+        .getPromptAction()
+        .showToast({ message: '导入失败: ' + error, duration: 2000 });
+    }
   }
 
   /**
