@@ -70,7 +70,19 @@
     },
     {
       "name": "permission_reason",
-      "value": "需要此权限以记录阅读进度"
+      "value": "需要访问媒体文件以导入和阅读电子书"
+    },
+    {
+      "name": "background_task_reason",
+      "value": "需要在后台运行以继续语音朗读功能"
+    },
+    {
+      "name": "microphone_reason",
+      "value": "需要使用麦克风进行语音输入和语音朗读功能"
+    },
+    {
+      "name": "download_permission_reason",
+      "value": "需要访问下载目录以保存小说文件"
     }
   ]
 }

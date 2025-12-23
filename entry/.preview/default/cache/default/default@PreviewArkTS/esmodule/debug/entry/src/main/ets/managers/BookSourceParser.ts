@@ -1,16 +1,17 @@
 import hilog from "@ohos:hilog";
 import http from "@ohos:net.http";
 import type { BookSourceInfo, NovelInfo, ChapterInfo, BookDetailInfo, ParseResult } from '../models/BookSourceModel';
+import { webViewContentFetcher } from "@bundle:liubai.yuedu.hos/entry/ets/utils/WebViewContentFetcher";
 const TAG: string = 'BookSourceParser';
 /**
- * 书源解析器类
- * 负责根据书源规则解析网页内容
+ * 鹿析解析器类
+ * 负责根据鹿析规则解析网页内容
  */
 export class BookSourceParser {
     private source: BookSourceInfo;
     /**
      * 构造函数
-     * @param source 书源信息
+     * @param source 鹿析信息
      */
     constructor(source: BookSourceInfo) {
         this.source = source;
@@ -24,7 +25,12 @@ export class BookSourceParser {
         try {
             const httpRequest = http.createHttp();
             const headers: Record<string, string> = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+                'Accept-Encoding': 'gzip, deflate',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1'
             };
             // 解析自定义请求头
             if (this.source.header) {
@@ -42,10 +48,29 @@ export class BookSourceParser {
             }
             const response = await httpRequest.request(url, {
                 method: http.RequestMethod.GET,
-                header: headers
+                header: headers,
+                connectTimeout: 30000,
+                readTimeout: 30000
             });
             if (response.responseCode === 200) {
-                return response.result.toString();
+                const html = response.result.toString();
+                // 检测是否为反爬虫验证页面
+                if (html.includes('加载中') && html.includes('getCookie') && html.includes('setCookie')) {
+                    hilog.warn(0x0000, TAG, '检测到反爬虫验证页面，尝试重新请求');
+                    // 等待一段时间后重试
+                    await this.delay(2000);
+                    // 重新请求
+                    const retryResponse = await httpRequest.request(url, {
+                        method: http.RequestMethod.GET,
+                        header: headers,
+                        connectTimeout: 30000,
+                        readTimeout: 30000
+                    });
+                    if (retryResponse.responseCode === 200) {
+                        return retryResponse.result.toString();
+                    }
+                }
+                return html;
             }
             else {
                 const errorMsg = `HTTP请求失败: ${response.responseCode}`;
@@ -62,6 +87,16 @@ export class BookSourceParser {
                 throw new Error(String(error));
             }
         }
+    }
+    /**
+     * 延迟函数
+     * @param ms 延迟毫秒数
+     * @returns Promise<void>
+     */
+    private delay(ms: number): Promise<void> {
+        return new Promise((resolve) => {
+            setTimeout(resolve, ms);
+        });
     }
     /**
      * 根据规则解析文本内容
@@ -210,10 +245,31 @@ export class BookSourceParser {
     /**
      * 清理HTML标签
      * @param text 包含HTML标签的文本
+     * @param preserveLineBreaks 是否保留换行符
      * @returns 清理后的纯文本
      */
-    private cleanHtmlTags(text: string): string {
-        return text.replace(/<[^>]*>/g, '').trim();
+    private cleanHtmlTags(text: string, preserveLineBreaks: boolean = false): string {
+        if (preserveLineBreaks) {
+            // 保留换行符：将<br>、<p>等标签转换为换行符
+            return text
+                .replace(/<br\s*\/?>/gi, '\n') // <br> 转换为换行
+                .replace(/<\/p>/gi, '\n\n') // </p> 转换为双换行
+                .replace(/<p[^>]*>/gi, '') // 移除 <p> 开始标签
+                .replace(/<div[^>]*>/gi, '') // 移除 <div> 开始标签
+                .replace(/<\/div>/gi, '\n') // </div> 转换为换行
+                .replace(/<[^>]*>/g, '') // 移除其他所有HTML标签
+                .replace(/&nbsp;/g, ' ') // 替换空格实体
+                .replace(/&lt;/g, '<') // 替换小于号实体
+                .replace(/&gt;/g, '>') // 替换大于号实体
+                .replace(/&amp;/g, '&') // 替换&符号实体
+                .replace(/&quot;/g, '"') // 替换引号实体
+                .replace(/ +/g, ' ') // 合并多个空格为一个
+                .replace(/\n\s+\n/g, '\n\n') // 清理空白行
+                .replace(/^\s+|\s+$/g, ''); // 移除首尾空白，但保留中间的换行
+        }
+        else {
+            return text.replace(/<[^>]*>/g, '').trim();
+        }
     }
     /**
      * 构建完整URL
@@ -245,7 +301,7 @@ export class BookSourceParser {
             const html = await this.fetchHtml(targetUrl);
             const rule = this.source.ruleExplore;
             if (!rule.bookList) {
-                throw new Error('书源缺少书籍列表规则');
+                throw new Error('鹿析缺少书籍列表规则');
             }
             // 解析书籍列表
             const bookItems = this.parseByRule(html, rule.bookList, true) as string[];
@@ -372,7 +428,7 @@ export class BookSourceParser {
             const html = await this.fetchHtml(tocUrl);
             const rule = this.source.ruleToc;
             if (!rule.chapterList) {
-                throw new Error('书源缺少章节列表规则');
+                throw new Error('鹿析缺少章节列表规则');
             }
             // 解析章节列表容器
             const chapterContainer = this.parseByRule(html, rule.chapterList, false) as string;
@@ -430,15 +486,33 @@ export class BookSourceParser {
      */
     async parseChapterContent(chapterUrl: string): Promise<ParseResult<string>> {
         try {
+            // 先尝试使用HTTP请求获取
             const html = await this.fetchHtml(chapterUrl);
             const rule = this.source.ruleContent;
             if (!rule.content) {
-                throw new Error('书源缺少章节内容规则');
+                throw new Error('鹿析缺少章节内容规则');
             }
             let content = this.parseByRule(html, rule.content, false) as string;
-            content = this.cleanHtmlTags(content);
+            content = this.cleanHtmlTags(content, true); // 保留换行符
+            // 检查是否获取到有效内容
+            if (!content || content.length < 50 || content.includes('加载中') || content.includes('ERROR:')) {
+                hilog.warn(0x0000, TAG, 'HTTP请求未获取到有效内容，尝试使用WebView');
+                // 使用WebView获取内容
+                try {
+                    // 直接传递完整的内容规则（可能是正则表达式或CSS选择器）
+                    content = await webViewContentFetcher.fetchContent(chapterUrl, rule.content);
+                    hilog.info(0x0000, TAG, `WebView成功获取内容，长度: ${content.length}`);
+                }
+                catch (webViewError) {
+                    hilog.error(0x0000, TAG, `WebView获取内容失败: ${webViewError}`);
+                    // 如果WebView也失败，返回HTTP获取的内容（即使可能不完整）
+                    if (!content) {
+                        throw new Error(`无法获取章节内容: ${webViewError}`);
+                    }
+                }
+            }
             // 应用替换规则
-            if (rule.replaceRegex) {
+            if (rule.replaceRegex && content) {
                 try {
                     const replaceRules = rule.replaceRegex.split('||');
                     for (const replaceRule of replaceRules) {
@@ -478,14 +552,14 @@ export class BookSourceParser {
     async searchNovels(keyword: string): Promise<ParseResult<NovelInfo[]>> {
         try {
             if (!this.source.searchUrl) {
-                throw new Error('书源缺少搜索URL');
+                throw new Error('鹿析缺少搜索URL');
             }
             // 构建搜索URL
             const searchUrl = this.source.searchUrl.replace('{{key}}', encodeURIComponent(keyword));
             const html = await this.fetchHtml(searchUrl);
             const rule = this.source.ruleSearch;
             if (!rule.bookList) {
-                throw new Error('书源缺少搜索结果列表规则');
+                throw new Error('鹿析缺少搜索结果列表规则');
             }
             // 解析搜索结果
             const bookItems = this.parseByRule(html, rule.bookList, true) as string[];

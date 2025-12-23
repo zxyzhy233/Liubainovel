@@ -37,9 +37,13 @@ export class BookInfo {
      */
     coverPath: string = '';
     /**
-     * Reading progress
+     * Reading progress (percentage or description)
      */
     progress: string = '0%';
+    /**
+     * Current reading chapter name
+     */
+    currentChapter: string = '';
     /**
      * Last read time
      */

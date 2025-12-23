@@ -12,11 +12,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+// 书籍详情页
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router } from '@kit.ArkUI';
 import { bookSourceManager } from '../managers/BookSourceManager';
 import { BookDetailInfo, ChapterInfo } from '../models/BookSourceModel';
+import { onlineBookDataManager } from '../utils/OnlineBookDataManager';
+import { OnlineBookInfo } from '../models/OnlineBookModel';
+import { downloadManager } from '../managers/DownloadManager';
+import { common } from '@kit.AbilityKit';
 
 const TAG: string = 'BookDetailPage';
 
@@ -43,6 +47,8 @@ struct BookDetailPage {
   @Local bookTitle: string = ''; // 书籍标题
   @Local bookAuthor: string = ''; // 书籍作者
   @Local bookCover: string = ''; // 书籍封面
+  @Local isInBookshelf: boolean = false; // 是否已加入书架
+  @Local onlineBookId: number = 0; // 在线书籍ID
 
   /**
    * 页面显示时初始化数据
@@ -59,6 +65,14 @@ struct BookDetailPage {
         hilog.info(0x0000, TAG, `接收到页面参数: URL=${this.bookUrl}, 标题=${this.bookTitle}, 作者=${this.bookAuthor}`);
       }
       
+      // 初始化在线书籍数据管理器和下载管理器
+      const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      await onlineBookDataManager.init(context);
+      downloadManager.init(context);
+      
+      // 检查是否已加入书架
+      await this.checkBookshelfStatus();
+      
       if (this.bookUrl) {
         await this.loadBookDetail();
       } else {
@@ -73,14 +87,14 @@ struct BookDetailPage {
   }
 
   /**
-   * 使用书源管理器加载书籍详情
+   * 使用鹿析管理器加载书籍详情
    */
   private async loadBookDetail(): Promise<void> {
     try {
       this.isLoading = true;
       this.errorMessage = '';
       
-      // 使用书源管理器获取书籍详情
+      // 使用鹿析管理器获取书籍详情
       const detailResult = await bookSourceManager.getBookDetail(this.bookUrl);
       
       if (detailResult.success && detailResult.data) {
@@ -107,7 +121,7 @@ struct BookDetailPage {
   }
 
   /**
-   * 使用书源管理器加载章节列表
+   * 使用鹿析管理器加载章节列表
    * @param tocUrl 目录URL
    */
   private async loadChapterList(tocUrl: string): Promise<void> {
@@ -137,19 +151,221 @@ struct BookDetailPage {
   }
 
   /**
+   * 检查书籍是否已加入书架
+   */
+  private async checkBookshelfStatus(): Promise<void> {
+    try {
+      const book = await onlineBookDataManager.queryOnlineBookByUrl(this.bookUrl);
+      if (book) {
+        this.isInBookshelf = true;
+        this.onlineBookId = book.id;
+        hilog.info(0x0000, TAG, `书籍已在书架中: ${book.title}`);
+      } else {
+        this.isInBookshelf = false;
+        this.onlineBookId = 0;
+      }
+    } catch (error) {
+      hilog.error(0x0000, TAG, '检查书架状态失败: ' + JSON.stringify(error));
+    }
+  }
+
+  /**
+   * 加入书架
+   */
+  private async addToBookshelf(): Promise<void> {
+    if (!this.bookDetail) {
+      return;
+    }
+
+    try {
+      const onlineBook = new OnlineBookInfo();
+      onlineBook.bookUrl = this.bookUrl;
+      onlineBook.title = this.bookDetail.title;
+      onlineBook.author = this.bookDetail.author || '';
+      onlineBook.cover = this.bookDetail.cover || '';
+      onlineBook.description = this.bookDetail.description || '';
+      onlineBook.category = this.bookDetail.category || '';
+      onlineBook.status = this.bookDetail.status || '';
+      onlineBook.latestChapter = this.bookDetail.latestChapter || '';
+      onlineBook.updateTime = this.bookDetail.updateTime || '';
+      onlineBook.totalChapters = this.chapterList.length;
+
+      const bookId = await onlineBookDataManager.addOnlineBook(onlineBook);
+      this.onlineBookId = bookId;
+      this.isInBookshelf = true;
+
+      this.getUIContext()
+        .getPromptAction()
+        .showToast({ message: '已加入书架，开始下载章节...', duration: 2000 });
+
+      hilog.info(0x0000, TAG, `书籍已加入书架: ${onlineBook.title}`);
+      
+      // 加入书架后立即开始后台批量下载章节
+      if (this.chapterList.length > 0) {
+        downloadManager.startDownloadBook(
+          this.onlineBookId,
+          this.bookDetail.title,
+          this.chapterList
+        );
+        hilog.info(0x0000, TAG, `开始后台下载 ${this.chapterList.length} 个章节`);
+      }
+    } catch (error) {
+      hilog.error(0x0000, TAG, '加入书架失败: ' + JSON.stringify(error));
+      this.getUIContext()
+        .getPromptAction()
+        .showToast({ message: '加入书架失败', duration: 2000 });
+    }
+  }
+
+  /**
+   * 开始阅读
+   */
+  private async startReading(): Promise<void> {
+    console.log('BookDetailPage: === 开始阅读 ===');
+    console.log(`BookDetailPage: 章节列表长度=${this.chapterList.length}, bookId=${this.onlineBookId}`);
+    hilog.info(0x0000, TAG, '=== 开始阅读 ===');
+    hilog.info(0x0000, TAG, `章节列表长度: ${this.chapterList.length}`);
+    hilog.info(0x0000, TAG, `在线书籍ID: ${this.onlineBookId}`);
+    
+    if (this.chapterList.length === 0) {
+      this.getUIContext()
+        .getPromptAction()
+        .showToast({ message: '暂无章节可阅读', duration: 2000 });
+      return;
+    }
+
+    // 读取上次阅读的章节索引
+    let startChapterIndex = 0;
+    try {
+      const bookInfo = await onlineBookDataManager.queryOnlineBookById(this.onlineBookId);
+      if (bookInfo && bookInfo.currentChapter) {
+        // 查找上次阅读章节的索引
+        const lastChapterIndex = this.chapterList.findIndex(
+          (chapter) => chapter.title === bookInfo.currentChapter
+        );
+        if (lastChapterIndex >= 0) {
+          startChapterIndex = lastChapterIndex;
+          hilog.info(0x0000, TAG, `继续阅读: 第${startChapterIndex + 1}章 - ${bookInfo.currentChapter}`);
+        }
+      }
+    } catch (error) {
+      hilog.warn(0x0000, TAG, '读取阅读进度失败，从第一章开始: ' + JSON.stringify(error));
+    }
+
+    // 检查起始章节是否已下载
+    const chapterDownloadInfo = await onlineBookDataManager.queryChapterDownload(this.onlineBookId, startChapterIndex);
+    console.log(`BookDetailPage: 第${startChapterIndex + 1}章下载状态`, chapterDownloadInfo);
+    hilog.info(0x0000, TAG, `第${startChapterIndex + 1}章下载状态: ${JSON.stringify(chapterDownloadInfo)}`);
+    
+    if (chapterDownloadInfo && chapterDownloadInfo.isDownloaded && chapterDownloadInfo.filePath) {
+      // 章节已下载，跳转到在线章节阅读页面
+      interface ReaderParams {
+        bookId: number;
+        bookTitle: string;
+        chapterIndex: number;
+        chapters: ChapterInfo[];
+      }
+      
+      const params: ReaderParams = {
+        bookId: this.onlineBookId,
+        bookTitle: this.bookDetail?.title || this.bookTitle,
+        chapterIndex: startChapterIndex,
+        chapters: this.chapterList
+      };
+      
+      interface LogParams {
+        bookId: number;
+        bookTitle: string;
+        chapterIndex: number;
+        chaptersCount: number;
+      }
+      
+      const logParams: LogParams = {
+        bookId: params.bookId,
+        bookTitle: params.bookTitle,
+        chapterIndex: params.chapterIndex,
+        chaptersCount: params.chapters.length
+      };
+      hilog.info(0x0000, TAG, `准备跳转，参数: ${JSON.stringify(logParams)}`);
+      console.log('BookDetailPage: 准备跳转到OnlineChapterReader', logParams);
+      
+      router.pushUrl({
+        url: 'pages/OnlineChapterReader',
+        params: params
+      }).then(() => {
+        console.log('BookDetailPage: 跳转成功');
+        hilog.info(0x0000, TAG, '成功跳转到在线阅读器页面');
+      }).catch((error: Error) => {
+        console.error('BookDetailPage: 跳转失败', error);
+        hilog.error(0x0000, TAG, '跳转失败: ' + error.message);
+        this.getUIContext()
+          .getPromptAction()
+          .showToast({ message: '打开阅读器失败', duration: 2000 });
+      });
+    } else {
+      // 第一章未下载，提示用户等待
+      hilog.warn(0x0000, TAG, '第一章未下载');
+      this.getUIContext()
+        .getPromptAction()
+        .showToast({ message: '章节正在下载中，请稍后...', duration: 2000 });
+      
+      // 确保下载任务已启动（防止意外情况）
+      if (this.onlineBookId > 0 && this.bookDetail) {
+        downloadManager.startDownloadBook(
+          this.onlineBookId,
+          this.bookDetail.title,
+          this.chapterList
+        );
+      }
+    }
+  }
+
+  /**
    * 打开章节阅读
    * @param chapter 章节信息
    */
-  private openChapter(chapter: ChapterInfo): void {
+  private async openChapter(chapter: ChapterInfo): Promise<void> {
     hilog.info(0x0000, TAG, '打开章节: ' + chapter.title);
-    // 这里可以跳转到阅读页面
-    // router.pushUrl({
-    //   url: 'pages/ReaderPage',
-    //   params: {
-    //     chapterUrl: chapter.url,
-    //     chapterTitle: chapter.title
-    //   }
-    // });
+    
+    // 查找章节索引
+    const chapterIndex = this.chapterList.findIndex(c => c.url === chapter.url);
+    
+    // 获取章节下载信息
+    const chapterDownloadInfo = await onlineBookDataManager.queryChapterDownload(this.onlineBookId, chapterIndex);
+    
+    if (!chapterDownloadInfo || !chapterDownloadInfo.isDownloaded || !chapterDownloadInfo.filePath) {
+      this.getUIContext()
+        .getPromptAction()
+        .showToast({ message: '章节未下载，请等待下载完成', duration: 2000 });
+      
+      // 开始下载
+      if (this.onlineBookId > 0 && this.bookDetail) {
+        downloadManager.startDownloadBook(
+          this.onlineBookId,
+          this.bookDetail.title,
+          this.chapterList
+        );
+      }
+      return;
+    }
+    
+    // 跳转到在线章节阅读页面
+    router.pushUrl({
+      url: 'pages/OnlineChapterReader',
+      params: {
+        bookId: this.onlineBookId,
+        bookTitle: this.bookDetail?.title || this.bookTitle,
+        chapterIndex: chapterIndex,
+        chapters: this.chapterList
+      }
+    }).then(() => {
+      hilog.info(0x0000, TAG, '成功跳转到在线阅读器页面');
+    }).catch((error: Error) => {
+      hilog.error(0x0000, TAG, '跳转失败: ' + error.message);
+      this.getUIContext()
+        .getPromptAction()
+        .showToast({ message: '打开阅读器失败', duration: 2000 });
+    });
   }
 
   /**
@@ -199,7 +415,7 @@ struct BookDetailPage {
     .height(56)
     .padding({ left: 16, right: 16 })
     .margin({ top: 44 })
-    .backgroundColor('#E53E3E')
+    .backgroundColor('#9F6548')
   }
 
   /**
@@ -265,8 +481,10 @@ struct BookDetailPage {
         }
         .width('100%')
         .alignItems(VerticalAlign.Top)
+        .justifyContent(FlexAlign.Start)
       }
       .width('100%')
+      .height('45%')
       .padding(20)
       .backgroundColor('#FFFFFF')
       .borderRadius(12)
@@ -286,101 +504,111 @@ struct BookDetailPage {
   private buildBookInfo(): void {
     if (this.bookDetail) {
       Column() {
-      Row() {
-        // 封面图片
-        Image(this.bookDetail.cover)
-          .width(100)
-          .height(130)
-          .objectFit(ImageFit.Cover)
-          .borderRadius(8)
-          .shadow({
-            radius: 8,
-            color: '#20000000',
-            offsetY: 4
-          })
-        
-        // 书籍信息
-        Column() {
-          // 书名
-          Text(this.bookDetail.title)
-            .fontSize(20)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#2D3748')
-            .maxLines(2)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .width('100%')
-            .textAlign(TextAlign.Start)
-            .margin({ bottom: 8 })
-          
-          // 作者
-          Text(`作者：${this.bookDetail.author}`)
-            .fontSize(14)
-            .fontColor('#4A5568')
-            .width('100%')
-            .textAlign(TextAlign.Start)
-            .margin({ bottom: 6 })
-          
-          // 状态
-          Text(`状态：${this.bookDetail.status}`)
-            .fontSize(14)
-            .fontColor('#4A5568')
-            .width('100%')
-            .textAlign(TextAlign.Start)
-            .margin({ bottom: 6 })
-          
-          // 更新时间
-          Text(`更新：${this.bookDetail.updateTime}`)
-            .fontSize(14)
-            .fontColor('#4A5568')
-            .width('100%')
-            .textAlign(TextAlign.Start)
-            .margin({ bottom: 6 })
-          
-          // 最新章节
-          Text(`最新：${this.bookDetail.latestChapter}`)
-            .fontSize(14)
-            .fontColor('#E53E3E')
-            .width('100%')
-            .textAlign(TextAlign.Start)
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-        }
-        .layoutWeight(1)
-        .margin({ left: 16 })
-        .alignItems(HorizontalAlign.Start)
-        .justifyContent(FlexAlign.SpaceBetween)
-      }
-      .width('100%')
-      .alignItems(VerticalAlign.Top)
-      
-      // 分类和字数标签
-      if (this.bookDetail.category || this.bookDetail.wordCount) {
         Row() {
-          if (this.bookDetail.category) {
-            Text(this.bookDetail.category)
-              .fontSize(12)
-              .fontColor('#3182CE')
-              .backgroundColor('#BEE3F8')
-              .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-              .borderRadius(12)
+          // 封面图片
+          Image(this.bookDetail.cover)
+            .width(110)
+            .height(150)
+            .objectFit(ImageFit.Cover)
+            .borderRadius(8)
+            .shadow({
+              radius: 8,
+              color: '#20000000',
+              offsetY: 4
+            })
+
+          // 书籍信息
+          Column() {
+            // 书名
+            Text(this.bookDetail.title)
+              .fontSize(20)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#2D3748')
+              .maxLines(2)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .width('100%')
+              .textAlign(TextAlign.Start)
+              .margin({ bottom: 24 })
+
+
+              // 分类和字数标签
+              if (this.bookDetail.category || this.bookDetail.wordCount) {
+                Row() {
+                  if (this.bookDetail.category) {
+                    Text(this.bookDetail.category)
+                      .fontSize(14)
+                      .fontColor('#4A5568')
+                      .width('wrapContent')
+                      .textAlign(TextAlign.Start)
+                      .margin({ bottom: 18 })
+                  }
+
+                  if (this.bookDetail.wordCount) {
+                    Text(this.bookDetail.wordCount)
+                      .fontSize(14)
+                      .fontColor('#4A5568')
+                      .width('wrapContent')
+                      .textAlign(TextAlign.Start)
+                      .margin({ bottom: 18 })
+                  }
+                }
+              }
+            Row() {
+              // 状态
+              Text(`${this.bookDetail.status}`)
+                .fontSize(14)
+                .fontColor('#4A5568')
+                .width('wrapContent')
+                .textAlign(TextAlign.Start)
+                .margin({ bottom: 6 })
+
+              // 更新时间
+              Text(`🕒${this.bookDetail.updateTime}`)
+                .fontSize(14)
+                .fontColor('#4A5568')
+                .width('wrapContent')
+                .textAlign(TextAlign.Start)
+                .margin({ bottom: 6 })
+            }
+
           }
-          
-          if (this.bookDetail.wordCount) {
-            Text(this.bookDetail.wordCount)
-              .fontSize(12)
-              .fontColor('#38A169')
-              .backgroundColor('#C6F6D5')
-              .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-              .borderRadius(12)
-              .margin({ left: this.bookDetail.category ? 8 : 0 })
-          }
+          .layoutWeight(1)
+          .margin({ left: 8 })
+          .alignItems(HorizontalAlign.Start)
+          .justifyContent(FlexAlign.SpaceBetween)
         }
         .width('100%')
-        .justifyContent(FlexAlign.Start)
-        .margin({ top: 16 })
-      }
+        .margin({ bottom: 24 })
+        .alignItems(VerticalAlign.Top)
+
+        Row() {
+          Image($r("app.media.User"))
+            .width(32)
+            .height(32)
+        // 作者
+        Text(`${this.bookDetail.author}`)
+          .fontSize(20)
+          .fontColor('#4A5568')
+          .width('100%')
+          // .textAlign(TextAlign.Start)
+          // .margin({ top: 8 })
+          // .margin({ bottom: 8 })
+        }
+        .margin({ top: 12 })
+        .margin({ bottom: 12 })
+        // 最新章节
+        Text(`最新：${this.bookDetail.latestChapter}`)
+          .fontSize(16)
+          .fontColor('#9F6548')
+          .width('100%')
+          .textAlign(TextAlign.Start)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .margin({ top: 12 })
       }
       .width('100%')
+      .height('48%')
+      .justifyContent(FlexAlign.Start)
       .padding(20)
       .backgroundColor('#FFFFFF')
       .borderRadius(12)
@@ -400,24 +628,26 @@ struct BookDetailPage {
   private buildActionButtons(): void {
     if (this.bookDetail) {
       Row() {
-        Button('开始阅读')
+        Button(this.isInBookshelf ? '开始阅读' : '加入书架')
           .fontSize(16)
           .fontColor('#FFFFFF')
-          .backgroundColor('#E53E3E')
+          .backgroundColor('#9F6548')
           .borderRadius(8)
           .layoutWeight(1)
           .height(48)
           .onClick(() => {
-            if (this.chapterList.length > 0) {
-              this.openChapter(this.chapterList[0]);
+            if (this.isInBookshelf) {
+              this.startReading();
+            } else {
+              this.addToBookshelf();
             }
           })
         
         Button('查看目录')
           .fontSize(16)
-          .fontColor('#E53E3E')
+          .fontColor('#9F6548')
           .backgroundColor('#FFFFFF')
-          .border({ width: 1, color: '#E53E3E' })
+          .border({ width: 1, color: '#9F6548' })
           .borderRadius(8)
           .layoutWeight(1)
           .height(48)
@@ -460,6 +690,7 @@ struct BookDetailPage {
         .textAlign(TextAlign.Start)
       }
       .width('100%')
+      .height('46%')
       .padding(20)
       .backgroundColor('#FFFFFF')
       .borderRadius(12)
@@ -549,19 +780,26 @@ struct BookDetailPage {
       // 主要内容区域
       if (this.isLoading) {
         // 加载中状态
-        Column() {
-          Progress({ type: ProgressType.Ring, value: 0 })
-            .width(40)
-            .height(40)
-            .color('#E53E3E')
-          Text('正在加载书籍详情...')
-            .fontSize(14)
-            .fontColor('#718096')
-            .margin({ top: 12 })
+        Scroll() {
+          Column() {
+            Column() {
+              Progress({ type: ProgressType.Ring, value: 0 })
+                .width(40)
+                .height(40)
+                .color('#9F6548')
+              Text('正在加载书籍详情...')
+                .fontSize(14)
+                .fontColor('#718096')
+                .margin({ top: 12 })
+            }
+            .width('100%')
+            .padding({ top: 40 })
+            .justifyContent(FlexAlign.Center)
+          }
+          .justifyContent(FlexAlign.Start)
         }
-        .width('100%')
         .layoutWeight(1)
-        .justifyContent(FlexAlign.Center)
+        .scrollBar(BarState.Off)
         .backgroundColor('#F7FAFC')
       } else if (this.errorMessage) {
         // 错误状态 - 显示传递的参数信息和错误提示
@@ -575,7 +813,7 @@ struct BookDetailPage {
               Text('数据加载失败')
                 .fontSize(16)
                 .fontWeight(FontWeight.Bold)
-                .fontColor('#E53E3E')
+                .fontColor('#9F6548')
                 .margin({ bottom: 8 })
               
               Text(this.errorMessage)
@@ -587,7 +825,7 @@ struct BookDetailPage {
               Button('重试')
                 .fontSize(14)
                 .fontColor(Color.White)
-                .backgroundColor('#E53E3E')
+                .backgroundColor('#9F6548')
                 .borderRadius(20)
                 .padding({ left: 20, right: 20, top: 8, bottom: 8 })
                 .onClick(() => {
@@ -637,7 +875,7 @@ struct BookDetailPage {
       }
     }
     .width('100%')
-    .height('100%')
+    .height('wrapContent')
     .backgroundColor('#F7FAFC')
     .bindSheet($$this.showChapterList, this.buildChapterListSheet(), {
       height: 500,

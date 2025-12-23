@@ -8,8 +8,18 @@ interface Reader_Params {
     showModalBanner?: boolean;
     currentIndex?: number;
     catalogItemList?: bookParser.CatalogItem[];
+    catalogList?: bookParser.CatalogItem[];
     currentCatalogIndex?: number;
+    resourceIndex?: number;
+    spineList?: bookParser.SpineItem[];
     catalogListScroller?: Scroller;
+    isOnlineBook?: boolean;
+    onlineBookId?: number;
+    onlineChapters?: ChapterInfo[];
+    currentOnlineChapterIndex?: number;
+    onlineChapterContent?: string;
+    chapterDownloadStatus?: Map<number, boolean>;
+    isReverseOrder?: boolean;
     currentData?: readerCore.PageDataInfo | null;
     defaultHandler?: bookParser.BookParserHandler | null;
     readerComponentController?: readerCore.ReaderComponentController;
@@ -18,6 +28,10 @@ interface Reader_Params {
     bookCover?: PixelMap | null;
     bookTitle?: string;
     author?: string;
+    isLoading?: boolean;
+    loadingProgress?: string;
+    hasError?: boolean;
+    errorMessage?: string;
     fontSize?: string;
     lineHeight?: string;
     fontList?: Array<FontFileInfo>;
@@ -27,6 +41,25 @@ interface Reader_Params {
     THEME_PAGE_COLOR?: Record<string, string>;
     themeBorderColor?: Record<number, Resource>;
     themeSelectIndex?: number;
+    ttsEngine?: textToSpeech.TextToSpeechEngine | null;
+    isTTSEngineCreated?: boolean;
+    isTTSPlaying?: boolean;
+    isTTSAutoPlay?: boolean;
+    ttsText?: string;
+    pcmPlayer?: PcmPlayer;
+    showTTSControl?: boolean;
+    showTTSPage?: boolean;
+    currentSpeakingChapter?: number;
+    pcmData?: Map<number, Uint8Array>;
+    bufferLength?: number;
+    showTimerSheet?: boolean;
+    showSpeedSheet?: boolean;
+    timerMinutes?: number;
+    ttsSpeed?: number;
+    timerInterval?: number;
+    remainingTime?: number;
+    backgroundTaskId?: number;
+    isBackgroundTaskActive?: boolean;
     readerSetting?: readerCore.ReaderSetting;
     screenDensityCallBack?: Callback<number> | null;
     resourceRequest?: bookParser.CallbackRes<string, ArrayBuffer>;
@@ -46,10 +79,20 @@ import { readerCore as readerCore } from "@hms:core.readerservice.readerComponen
 import { bookParser as bookParser } from "@hms:core.readerservice.bookParser";
 import type common from "@ohos:app.ability.common";
 import ConfigurationConstant from "@ohos:app.ability.ConfigurationConstant";
+import textToSpeech from "@hms:ai.textToSpeech";
+import backgroundTaskManager from "@ohos:resourceschedule.backgroundTaskManager";
+import PcmPlayer from "@bundle:liubai.yuedu.hos/entry/ets/model/PcmPlayer";
+import type { ChapterInfo } from '../models/BookSourceModel';
 interface paramType {
-    filePath: string;
-    resourceIndex: number;
-    domPos: string;
+    filePath?: string;
+    resourceIndex?: number;
+    domPos?: string;
+    isOnlineBook?: boolean;
+    bookId?: number;
+    bookUrl?: string;
+    bookTitle?: string;
+    chapters?: ChapterInfo[];
+    startChapterIndex?: number;
 }
 interface ProgressData {
     resourceIndex: number;
@@ -69,8 +112,18 @@ class Reader extends ViewPU {
         this.__showModalBanner = new ObservedPropertySimplePU(false, this, "showModalBanner");
         this.__currentIndex = new ObservedPropertySimplePU(-1, this, "currentIndex");
         this.__catalogItemList = new ObservedPropertyObjectPU([], this, "catalogItemList");
+        this.__catalogList = new ObservedPropertyObjectPU([], this, "catalogList");
         this.__currentCatalogIndex = new ObservedPropertySimplePU(-1, this, "currentCatalogIndex");
+        this.__resourceIndex = new ObservedPropertySimplePU(-1, this, "resourceIndex");
+        this.__spineList = new ObservedPropertyObjectPU([], this, "spineList");
         this.catalogListScroller = new Scroller();
+        this.__isOnlineBook = new ObservedPropertySimplePU(false, this, "isOnlineBook");
+        this.__onlineBookId = new ObservedPropertySimplePU(0, this, "onlineBookId");
+        this.__onlineChapters = new ObservedPropertyObjectPU([], this, "onlineChapters");
+        this.__currentOnlineChapterIndex = new ObservedPropertySimplePU(0, this, "currentOnlineChapterIndex");
+        this.__onlineChapterContent = new ObservedPropertySimplePU('', this, "onlineChapterContent");
+        this.__chapterDownloadStatus = new ObservedPropertyObjectPU(new Map(), this, "chapterDownloadStatus");
+        this.__isReverseOrder = new ObservedPropertySimplePU(false, this, "isReverseOrder");
         this.currentData = null;
         this.defaultHandler = null;
         this.readerComponentController = new readerCore.ReaderComponentController();
@@ -79,6 +132,10 @@ class Reader extends ViewPU {
         this.__bookCover = new ObservedPropertyObjectPU(null, this, "bookCover");
         this.__bookTitle = new ObservedPropertySimplePU('', this, "bookTitle");
         this.__author = new ObservedPropertySimplePU('', this, "author");
+        this.__isLoading = new ObservedPropertySimplePU(true, this, "isLoading");
+        this.__loadingProgress = new ObservedPropertySimplePU('正在加载...', this, "loadingProgress");
+        this.__hasError = new ObservedPropertySimplePU(false, this, "hasError");
+        this.__errorMessage = new ObservedPropertySimplePU('', this, "errorMessage");
         this.__fontSize = new ObservedPropertySimplePU('18', this, "fontSize");
         this.__lineHeight = new ObservedPropertySimplePU('', this, "lineHeight");
         this.fontList = [new FontFileInfo(this.getUIContext().getHostContext()!.resourceManager.getStringSync({ "id": 16777233, "type": 10003, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" }), ''),
@@ -122,6 +179,25 @@ class Reader extends ViewPU {
             6: { "id": 16777248, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" }
         };
         this.__themeSelectIndex = new ObservedPropertySimplePU(0, this, "themeSelectIndex");
+        this.__ttsEngine = new ObservedPropertyObjectPU(null, this, "ttsEngine");
+        this.__isTTSEngineCreated = new ObservedPropertySimplePU(false, this, "isTTSEngineCreated");
+        this.__isTTSPlaying = new ObservedPropertySimplePU(false, this, "isTTSPlaying");
+        this.__isTTSAutoPlay = new ObservedPropertySimplePU(false, this, "isTTSAutoPlay");
+        this.__ttsText = new ObservedPropertySimplePU('', this, "ttsText");
+        this.__pcmPlayer = new ObservedPropertyObjectPU(new PcmPlayer(), this, "pcmPlayer");
+        this.__showTTSControl = new ObservedPropertySimplePU(false, this, "showTTSControl");
+        this.__showTTSPage = new ObservedPropertySimplePU(false, this, "showTTSPage");
+        this.__currentSpeakingChapter = new ObservedPropertySimplePU(-1, this, "currentSpeakingChapter");
+        this.__pcmData = new ObservedPropertyObjectPU(new Map(), this, "pcmData");
+        this.__bufferLength = new ObservedPropertySimplePU(0, this, "bufferLength");
+        this.__showTimerSheet = new ObservedPropertySimplePU(false, this, "showTimerSheet");
+        this.__showSpeedSheet = new ObservedPropertySimplePU(false, this, "showSpeedSheet");
+        this.__timerMinutes = new ObservedPropertySimplePU(0, this, "timerMinutes");
+        this.__ttsSpeed = new ObservedPropertySimplePU(1, this, "ttsSpeed");
+        this.timerInterval = -1;
+        this.__remainingTime = new ObservedPropertySimplePU(0, this, "remainingTime");
+        this.backgroundTaskId = -1;
+        this.__isBackgroundTaskActive = new ObservedPropertySimplePU(false, this, "isBackgroundTaskActive");
         this.readerSetting = {
             fontName: this.getUIContext().getHostContext()!.resourceManager.getStringSync({ "id": 16777233, "type": 10003, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" }),
             fontPath: '',
@@ -177,11 +253,41 @@ class Reader extends ViewPU {
         if (params.catalogItemList !== undefined) {
             this.catalogItemList = params.catalogItemList;
         }
+        if (params.catalogList !== undefined) {
+            this.catalogList = params.catalogList;
+        }
         if (params.currentCatalogIndex !== undefined) {
             this.currentCatalogIndex = params.currentCatalogIndex;
         }
+        if (params.resourceIndex !== undefined) {
+            this.resourceIndex = params.resourceIndex;
+        }
+        if (params.spineList !== undefined) {
+            this.spineList = params.spineList;
+        }
         if (params.catalogListScroller !== undefined) {
             this.catalogListScroller = params.catalogListScroller;
+        }
+        if (params.isOnlineBook !== undefined) {
+            this.isOnlineBook = params.isOnlineBook;
+        }
+        if (params.onlineBookId !== undefined) {
+            this.onlineBookId = params.onlineBookId;
+        }
+        if (params.onlineChapters !== undefined) {
+            this.onlineChapters = params.onlineChapters;
+        }
+        if (params.currentOnlineChapterIndex !== undefined) {
+            this.currentOnlineChapterIndex = params.currentOnlineChapterIndex;
+        }
+        if (params.onlineChapterContent !== undefined) {
+            this.onlineChapterContent = params.onlineChapterContent;
+        }
+        if (params.chapterDownloadStatus !== undefined) {
+            this.chapterDownloadStatus = params.chapterDownloadStatus;
+        }
+        if (params.isReverseOrder !== undefined) {
+            this.isReverseOrder = params.isReverseOrder;
         }
         if (params.currentData !== undefined) {
             this.currentData = params.currentData;
@@ -206,6 +312,18 @@ class Reader extends ViewPU {
         }
         if (params.author !== undefined) {
             this.author = params.author;
+        }
+        if (params.isLoading !== undefined) {
+            this.isLoading = params.isLoading;
+        }
+        if (params.loadingProgress !== undefined) {
+            this.loadingProgress = params.loadingProgress;
+        }
+        if (params.hasError !== undefined) {
+            this.hasError = params.hasError;
+        }
+        if (params.errorMessage !== undefined) {
+            this.errorMessage = params.errorMessage;
         }
         if (params.fontSize !== undefined) {
             this.fontSize = params.fontSize;
@@ -234,6 +352,63 @@ class Reader extends ViewPU {
         if (params.themeSelectIndex !== undefined) {
             this.themeSelectIndex = params.themeSelectIndex;
         }
+        if (params.ttsEngine !== undefined) {
+            this.ttsEngine = params.ttsEngine;
+        }
+        if (params.isTTSEngineCreated !== undefined) {
+            this.isTTSEngineCreated = params.isTTSEngineCreated;
+        }
+        if (params.isTTSPlaying !== undefined) {
+            this.isTTSPlaying = params.isTTSPlaying;
+        }
+        if (params.isTTSAutoPlay !== undefined) {
+            this.isTTSAutoPlay = params.isTTSAutoPlay;
+        }
+        if (params.ttsText !== undefined) {
+            this.ttsText = params.ttsText;
+        }
+        if (params.pcmPlayer !== undefined) {
+            this.pcmPlayer = params.pcmPlayer;
+        }
+        if (params.showTTSControl !== undefined) {
+            this.showTTSControl = params.showTTSControl;
+        }
+        if (params.showTTSPage !== undefined) {
+            this.showTTSPage = params.showTTSPage;
+        }
+        if (params.currentSpeakingChapter !== undefined) {
+            this.currentSpeakingChapter = params.currentSpeakingChapter;
+        }
+        if (params.pcmData !== undefined) {
+            this.pcmData = params.pcmData;
+        }
+        if (params.bufferLength !== undefined) {
+            this.bufferLength = params.bufferLength;
+        }
+        if (params.showTimerSheet !== undefined) {
+            this.showTimerSheet = params.showTimerSheet;
+        }
+        if (params.showSpeedSheet !== undefined) {
+            this.showSpeedSheet = params.showSpeedSheet;
+        }
+        if (params.timerMinutes !== undefined) {
+            this.timerMinutes = params.timerMinutes;
+        }
+        if (params.ttsSpeed !== undefined) {
+            this.ttsSpeed = params.ttsSpeed;
+        }
+        if (params.timerInterval !== undefined) {
+            this.timerInterval = params.timerInterval;
+        }
+        if (params.remainingTime !== undefined) {
+            this.remainingTime = params.remainingTime;
+        }
+        if (params.backgroundTaskId !== undefined) {
+            this.backgroundTaskId = params.backgroundTaskId;
+        }
+        if (params.isBackgroundTaskActive !== undefined) {
+            this.isBackgroundTaskActive = params.isBackgroundTaskActive;
+        }
         if (params.readerSetting !== undefined) {
             this.readerSetting = params.readerSetting;
         }
@@ -253,15 +428,46 @@ class Reader extends ViewPU {
         this.__showModalBanner.purgeDependencyOnElmtId(rmElmtId);
         this.__currentIndex.purgeDependencyOnElmtId(rmElmtId);
         this.__catalogItemList.purgeDependencyOnElmtId(rmElmtId);
+        this.__catalogList.purgeDependencyOnElmtId(rmElmtId);
         this.__currentCatalogIndex.purgeDependencyOnElmtId(rmElmtId);
+        this.__resourceIndex.purgeDependencyOnElmtId(rmElmtId);
+        this.__spineList.purgeDependencyOnElmtId(rmElmtId);
+        this.__isOnlineBook.purgeDependencyOnElmtId(rmElmtId);
+        this.__onlineBookId.purgeDependencyOnElmtId(rmElmtId);
+        this.__onlineChapters.purgeDependencyOnElmtId(rmElmtId);
+        this.__currentOnlineChapterIndex.purgeDependencyOnElmtId(rmElmtId);
+        this.__onlineChapterContent.purgeDependencyOnElmtId(rmElmtId);
+        this.__chapterDownloadStatus.purgeDependencyOnElmtId(rmElmtId);
+        this.__isReverseOrder.purgeDependencyOnElmtId(rmElmtId);
         this.__bookCover.purgeDependencyOnElmtId(rmElmtId);
         this.__bookTitle.purgeDependencyOnElmtId(rmElmtId);
         this.__author.purgeDependencyOnElmtId(rmElmtId);
+        this.__isLoading.purgeDependencyOnElmtId(rmElmtId);
+        this.__loadingProgress.purgeDependencyOnElmtId(rmElmtId);
+        this.__hasError.purgeDependencyOnElmtId(rmElmtId);
+        this.__errorMessage.purgeDependencyOnElmtId(rmElmtId);
         this.__fontSize.purgeDependencyOnElmtId(rmElmtId);
         this.__lineHeight.purgeDependencyOnElmtId(rmElmtId);
         this.__selectFontPath.purgeDependencyOnElmtId(rmElmtId);
         this.__themeList.purgeDependencyOnElmtId(rmElmtId);
         this.__themeSelectIndex.purgeDependencyOnElmtId(rmElmtId);
+        this.__ttsEngine.purgeDependencyOnElmtId(rmElmtId);
+        this.__isTTSEngineCreated.purgeDependencyOnElmtId(rmElmtId);
+        this.__isTTSPlaying.purgeDependencyOnElmtId(rmElmtId);
+        this.__isTTSAutoPlay.purgeDependencyOnElmtId(rmElmtId);
+        this.__ttsText.purgeDependencyOnElmtId(rmElmtId);
+        this.__pcmPlayer.purgeDependencyOnElmtId(rmElmtId);
+        this.__showTTSControl.purgeDependencyOnElmtId(rmElmtId);
+        this.__showTTSPage.purgeDependencyOnElmtId(rmElmtId);
+        this.__currentSpeakingChapter.purgeDependencyOnElmtId(rmElmtId);
+        this.__pcmData.purgeDependencyOnElmtId(rmElmtId);
+        this.__bufferLength.purgeDependencyOnElmtId(rmElmtId);
+        this.__showTimerSheet.purgeDependencyOnElmtId(rmElmtId);
+        this.__showSpeedSheet.purgeDependencyOnElmtId(rmElmtId);
+        this.__timerMinutes.purgeDependencyOnElmtId(rmElmtId);
+        this.__ttsSpeed.purgeDependencyOnElmtId(rmElmtId);
+        this.__remainingTime.purgeDependencyOnElmtId(rmElmtId);
+        this.__isBackgroundTaskActive.purgeDependencyOnElmtId(rmElmtId);
     }
     aboutToBeDeleted() {
         this.__windowWidth.aboutToBeDeleted();
@@ -270,15 +476,46 @@ class Reader extends ViewPU {
         this.__showModalBanner.aboutToBeDeleted();
         this.__currentIndex.aboutToBeDeleted();
         this.__catalogItemList.aboutToBeDeleted();
+        this.__catalogList.aboutToBeDeleted();
         this.__currentCatalogIndex.aboutToBeDeleted();
+        this.__resourceIndex.aboutToBeDeleted();
+        this.__spineList.aboutToBeDeleted();
+        this.__isOnlineBook.aboutToBeDeleted();
+        this.__onlineBookId.aboutToBeDeleted();
+        this.__onlineChapters.aboutToBeDeleted();
+        this.__currentOnlineChapterIndex.aboutToBeDeleted();
+        this.__onlineChapterContent.aboutToBeDeleted();
+        this.__chapterDownloadStatus.aboutToBeDeleted();
+        this.__isReverseOrder.aboutToBeDeleted();
         this.__bookCover.aboutToBeDeleted();
         this.__bookTitle.aboutToBeDeleted();
         this.__author.aboutToBeDeleted();
+        this.__isLoading.aboutToBeDeleted();
+        this.__loadingProgress.aboutToBeDeleted();
+        this.__hasError.aboutToBeDeleted();
+        this.__errorMessage.aboutToBeDeleted();
         this.__fontSize.aboutToBeDeleted();
         this.__lineHeight.aboutToBeDeleted();
         this.__selectFontPath.aboutToBeDeleted();
         this.__themeList.aboutToBeDeleted();
         this.__themeSelectIndex.aboutToBeDeleted();
+        this.__ttsEngine.aboutToBeDeleted();
+        this.__isTTSEngineCreated.aboutToBeDeleted();
+        this.__isTTSPlaying.aboutToBeDeleted();
+        this.__isTTSAutoPlay.aboutToBeDeleted();
+        this.__ttsText.aboutToBeDeleted();
+        this.__pcmPlayer.aboutToBeDeleted();
+        this.__showTTSControl.aboutToBeDeleted();
+        this.__showTTSPage.aboutToBeDeleted();
+        this.__currentSpeakingChapter.aboutToBeDeleted();
+        this.__pcmData.aboutToBeDeleted();
+        this.__bufferLength.aboutToBeDeleted();
+        this.__showTimerSheet.aboutToBeDeleted();
+        this.__showSpeedSheet.aboutToBeDeleted();
+        this.__timerMinutes.aboutToBeDeleted();
+        this.__ttsSpeed.aboutToBeDeleted();
+        this.__remainingTime.aboutToBeDeleted();
+        this.__isBackgroundTaskActive.aboutToBeDeleted();
         SubscriberManager.Get().delete(this.id__());
         this.aboutToBeDeletedInternal();
     }
@@ -330,6 +567,13 @@ class Reader extends ViewPU {
     set catalogItemList(newValue: bookParser.CatalogItem[]) {
         this.__catalogItemList.set(newValue);
     }
+    private __catalogList: ObservedPropertyObjectPU<bookParser.CatalogItem[]>;
+    get catalogList() {
+        return this.__catalogList.get();
+    }
+    set catalogList(newValue: bookParser.CatalogItem[]) {
+        this.__catalogList.set(newValue);
+    }
     private __currentCatalogIndex: ObservedPropertySimplePU<number>; // 当前章节索引
     get currentCatalogIndex() {
         return this.__currentCatalogIndex.get();
@@ -337,7 +581,71 @@ class Reader extends ViewPU {
     set currentCatalogIndex(newValue: number) {
         this.__currentCatalogIndex.set(newValue);
     }
+    private __resourceIndex: ObservedPropertySimplePU<number>; // 当前资源索引
+    get resourceIndex() {
+        return this.__resourceIndex.get();
+    }
+    set resourceIndex(newValue: number) {
+        this.__resourceIndex.set(newValue);
+    }
+    private __spineList: ObservedPropertyObjectPU<bookParser.SpineItem[]>; // 脊柱列表
+    get spineList() {
+        return this.__spineList.get();
+    }
+    set spineList(newValue: bookParser.SpineItem[]) {
+        this.__spineList.set(newValue);
+    }
     private catalogListScroller: Scroller; // 目录列表滚动控制器
+    // 在线书籍相关状态
+    private __isOnlineBook: ObservedPropertySimplePU<boolean>; // 是否为在线书籍
+    get isOnlineBook() {
+        return this.__isOnlineBook.get();
+    }
+    set isOnlineBook(newValue: boolean) {
+        this.__isOnlineBook.set(newValue);
+    }
+    private __onlineBookId: ObservedPropertySimplePU<number>; // 在线书籍ID
+    get onlineBookId() {
+        return this.__onlineBookId.get();
+    }
+    set onlineBookId(newValue: number) {
+        this.__onlineBookId.set(newValue);
+    }
+    private __onlineChapters: ObservedPropertyObjectPU<ChapterInfo[]>; // 在线章节列表
+    get onlineChapters() {
+        return this.__onlineChapters.get();
+    }
+    set onlineChapters(newValue: ChapterInfo[]) {
+        this.__onlineChapters.set(newValue);
+    }
+    private __currentOnlineChapterIndex: ObservedPropertySimplePU<number>; // 当前在线章节索引
+    get currentOnlineChapterIndex() {
+        return this.__currentOnlineChapterIndex.get();
+    }
+    set currentOnlineChapterIndex(newValue: number) {
+        this.__currentOnlineChapterIndex.set(newValue);
+    }
+    private __onlineChapterContent: ObservedPropertySimplePU<string>; // 当前在线章节内容
+    get onlineChapterContent() {
+        return this.__onlineChapterContent.get();
+    }
+    set onlineChapterContent(newValue: string) {
+        this.__onlineChapterContent.set(newValue);
+    }
+    private __chapterDownloadStatus: ObservedPropertyObjectPU<Map<number, boolean>>; // 章节下载状态
+    get chapterDownloadStatus() {
+        return this.__chapterDownloadStatus.get();
+    }
+    set chapterDownloadStatus(newValue: Map<number, boolean>) {
+        this.__chapterDownloadStatus.set(newValue);
+    }
+    private __isReverseOrder: ObservedPropertySimplePU<boolean>; // 是否倒序显示章节
+    get isReverseOrder() {
+        return this.__isReverseOrder.get();
+    }
+    set isReverseOrder(newValue: boolean) {
+        this.__isReverseOrder.set(newValue);
+    }
     private currentData: readerCore.PageDataInfo | null;
     private defaultHandler: bookParser.BookParserHandler | null;
     private readerComponentController: readerCore.ReaderComponentController;
@@ -363,6 +671,34 @@ class Reader extends ViewPU {
     }
     set author(newValue: string) {
         this.__author.set(newValue);
+    }
+    private __isLoading: ObservedPropertySimplePU<boolean>; // 加载状态
+    get isLoading() {
+        return this.__isLoading.get();
+    }
+    set isLoading(newValue: boolean) {
+        this.__isLoading.set(newValue);
+    }
+    private __loadingProgress: ObservedPropertySimplePU<string>; // 加载进度文本
+    get loadingProgress() {
+        return this.__loadingProgress.get();
+    }
+    set loadingProgress(newValue: string) {
+        this.__loadingProgress.set(newValue);
+    }
+    private __hasError: ObservedPropertySimplePU<boolean>; // 错误状态
+    get hasError() {
+        return this.__hasError.get();
+    }
+    set hasError(newValue: boolean) {
+        this.__hasError.set(newValue);
+    }
+    private __errorMessage: ObservedPropertySimplePU<string>; // 错误信息
+    get errorMessage() {
+        return this.__errorMessage.get();
+    }
+    set errorMessage(newValue: string) {
+        this.__errorMessage.set(newValue);
     }
     private __fontSize: ObservedPropertySimplePU<string>;
     get fontSize() {
@@ -403,6 +739,128 @@ class Reader extends ViewPU {
     set themeSelectIndex(newValue: number) {
         this.__themeSelectIndex.set(newValue);
     }
+    private __ttsEngine: ObservedPropertyObjectPU<textToSpeech.TextToSpeechEngine | null>;
+    get ttsEngine() {
+        return this.__ttsEngine.get();
+    }
+    set ttsEngine(newValue: textToSpeech.TextToSpeechEngine | null) {
+        this.__ttsEngine.set(newValue);
+    }
+    private __isTTSEngineCreated: ObservedPropertySimplePU<boolean>;
+    get isTTSEngineCreated() {
+        return this.__isTTSEngineCreated.get();
+    }
+    set isTTSEngineCreated(newValue: boolean) {
+        this.__isTTSEngineCreated.set(newValue);
+    }
+    private __isTTSPlaying: ObservedPropertySimplePU<boolean>;
+    get isTTSPlaying() {
+        return this.__isTTSPlaying.get();
+    }
+    set isTTSPlaying(newValue: boolean) {
+        this.__isTTSPlaying.set(newValue);
+    }
+    private __isTTSAutoPlay: ObservedPropertySimplePU<boolean>; // 控制是否自动播放下一章
+    get isTTSAutoPlay() {
+        return this.__isTTSAutoPlay.get();
+    }
+    set isTTSAutoPlay(newValue: boolean) {
+        this.__isTTSAutoPlay.set(newValue);
+    }
+    private __ttsText: ObservedPropertySimplePU<string>;
+    get ttsText() {
+        return this.__ttsText.get();
+    }
+    set ttsText(newValue: string) {
+        this.__ttsText.set(newValue);
+    }
+    private __pcmPlayer: ObservedPropertyObjectPU<PcmPlayer>;
+    get pcmPlayer() {
+        return this.__pcmPlayer.get();
+    }
+    set pcmPlayer(newValue: PcmPlayer) {
+        this.__pcmPlayer.set(newValue);
+    }
+    private __showTTSControl: ObservedPropertySimplePU<boolean>;
+    get showTTSControl() {
+        return this.__showTTSControl.get();
+    }
+    set showTTSControl(newValue: boolean) {
+        this.__showTTSControl.set(newValue);
+    }
+    private __showTTSPage: ObservedPropertySimplePU<boolean>; // 控制语音朗读页面显示
+    get showTTSPage() {
+        return this.__showTTSPage.get();
+    }
+    set showTTSPage(newValue: boolean) {
+        this.__showTTSPage.set(newValue);
+    }
+    private __currentSpeakingChapter: ObservedPropertySimplePU<number>;
+    get currentSpeakingChapter() {
+        return this.__currentSpeakingChapter.get();
+    }
+    set currentSpeakingChapter(newValue: number) {
+        this.__currentSpeakingChapter.set(newValue);
+    }
+    private __pcmData: ObservedPropertyObjectPU<Map<number, Uint8Array>>;
+    get pcmData() {
+        return this.__pcmData.get();
+    }
+    set pcmData(newValue: Map<number, Uint8Array>) {
+        this.__pcmData.set(newValue);
+    }
+    private __bufferLength: ObservedPropertySimplePU<number>;
+    get bufferLength() {
+        return this.__bufferLength.get();
+    }
+    set bufferLength(newValue: number) {
+        this.__bufferLength.set(newValue);
+    }
+    private __showTimerSheet: ObservedPropertySimplePU<boolean>; // 定时器弹窗显示状态
+    get showTimerSheet() {
+        return this.__showTimerSheet.get();
+    }
+    set showTimerSheet(newValue: boolean) {
+        this.__showTimerSheet.set(newValue);
+    }
+    private __showSpeedSheet: ObservedPropertySimplePU<boolean>; // 倍速弹窗显示状态
+    get showSpeedSheet() {
+        return this.__showSpeedSheet.get();
+    }
+    set showSpeedSheet(newValue: boolean) {
+        this.__showSpeedSheet.set(newValue);
+    }
+    private __timerMinutes: ObservedPropertySimplePU<number>; // 定时器分钟数，0表示不定时
+    get timerMinutes() {
+        return this.__timerMinutes.get();
+    }
+    set timerMinutes(newValue: number) {
+        this.__timerMinutes.set(newValue);
+    }
+    private __ttsSpeed: ObservedPropertySimplePU<number>; // TTS朗读速度，1为正常速度
+    get ttsSpeed() {
+        return this.__ttsSpeed.get();
+    }
+    set ttsSpeed(newValue: number) {
+        this.__ttsSpeed.set(newValue);
+    }
+    private timerInterval: number; // 定时器ID
+    private __remainingTime: ObservedPropertySimplePU<number>; // 剩余时间（秒）
+    get remainingTime() {
+        return this.__remainingTime.get();
+    }
+    set remainingTime(newValue: number) {
+        this.__remainingTime.set(newValue);
+    }
+    // 后台任务相关
+    private backgroundTaskId: number; // 后台任务ID
+    private __isBackgroundTaskActive: ObservedPropertySimplePU<boolean>; // 后台任务是否激活
+    get isBackgroundTaskActive() {
+        return this.__isBackgroundTaskActive.get();
+    }
+    set isBackgroundTaskActive(newValue: boolean) {
+        this.__isBackgroundTaskActive.set(newValue);
+    }
     private readerSetting: readerCore.ReaderSetting;
     private screenDensityCallBack: Callback<number> | null;
     async aboutToAppear() {
@@ -437,14 +895,20 @@ class Reader extends ViewPU {
         this.registerScreenDensityChange();
         WindowAbility.getInstance().toggleWindowSystemBar([], this.getUIContext().getHostContext());
         let param = this.getUIContext().getRouter().getParams() as paramType;
-        this.filePath = param.filePath;
-        let resourceIndex = param.resourceIndex;
-        let domPos = param.domPos;
+        this.filePath = param.filePath || '';
+        let resourceIndex = param.resourceIndex || 0;
+        let domPos = param.domPos || '';
         this.startPlay(this.filePath, resourceIndex, domPos);
     }
     onPageHide(): void {
         // 页面隐藏时保存阅读进度
         this.saveReadingProgress();
+        // 页面隐藏时不停止TTS朗读，让其在后台继续运行
+        hilog.info(0x0000, TAG, 'Page hidden, TTS continues in background');
+    }
+    onPageShow(): void {
+        // 页面显示时恢复TTS状态显示
+        hilog.info(0x0000, TAG, 'Page shown, TTS state restored');
     }
     /**
      * The color mode of the system changed
@@ -482,13 +946,19 @@ class Reader extends ViewPU {
     private resourceRequest: bookParser.CallbackRes<string, ArrayBuffer>;
     private async startPlay(path: string, resourceIndex: number, domPos: string) {
         try {
+            this.isLoading = true;
+            this.hasError = false;
+            this.loadingProgress = '正在初始化阅读器...';
             const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
             const initPromise: Promise<void> = this.readerComponentController.init(context);
-            const defaultHandlerPromise: Promise<bookParser.BookParserHandler> = bookParser.getDefaultHandler(path);
-            const results = await Promise.all([defaultHandlerPromise, initPromise]);
-            const defaultHandler = results[0];
+            // 使用默认处理器
+            hilog.info(0x0000, TAG, 'Using default handler for file');
+            this.loadingProgress = '正在解析书籍文件...';
+            const defaultHandler = await bookParser.getDefaultHandler(path);
+            this.loadingProgress = '正在启动阅读器...';
+            await initPromise;
             this.defaultHandler = defaultHandler;
-            hilog.info(0x0000, TAG, 'startPlay getDefaultHandler end,result is:' + JSON.stringify(this.defaultHandler));
+            hilog.info(0x0000, TAG, 'startPlay handler initialized successfully');
             this.readerComponentController.registerBookParser(this.defaultHandler);
             // Register listeners
             this.readerComponentController.on('resourceRequest', this.resourceRequest);
@@ -546,13 +1016,31 @@ class Reader extends ViewPU {
                 startDomPos = domPos || '';
                 hilog.info(0x0000, TAG, `No saved progress found, using initial parameters: resourceIndex=${startResourceIndex}, domPos=${startDomPos}`);
             }
+            this.loadingProgress = '正在加载内容...';
             this.readerComponentController.startPlay(startResourceIndex, startDomPos);
-            // 获取目录列表
+            // 获取目录列表和脊柱列表
             this.catalogItemList = this.defaultHandler?.getCatalogList() || [];
+            this.catalogList = this.defaultHandler?.getCatalogList() || [];
+            this.spineList = this.defaultHandler?.getSpineList() || [];
+            this.resourceIndex = startResourceIndex;
             this.updateCurrentCatalogIndex();
+            // 加载完成
+            this.isLoading = false;
+            this.loadingProgress = '';
+            hilog.info(0x0000, TAG, 'Reader initialization completed successfully');
         }
         catch (err) {
             hilog.error(0x0000, TAG, 'startPlay: err: ' + JSON.stringify(err));
+            this.hasError = true;
+            this.isLoading = false;
+            this.errorMessage = `加载失败: ${err instanceof Error ? err.message : '未知错误'}`;
+            // 尝试提供解决建议
+            if (err instanceof Error && err.message.includes('memory')) {
+                this.errorMessage += '\n建议：文件过大，请尝试使用较小的文件或重启应用';
+            }
+            else if (err instanceof Error && err.message.includes('timeout')) {
+                this.errorMessage += '\n建议：加载超时，请检查文件是否损坏或重试';
+            }
         }
     }
     private async getBookInfo() {
@@ -580,6 +1068,11 @@ class Reader extends ViewPU {
         if (this.currentData && this.defaultHandler) {
             const spineList = this.defaultHandler.getSpineList();
             const catalogList = this.defaultHandler.getCatalogList();
+            // 更新spineList和resourceIndex
+            this.spineList = spineList;
+            this.resourceIndex = this.currentData.resourceIndex;
+            // 更新catalogList
+            this.catalogList = catalogList;
             if (spineList.length > 0 && this.currentData.resourceIndex >= 0 &&
                 this.currentData.resourceIndex < spineList.length) {
                 const currentSpine = spineList[this.currentData.resourceIndex];
@@ -587,6 +1080,10 @@ class Reader extends ViewPU {
                 const matchingIndex = catalogList.findIndex(catalog => catalog.href === currentSpine.href);
                 if (matchingIndex !== -1) {
                     this.currentCatalogIndex = matchingIndex;
+                    hilog.info(0x0000, TAG, `Updated currentCatalogIndex to: ${this.currentCatalogIndex}`);
+                }
+                else {
+                    hilog.warn(0x0000, TAG, `No matching catalog found for spine: ${currentSpine.href}`);
                 }
             }
         }
@@ -594,6 +1091,9 @@ class Reader extends ViewPU {
     aboutToDisappear(): void {
         // Force save progress before disappearing
         this.saveReadingProgress();
+        // 只有在真正退出应用时才释放TTS引擎，页面切换时保持运行
+        // 这里不调用 releaseTTSEngine()，让TTS在后台继续运行
+        hilog.info(0x0000, TAG, 'Page disappearing, TTS continues in background');
         display.off('change', this.screenDensityCallBack);
         if (this.readerComponentController) {
             this.readerComponentController.off('pageShow');
@@ -606,7 +1106,7 @@ class Reader extends ViewPU {
     private buildCatalogItemList(parent = null) {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Reader.ets(380:5)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Reader.ets(482:5)", "entry");
             Column.borderRadius({ topRight: 32, topLeft: 32 });
             Column.visibility(this.currentIndex === 0 ? Visibility.Visible : Visibility.None);
             Column.backgroundColor(Color.White);
@@ -614,7 +1114,7 @@ class Reader extends ViewPU {
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Reader.ets(381:7)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Reader.ets(483:7)", "entry");
             Row.width('100%');
             Row.height(56);
             Row.alignItems(VerticalAlign.Center);
@@ -622,7 +1122,7 @@ class Reader extends ViewPU {
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Stack.create();
-            Stack.debugLine("entry/src/main/ets/pages/Reader.ets(382:9)", "entry");
+            Stack.debugLine("entry/src/main/ets/pages/Reader.ets(484:9)", "entry");
             Stack.borderRadius('50%');
             Stack.backgroundColor("#0d777777");
             Stack.align(Alignment.Center);
@@ -635,7 +1135,7 @@ class Reader extends ViewPU {
         }, Stack);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             SymbolGlyph.create({ "id": 125831487, "type": 40000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
-            SymbolGlyph.debugLine("entry/src/main/ets/pages/Reader.ets(383:11)", "entry");
+            SymbolGlyph.debugLine("entry/src/main/ets/pages/Reader.ets(485:11)", "entry");
             SymbolGlyph.fontColor([{ "id": 16777257, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" }]);
             SymbolGlyph.width(18);
             SymbolGlyph.fontSize(18);
@@ -647,7 +1147,7 @@ class Reader extends ViewPU {
         Row.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Reader.ets(406:7)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Reader.ets(508:7)", "entry");
             Row.padding({
                 left: 16,
                 right: 16
@@ -658,7 +1158,7 @@ class Reader extends ViewPU {
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Stack.create({ alignContent: Alignment.Top });
-            Stack.debugLine("entry/src/main/ets/pages/Reader.ets(407:9)", "entry");
+            Stack.debugLine("entry/src/main/ets/pages/Reader.ets(509:9)", "entry");
             Stack.width(42);
             Stack.shadow({ radius: 18, color: "#4D000000" });
             Stack.borderRadius(2);
@@ -667,7 +1167,7 @@ class Reader extends ViewPU {
         }, Stack);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Image.create(this.bookCover);
-            Image.debugLine("entry/src/main/ets/pages/Reader.ets(408:11)", "entry");
+            Image.debugLine("entry/src/main/ets/pages/Reader.ets(510:11)", "entry");
             Image.draggable(false);
             Image.width(42);
             Image.aspectRatio(3 / 4);
@@ -678,7 +1178,7 @@ class Reader extends ViewPU {
         }, Image);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Image.create({ "id": 16777269, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
-            Image.debugLine("entry/src/main/ets/pages/Reader.ets(417:11)", "entry");
+            Image.debugLine("entry/src/main/ets/pages/Reader.ets(519:11)", "entry");
             Image.draggable(false);
             Image.aspectRatio(3 / 4);
             Image.width(42);
@@ -688,7 +1188,7 @@ class Reader extends ViewPU {
         }, Image);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Image.create({ "id": 16777266, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
-            Image.debugLine("entry/src/main/ets/pages/Reader.ets(425:11)", "entry");
+            Image.debugLine("entry/src/main/ets/pages/Reader.ets(527:11)", "entry");
             Image.draggable(false);
             Image.width(42);
             Image.opacity(0.7);
@@ -699,7 +1199,7 @@ class Reader extends ViewPU {
         Stack.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create(this.bookTitle);
-            Text.debugLine("entry/src/main/ets/pages/Reader.ets(439:9)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Reader.ets(541:9)", "entry");
             Text.fontSize({ "id": 125829684, "type": 10002, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             Text.textOverflow({ overflow: TextOverflow.Ellipsis });
             Text.maxLines(1);
@@ -714,7 +1214,7 @@ class Reader extends ViewPU {
         Row.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             List.create({ scroller: this.catalogListScroller });
-            List.debugLine("entry/src/main/ets/pages/Reader.ets(458:7)", "entry");
+            List.debugLine("entry/src/main/ets/pages/Reader.ets(560:7)", "entry");
             List.scrollBar(BarState.On);
             List.scrollBarWidth(10);
             List.scrollBarColor('#80000000');
@@ -743,13 +1243,13 @@ class Reader extends ViewPU {
                     };
                     const itemCreation2 = (elmtId, isInitialRender) => {
                         ListItem.create(deepRenderFunction, true);
-                        ListItem.debugLine("entry/src/main/ets/pages/Reader.ets(460:11)", "entry");
+                        ListItem.debugLine("entry/src/main/ets/pages/Reader.ets(562:11)", "entry");
                     };
                     const deepRenderFunction = (elmtId, isInitialRender) => {
                         itemCreation(elmtId, isInitialRender);
                         this.observeComponentCreation2((elmtId, isInitialRender) => {
                             Column.create();
-                            Column.debugLine("entry/src/main/ets/pages/Reader.ets(461:13)", "entry");
+                            Column.debugLine("entry/src/main/ets/pages/Reader.ets(563:13)", "entry");
                             Column.padding({
                                 left: item.catalogLevel ? item.catalogLevel * 26 : 16,
                                 right: 16,
@@ -763,7 +1263,7 @@ class Reader extends ViewPU {
                         }, Column);
                         this.observeComponentCreation2((elmtId, isInitialRender) => {
                             Row.create();
-                            Row.debugLine("entry/src/main/ets/pages/Reader.ets(462:15)", "entry");
+                            Row.debugLine("entry/src/main/ets/pages/Reader.ets(564:15)", "entry");
                             Row.width('100%');
                             Row.height(48);
                             Row.justifyContent(FlexAlign.Center);
@@ -771,18 +1271,18 @@ class Reader extends ViewPU {
                         }, Row);
                         this.observeComponentCreation2((elmtId, isInitialRender) => {
                             Row.create();
-                            Row.debugLine("entry/src/main/ets/pages/Reader.ets(463:17)", "entry");
+                            Row.debugLine("entry/src/main/ets/pages/Reader.ets(565:17)", "entry");
                         }, Row);
                         this.observeComponentCreation2((elmtId, isInitialRender) => {
                             Text.create(' · ');
-                            Text.debugLine("entry/src/main/ets/pages/Reader.ets(464:19)", "entry");
+                            Text.debugLine("entry/src/main/ets/pages/Reader.ets(566:19)", "entry");
                             Text.fontSize(14);
                             Text.fontColor({ "id": 16777240, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                         }, Text);
                         Text.pop();
                         this.observeComponentCreation2((elmtId, isInitialRender) => {
                             Text.create(item.catalogName);
-                            Text.debugLine("entry/src/main/ets/pages/Reader.ets(467:19)", "entry");
+                            Text.debugLine("entry/src/main/ets/pages/Reader.ets(569:19)", "entry");
                             Text.fontSize(14);
                             Text.fontColor(index === this.currentCatalogIndex ? Color.Red : { "id": 16777240, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                             Text.textOverflow({ overflow: TextOverflow.Ellipsis });
@@ -795,7 +1295,7 @@ class Reader extends ViewPU {
                         Row.pop();
                         this.observeComponentCreation2((elmtId, isInitialRender) => {
                             Divider.create();
-                            Divider.debugLine("entry/src/main/ets/pages/Reader.ets(481:15)", "entry");
+                            Divider.debugLine("entry/src/main/ets/pages/Reader.ets(583:15)", "entry");
                         }, Divider);
                         Column.pop();
                         ListItem.pop();
@@ -813,7 +1313,7 @@ class Reader extends ViewPU {
     private buildSetting(parent = null) {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Reader.ets(517:5)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Reader.ets(619:5)", "entry");
             Column.visibility(this.currentIndex === 1 ? Visibility.Visible : Visibility.None);
             Column.alignItems(HorizontalAlign.Start);
             Column.backgroundColor(Color.White);
@@ -831,7 +1331,7 @@ class Reader extends ViewPU {
                 breakpoints: { value: ['0vp', '520vp', '840vp'] },
                 direction: GridRowDirection.Row
             });
-            GridRow.debugLine("entry/src/main/ets/pages/Reader.ets(518:7)", "entry");
+            GridRow.debugLine("entry/src/main/ets/pages/Reader.ets(620:7)", "entry");
             GridRow.margin({ top: 24, left: 16, right: 16 });
         }, GridRow);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
@@ -849,11 +1349,11 @@ class Reader extends ViewPU {
                         offset: 0,
                         order: 0
                     });
-                    GridCol.debugLine("entry/src/main/ets/pages/Reader.ets(530:11)", "entry");
+                    GridCol.debugLine("entry/src/main/ets/pages/Reader.ets(632:11)", "entry");
                 }, GridCol);
                 this.observeComponentCreation2((elmtId, isInitialRender) => {
                     Column.create();
-                    Column.debugLine("entry/src/main/ets/pages/Reader.ets(540:13)", "entry");
+                    Column.debugLine("entry/src/main/ets/pages/Reader.ets(642:13)", "entry");
                     Column.width('100%');
                     Column.onClick(async () => {
                         this.selectFontPath = data.getPath();
@@ -870,7 +1370,7 @@ class Reader extends ViewPU {
                 }, Column);
                 this.observeComponentCreation2((elmtId, isInitialRender) => {
                     Text.create(data.getAlias());
-                    Text.debugLine("entry/src/main/ets/pages/Reader.ets(541:15)", "entry");
+                    Text.debugLine("entry/src/main/ets/pages/Reader.ets(643:15)", "entry");
                     Text.fontSize(14);
                     Text.borderRadius(12);
                     Text.borderWidth(1.5);
@@ -892,7 +1392,7 @@ class Reader extends ViewPU {
         GridRow.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create();
-            Text.debugLine("entry/src/main/ets/pages/Reader.ets(572:7)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Reader.ets(674:7)", "entry");
             Text.width('92%');
             Text.height(1);
             Text.margin({ left: 16, top: 12, right: 16 });
@@ -901,14 +1401,14 @@ class Reader extends ViewPU {
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Row.create({ space: 20 });
-            Row.debugLine("entry/src/main/ets/pages/Reader.ets(578:7)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Reader.ets(680:7)", "entry");
             Row.margin({ left: 16, top: 16, right: 16 });
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Radio.create({
                 value: 'flipMode', group: 'radioGroup'
             });
-            Radio.debugLine("entry/src/main/ets/pages/Reader.ets(579:9)", "entry");
+            Radio.debugLine("entry/src/main/ets/pages/Reader.ets(681:9)", "entry");
             Radio.height(20);
             Radio.width(20);
             Radio.checked(true);
@@ -923,7 +1423,7 @@ class Reader extends ViewPU {
         }, Radio);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create({ "id": 16777224, "type": 10003, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
-            Text.debugLine("entry/src/main/ets/pages/Reader.ets(593:9)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Reader.ets(695:9)", "entry");
             Text.fontSize(16);
             Text.lineHeight(21);
         }, Text);
@@ -932,7 +1432,7 @@ class Reader extends ViewPU {
             Radio.create({
                 value: 'flipMode', group: 'radioGroup'
             });
-            Radio.debugLine("entry/src/main/ets/pages/Reader.ets(597:9)", "entry");
+            Radio.debugLine("entry/src/main/ets/pages/Reader.ets(699:9)", "entry");
             Radio.height(20);
             Radio.width(20);
             Radio.checked(false);
@@ -947,7 +1447,7 @@ class Reader extends ViewPU {
         }, Radio);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create({ "id": 16777234, "type": 10003, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
-            Text.debugLine("entry/src/main/ets/pages/Reader.ets(611:9)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Reader.ets(713:9)", "entry");
             Text.fontSize(16);
             Text.lineHeight(21);
         }, Text);
@@ -955,7 +1455,7 @@ class Reader extends ViewPU {
         Row.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create();
-            Text.debugLine("entry/src/main/ets/pages/Reader.ets(617:7)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Reader.ets(719:7)", "entry");
             Text.width('92%');
             Text.height(1);
             Text.margin({ left: 16, top: 12, right: 16 });
@@ -964,7 +1464,7 @@ class Reader extends ViewPU {
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Scroll.create();
-            Scroll.debugLine("entry/src/main/ets/pages/Reader.ets(623:7)", "entry");
+            Scroll.debugLine("entry/src/main/ets/pages/Reader.ets(725:7)", "entry");
             Scroll.margin({ top: 8 });
             Scroll.scrollable(ScrollDirection.Horizontal);
             Scroll.scrollBar(BarState.Off);
@@ -972,7 +1472,7 @@ class Reader extends ViewPU {
         }, Scroll);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Row.create({ space: 12 });
-            Row.debugLine("entry/src/main/ets/pages/Reader.ets(624:9)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Reader.ets(726:9)", "entry");
             Row.constraintSize({
                 minWidth: '100%'
             });
@@ -990,7 +1490,7 @@ class Reader extends ViewPU {
                 const item = _item;
                 this.observeComponentCreation2((elmtId, isInitialRender) => {
                     Stack.create();
-                    Stack.debugLine("entry/src/main/ets/pages/Reader.ets(626:13)", "entry");
+                    Stack.debugLine("entry/src/main/ets/pages/Reader.ets(728:13)", "entry");
                     Stack.width(`calc((100% - ${(Number(this.themeList.length) - 1) * 12}vp) / ${Number(this.themeList.length)})`);
                     Stack.constraintSize({
                         minWidth: 60
@@ -1010,7 +1510,7 @@ class Reader extends ViewPU {
                 }, Stack);
                 this.observeComponentCreation2((elmtId, isInitialRender) => {
                     Row.create();
-                    Row.debugLine("entry/src/main/ets/pages/Reader.ets(627:15)", "entry");
+                    Row.debugLine("entry/src/main/ets/pages/Reader.ets(729:15)", "entry");
                     Row.width('100%');
                     Row.height(40);
                     Row.borderWidth(this.themeSelectIndex !== index ? 1 : 2);
@@ -1033,7 +1533,7 @@ class Reader extends ViewPU {
         Scroll.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create();
-            Text.debugLine("entry/src/main/ets/pages/Reader.ets(674:7)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Reader.ets(776:7)", "entry");
             Text.width('92%');
             Text.height(1);
             Text.margin({ left: 16, top: 12, right: 16 });
@@ -1042,7 +1542,7 @@ class Reader extends ViewPU {
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             TextInput.create({ placeholder: { "id": 16777225, "type": 10003, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" }, text: this.fontSize });
-            TextInput.debugLine("entry/src/main/ets/pages/Reader.ets(680:7)", "entry");
+            TextInput.debugLine("entry/src/main/ets/pages/Reader.ets(782:7)", "entry");
             TextInput.margin({
                 left: 16,
                 top: 10,
@@ -1059,7 +1559,7 @@ class Reader extends ViewPU {
         }, TextInput);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             TextInput.create({ placeholder: { "id": 16777229, "type": 10003, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" }, text: this.lineHeight });
-            TextInput.debugLine("entry/src/main/ets/pages/Reader.ets(695:7)", "entry");
+            TextInput.debugLine("entry/src/main/ets/pages/Reader.ets(797:7)", "entry");
             TextInput.margin({ left: 16, right: 16, bottom: 10 });
             TextInput.backgroundColor({ "id": 16777254, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
             TextInput.placeholderColor("#666666");
@@ -1071,7 +1571,7 @@ class Reader extends ViewPU {
         }, TextInput);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Button.createWithLabel({ "id": 16777235, "type": 10003, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
-            Button.debugLine("entry/src/main/ets/pages/Reader.ets(705:7)", "entry");
+            Button.debugLine("entry/src/main/ets/pages/Reader.ets(807:7)", "entry");
             Button.onClick(async () => {
                 hilog.info(0x0000, TAG, 'click : update page setting, fontSize = ' + this.fontSize + ' ,lineHeight = ' + this.lineHeight);
                 if (!isNaN(Number.parseInt(this.fontSize))) {
@@ -1096,32 +1596,171 @@ class Reader extends ViewPU {
     initialRender() {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Stack.create();
-            Stack.debugLine("entry/src/main/ets/pages/Reader.ets(732:5)", "entry");
+            Stack.debugLine("entry/src/main/ets/pages/Reader.ets(834:5)", "entry");
             Stack.width('100%');
             Stack.height('100%');
             Stack.onClick(() => {
-                this.showModal();
+                if (!this.isLoading && !this.hasError) {
+                    this.showModal();
+                }
             });
         }, Stack);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
+            If.create();
+            // 加载状态显示
+            if (this.isLoading) {
+                this.ifElseBranchUpdateFunction(0, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Column.create();
+                        Column.debugLine("entry/src/main/ets/pages/Reader.ets(837:9)", "entry");
+                        Column.width('100%');
+                        Column.height('100%');
+                        Column.justifyContent(FlexAlign.Center);
+                        Column.alignItems(HorizontalAlign.Center);
+                        Column.backgroundColor(Color.White);
+                        Column.zIndex(10);
+                    }, Column);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        LoadingProgress.create();
+                        LoadingProgress.debugLine("entry/src/main/ets/pages/Reader.ets(838:11)", "entry");
+                        LoadingProgress.width(60);
+                        LoadingProgress.height(60);
+                        LoadingProgress.color(Color.Red);
+                    }, LoadingProgress);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create(this.loadingProgress);
+                        Text.debugLine("entry/src/main/ets/pages/Reader.ets(843:11)", "entry");
+                        Text.fontSize(16);
+                        Text.fontColor(Color.Black);
+                        Text.margin({ top: 20 });
+                        Text.textAlign(TextAlign.Center);
+                    }, Text);
+                    Text.pop();
+                    Column.pop();
+                });
+            }
+            // 错误状态显示
+            else {
+                this.ifElseBranchUpdateFunction(1, () => {
+                });
+            }
+        }, If);
+        If.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            If.create();
+            // 错误状态显示
+            if (this.hasError) {
+                this.ifElseBranchUpdateFunction(0, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Column.create();
+                        Column.debugLine("entry/src/main/ets/pages/Reader.ets(859:9)", "entry");
+                        Column.width('100%');
+                        Column.height('100%');
+                        Column.justifyContent(FlexAlign.Center);
+                        Column.alignItems(HorizontalAlign.Center);
+                        Column.backgroundColor(Color.White);
+                        Column.zIndex(10);
+                    }, Column);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        SymbolGlyph.create({ "id": 125832652, "type": 40000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
+                        SymbolGlyph.debugLine("entry/src/main/ets/pages/Reader.ets(860:11)", "entry");
+                        SymbolGlyph.width(80);
+                        SymbolGlyph.height(80);
+                        SymbolGlyph.margin({ bottom: 20 });
+                        SymbolGlyph.fontColor([Color.Orange]);
+                    }, SymbolGlyph);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create('加载失败');
+                        Text.debugLine("entry/src/main/ets/pages/Reader.ets(866:11)", "entry");
+                        Text.fontSize(20);
+                        Text.fontWeight(FontWeight.Bold);
+                        Text.fontColor(Color.Black);
+                        Text.margin({ bottom: 10 });
+                    }, Text);
+                    Text.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create(this.errorMessage);
+                        Text.debugLine("entry/src/main/ets/pages/Reader.ets(872:11)", "entry");
+                        Text.fontSize(14);
+                        Text.fontColor(Color.Gray);
+                        Text.textAlign(TextAlign.Center);
+                        Text.margin({ bottom: 30, left: 20, right: 20 });
+                        Text.maxLines(5);
+                    }, Text);
+                    Text.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Row.create({ space: 20 });
+                        Row.debugLine("entry/src/main/ets/pages/Reader.ets(879:11)", "entry");
+                    }, Row);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Button.createWithLabel('返回');
+                        Button.debugLine("entry/src/main/ets/pages/Reader.ets(880:13)", "entry");
+                        Button.onClick(() => {
+                            this.getUIContext().getRouter().back();
+                        });
+                        Button.backgroundColor(Color.Gray);
+                        Button.fontColor(Color.White);
+                    }, Button);
+                    Button.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Button.createWithLabel('重试');
+                        Button.debugLine("entry/src/main/ets/pages/Reader.ets(887:13)", "entry");
+                        Button.onClick(() => {
+                            this.retryLoading();
+                        });
+                        Button.backgroundColor(Color.Red);
+                        Button.fontColor(Color.White);
+                    }, Button);
+                    Button.pop();
+                    Row.pop();
+                    Column.pop();
+                });
+            }
+            // 阅读器组件
+            else {
+                this.ifElseBranchUpdateFunction(1, () => {
+                });
+            }
+        }, If);
+        If.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
             __Common__.create();
             __Common__.zIndex(1);
+            __Common__.visibility(this.isLoading || this.hasError ? Visibility.Hidden : Visibility.Visible);
         }, __Common__);
         {
             this.observeComponentCreation2((elmtId, isInitialRender) => {
                 if (isInitialRender) {
-                    let componentCall = new ReadPageComponent(this, {
+                    let componentCall = new 
+                    // 阅读器组件
+                    ReadPageComponent(this, {
                         controller: this.readerComponentController,
                         readerCallback: (err: BusinessError, data: readerCore.ReaderComponentController) => {
-                            this.readerComponentController = data;
+                            if (err) {
+                                hilog.error(0x0000, TAG, `ReaderComponent callback error: ${err.message}`);
+                                this.hasError = true;
+                                this.isLoading = false;
+                                this.errorMessage = `阅读器初始化失败: ${err.message}`;
+                            }
+                            else {
+                                this.readerComponentController = data;
+                            }
                         }
-                    }, undefined, elmtId, () => { }, { page: "entry/src/main/ets/pages/Reader.ets", line: 733, col: 7 });
+                    }, undefined, elmtId, () => { }, { page: "entry/src/main/ets/pages/Reader.ets", line: 904, col: 7 });
                     ViewPU.create(componentCall);
                     let paramsLambda = () => {
                         return {
                             controller: this.readerComponentController,
                             readerCallback: (err: BusinessError, data: readerCore.ReaderComponentController) => {
-                                this.readerComponentController = data;
+                                if (err) {
+                                    hilog.error(0x0000, TAG, `ReaderComponent callback error: ${err.message}`);
+                                    this.hasError = true;
+                                    this.isLoading = false;
+                                    this.errorMessage = `阅读器初始化失败: ${err.message}`;
+                                }
+                                else {
+                                    this.readerComponentController = data;
+                                }
                             }
                         };
                     };
@@ -1134,9 +1773,24 @@ class Reader extends ViewPU {
         }
         __Common__.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
+            If.create();
+            // 语音朗读页面
+            if (this.showTTSPage) {
+                this.ifElseBranchUpdateFunction(0, () => {
+                    this.buildTTSPage.bind(this)();
+                });
+            }
+            // menu bar
+            else {
+                this.ifElseBranchUpdateFunction(1, () => {
+                });
+            }
+        }, If);
+        If.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
             // menu bar
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Reader.ets(740:7)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Reader.ets(928:7)", "entry");
             // menu bar
             Column.width('100%');
             // menu bar
@@ -1154,7 +1808,7 @@ class Reader extends ViewPU {
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Reader.ets(741:9)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Reader.ets(929:9)", "entry");
             Column.visibility(this.currentIndex < 0 ? Visibility.None : Visibility.Visible);
             Column.width('100%');
             Column.height(this.currentIndex === 0 ? 'calc(100%  - 80vp - 56vp)' : '60%');
@@ -1165,7 +1819,7 @@ class Reader extends ViewPU {
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
-            Column.debugLine("entry/src/main/ets/pages/Reader.ets(742:11)", "entry");
+            Column.debugLine("entry/src/main/ets/pages/Reader.ets(930:11)", "entry");
             Column.padding({ bottom: !this.bookCover && !this.bookTitle ? 56 : 100 });
             Column.backgroundColor(Color.White);
             Column.borderRadius({
@@ -1180,15 +1834,20 @@ class Reader extends ViewPU {
         Column.pop();
         Column.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Stack.create();
+            Stack.debugLine("entry/src/main/ets/pages/Reader.ets(951:9)", "entry");
+            Stack.alignContent(Alignment.TopEnd);
+        }, Stack);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
             Row.create();
-            Row.debugLine("entry/src/main/ets/pages/Reader.ets(763:9)", "entry");
+            Row.debugLine("entry/src/main/ets/pages/Reader.ets(952:11)", "entry");
             Row.width('100%');
             Row.height(80);
             Row.backgroundColor(Color.White);
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create({ "id": 16777222, "type": 10003, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
-            Text.debugLine("entry/src/main/ets/pages/Reader.ets(764:11)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Reader.ets(953:13)", "entry");
             Text.width('50%');
             Text.height('100%');
             Text.onClick(() => {
@@ -1200,7 +1859,7 @@ class Reader extends ViewPU {
         Text.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create({ "id": 16777231, "type": 10003, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
-            Text.debugLine("entry/src/main/ets/pages/Reader.ets(772:11)", "entry");
+            Text.debugLine("entry/src/main/ets/pages/Reader.ets(961:13)", "entry");
             Text.width('50%');
             Text.height('100%');
             Text.onClick(() => {
@@ -1211,9 +1870,237 @@ class Reader extends ViewPU {
         }, Text);
         Text.pop();
         Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // 语音朗读圆形按钮 - 放在右上角
+            Button.createWithChild();
+            Button.debugLine("entry/src/main/ets/pages/Reader.ets(975:11)", "entry");
+            // 语音朗读圆形按钮 - 放在右上角
+            Button.width(56);
+            // 语音朗读圆形按钮 - 放在右上角
+            Button.height(56);
+            // 语音朗读圆形按钮 - 放在右上角
+            Button.borderRadius(24);
+            // 语音朗读圆形按钮 - 放在右上角
+            Button.backgroundColor(Color.White);
+            // 语音朗读圆形按钮 - 放在右上角
+            Button.position({ x: '83%', y: -64 });
+            // 语音朗读圆形按钮 - 放在右上角
+            Button.zIndex(5);
+            // 语音朗读圆形按钮 - 放在右上角
+            Button.shadow({ radius: 8, color: 'rgba(0, 122, 255, 0.4)', offsetX: 0, offsetY: 2 });
+            // 语音朗读圆形按钮 - 放在右上角
+            Button.onClick(() => {
+                this.showTTSPage = true;
+            });
+            // 语音朗读圆形按钮 - 放在右上角
+            Button.visibility(this.isLoading || this.hasError || this.showTTSPage ? Visibility.Hidden : Visibility.Visible);
+        }, Button);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Image.create({ "id": 16777304, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
+            Image.debugLine("entry/src/main/ets/pages/Reader.ets(976:13)", "entry");
+            Image.width(24);
+            Image.height(24);
+        }, Image);
+        // 语音朗读圆形按钮 - 放在右上角
+        Button.pop();
+        Stack.pop();
         // menu bar
         Column.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            If.create();
+            // TTS控制面板
+            if (this.showTTSControl) {
+                this.ifElseBranchUpdateFunction(0, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Column.create();
+                        Column.debugLine("entry/src/main/ets/pages/Reader.ets(1005:9)", "entry");
+                        Column.width('100%');
+                        Column.height(200);
+                        Column.position({ x: 0, y: '50%' });
+                        Column.zIndex(4);
+                        Column.shadow({
+                            radius: 10,
+                            color: Color.Gray,
+                            offsetX: 0,
+                            offsetY: -2
+                        });
+                    }, Column);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Row.create();
+                        Row.debugLine("entry/src/main/ets/pages/Reader.ets(1006:11)", "entry");
+                        Row.width('100%');
+                        Row.height(50);
+                        Row.backgroundColor('#F1F3F5');
+                    }, Row);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create('语音朗读控制');
+                        Text.debugLine("entry/src/main/ets/pages/Reader.ets(1007:13)", "entry");
+                        Text.fontSize(18);
+                        Text.fontWeight(FontWeight.Bold);
+                        Text.margin({ left: 16 });
+                    }, Text);
+                    Text.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Blank.create();
+                        Blank.debugLine("entry/src/main/ets/pages/Reader.ets(1012:13)", "entry");
+                    }, Blank);
+                    Blank.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Button.createWithLabel('关闭');
+                        Button.debugLine("entry/src/main/ets/pages/Reader.ets(1014:13)", "entry");
+                        Button.fontSize(14);
+                        Button.fontColor(Color.White);
+                        Button.backgroundColor(Color.Gray);
+                        Button.margin({ right: 16 });
+                        Button.onClick(() => {
+                            this.showTTSControl = false;
+                        });
+                    }, Button);
+                    Button.pop();
+                    Row.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Row.create();
+                        Row.debugLine("entry/src/main/ets/pages/Reader.ets(1027:11)", "entry");
+                        Row.width('100%');
+                        Row.height(150);
+                        Row.backgroundColor(Color.White);
+                    }, Row);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Column.create();
+                        Column.debugLine("entry/src/main/ets/pages/Reader.ets(1028:13)", "entry");
+                        Column.width('50%');
+                        Column.height(100);
+                        Column.justifyContent(FlexAlign.Center);
+                        Column.alignItems(HorizontalAlign.Center);
+                    }, Column);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Button.createWithLabel(this.isTTSPlaying ? '暂停朗读' : '开始朗读');
+                        Button.debugLine("entry/src/main/ets/pages/Reader.ets(1029:15)", "entry");
+                        Button.fontSize(16);
+                        Button.fontColor(Color.White);
+                        Button.backgroundColor(this.isTTSPlaying ? Color.Orange : Color.Green);
+                        Button.width(120);
+                        Button.height(40);
+                        Button.onClick(() => {
+                            if (this.isTTSPlaying) {
+                                this.stopTTS();
+                            }
+                            else {
+                                this.startTTS();
+                            }
+                        });
+                    }, Button);
+                    Button.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        If.create();
+                        if (this.isTTSPlaying) {
+                            this.ifElseBranchUpdateFunction(0, () => {
+                                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                    Text.create(`正在朗读: ${this.currentSpeakingChapter >= 0 ? this.catalogList[this.currentSpeakingChapter]?.catalogName || '' : ''}`);
+                                    Text.debugLine("entry/src/main/ets/pages/Reader.ets(1044:17)", "entry");
+                                    Text.fontSize(12);
+                                    Text.fontColor(Color.Gray);
+                                    Text.margin({ top: 8 });
+                                    Text.width(120);
+                                    Text.maxLines(2);
+                                    Text.textOverflow({ overflow: TextOverflow.Ellipsis });
+                                }, Text);
+                                Text.pop();
+                            });
+                        }
+                        else {
+                            this.ifElseBranchUpdateFunction(1, () => {
+                            });
+                        }
+                    }, If);
+                    If.pop();
+                    Column.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Column.create();
+                        Column.debugLine("entry/src/main/ets/pages/Reader.ets(1058:13)", "entry");
+                        Column.width('50%');
+                        Column.height(100);
+                        Column.justifyContent(FlexAlign.Center);
+                        Column.alignItems(HorizontalAlign.Center);
+                    }, Column);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Row.create();
+                        Row.debugLine("entry/src/main/ets/pages/Reader.ets(1059:15)", "entry");
+                        Row.margin({ bottom: 16 });
+                    }, Row);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Button.createWithLabel('上一章');
+                        Button.debugLine("entry/src/main/ets/pages/Reader.ets(1060:17)", "entry");
+                        Button.fontSize(14);
+                        Button.fontColor(Color.White);
+                        Button.backgroundColor(Color.Blue);
+                        Button.width(80);
+                        Button.height(36);
+                        Button.onClick(() => {
+                            this.jumpToPrevChapter();
+                            if (this.isTTSPlaying) {
+                                this.stopTTS();
+                                setTimeout(() => {
+                                    this.startTTS();
+                                }, 500);
+                            }
+                        });
+                    }, Button);
+                    Button.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Button.createWithLabel('下一章');
+                        Button.debugLine("entry/src/main/ets/pages/Reader.ets(1076:17)", "entry");
+                        Button.fontSize(14);
+                        Button.fontColor(Color.White);
+                        Button.backgroundColor(Color.Blue);
+                        Button.width(80);
+                        Button.height(36);
+                        Button.onClick(() => {
+                            this.jumpToNextChapter();
+                            if (this.isTTSPlaying) {
+                                this.stopTTS();
+                                setTimeout(() => {
+                                    this.startTTS();
+                                }, 500);
+                            }
+                        });
+                    }, Button);
+                    Button.pop();
+                    Row.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create('朗读设置');
+                        Text.debugLine("entry/src/main/ets/pages/Reader.ets(1094:15)", "entry");
+                        Text.fontSize(14);
+                        Text.fontColor(Color.Blue);
+                        Text.onClick(() => {
+                            // 这里可以添加更多TTS设置选项
+                            console.log('打开TTS设置');
+                        });
+                    }, Text);
+                    Text.pop();
+                    Column.pop();
+                    Row.pop();
+                    Column.pop();
+                });
+            }
+            else {
+                this.ifElseBranchUpdateFunction(1, () => {
+                });
+            }
+        }, If);
+        If.pop();
         Stack.pop();
+    }
+    /**
+     * 重试加载
+     */
+    private retryLoading(): void {
+        this.hasError = false;
+        this.errorMessage = '';
+        this.isLoading = true;
+        // 重新获取参数并启动
+        let param = this.getUIContext().getRouter().getParams() as paramType;
+        this.startPlay(param.filePath || '', param.resourceIndex || 0, param.domPos || '');
     }
     private applyTheme(theme: string, index: number) {
         this.readerSetting.themeColor = this.THEME_PAGE_COLOR[theme];
@@ -1257,7 +2144,7 @@ class Reader extends ViewPU {
     /**
      * 保存阅读进度和阅读记录
      * 阅读进度：保存到 Preferences，用于精确恢复阅读位置
-     * 阅读记录：保存到数据库，用于书架显示已读章节名
+     * 阅读记录：保存到数据库，用于书架显示已读章节名和进度百分比
      */
     private saveReadingProgress() {
         if (this.filePath && this.currentData && this.currentData.resourceIndex !== undefined) {
@@ -1276,6 +2163,12 @@ class Reader extends ViewPU {
                     chapterName = matchingCatalog.catalogName;
                 }
             }
+            // 计算阅读进度百分比
+            let progressPercent = '0%';
+            if (spineList.length > 0) {
+                const progress = Math.round((resourceIndex / spineList.length) * 100);
+                progressPercent = `${progress}%`;
+            }
             // 1. 保存精确阅读进度到 Preferences（用于恢复阅读位置）
             const progressKey = `${this.filePath}_progress`;
             const progressValue = JSON.stringify({ resourceIndex, domPos });
@@ -1289,9 +2182,257 @@ class Reader extends ViewPU {
                     }
                 });
             });
-            // 2. 保存阅读记录到数据库（用于书架显示，不影响阅读位置恢复）
+            // 2. 保存阅读记录到数据库（用于书架显示章节名）
             hilog.info(0x0000, TAG, `Updating reading record for ${this.filePath}: chapterName=${chapterName}`);
             bookDataManager.updateBookReadingRecord(this.filePath, chapterName);
+            // 3. 保存阅读进度百分比到数据库（用于书架显示进度）
+            hilog.info(0x0000, TAG, `Updating reading progress for ${this.filePath}: progress=${progressPercent}`);
+            bookDataManager.updateBookProgress(this.filePath, progressPercent);
+        }
+    }
+    // 创建TTS引擎
+    private async createTTSEngine(): Promise<void> {
+        if (this.isTTSEngineCreated && this.ttsEngine) {
+            return;
+        }
+        return new Promise<void>((resolve, reject) => {
+            // 设置创建引擎参数
+            let extraParam: Record<string, Object> = {
+                "style": 'interaction-broadcast',
+                "locate": 'CN',
+                "name": 'EngineName'
+            };
+            let initParamsInfo: textToSpeech.CreateEngineParams = {
+                language: 'zh-CN',
+                person: 0,
+                online: 1,
+                extraParams: extraParam
+            };
+            try {
+                hilog.info(0x0000, TAG, 'TTS引擎开始创建...');
+                // 调用createEngine方法
+                textToSpeech.createEngine(initParamsInfo, async (err: BusinessError, textToSpeechEngine: textToSpeech.TextToSpeechEngine) => {
+                    if (!err) {
+                        hilog.info(0x0000, TAG, 'TTS createEngine is success');
+                        // 接收创建引擎的实例
+                        this.ttsEngine = textToSpeechEngine;
+                        this.isTTSEngineCreated = true;
+                        // 初始化PcmPlayer的AVSession
+                        const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+                        try {
+                            await this.pcmPlayer.prepare(16000, 1, undefined, undefined, context);
+                            hilog.info(0x0000, TAG, 'PcmPlayer AVSession initialized successfully');
+                        }
+                        catch (error) {
+                            hilog.error(0x0000, TAG, 'Failed to initialize PcmPlayer AVSession: ' + JSON.stringify(error));
+                            // AVSession初始化失败不影响TTS功能
+                        }
+                        resolve();
+                    }
+                    else {
+                        hilog.error(0x0000, TAG, "TTS createEngine errCode is " + JSON.stringify(err.code));
+                        hilog.error(0x0000, TAG, "TTS createEngine errMessage is " + JSON.stringify(err.message));
+                        // 显示用户友好的错误信息
+                        let errorMsg = 'TTS引擎创建失败';
+                        if (err.code === 1002300001) {
+                            errorMsg = 'TTS服务不可用，请检查系统设置';
+                        }
+                        else if (err.code === 1002300002) {
+                            errorMsg = 'TTS参数错误，请重试';
+                        }
+                        else if (err.code === 1002300003) {
+                            errorMsg = 'TTS初始化失败，请重启应用';
+                        }
+                        this.getUIContext()
+                            .getPromptAction()
+                            .showToast({
+                            message: errorMsg,
+                            duration: 3000
+                        });
+                        reject(new Error(errorMsg));
+                    }
+                });
+            }
+            catch (error) {
+                let message = (error as BusinessError).message;
+                let code = (error as BusinessError).code;
+                hilog.error(0x0000, TAG, `TTS createEngine failed, error code: ${code}, message: ${message}.`);
+                this.getUIContext()
+                    .getPromptAction()
+                    .showToast({
+                    message: 'TTS引擎创建异常，请重试',
+                    duration: 3000
+                });
+                reject(error);
+            }
+        });
+    }
+    // 开始TTS朗读
+    private async startTTS(): Promise<void> {
+        if (!this.isTTSEngineCreated || !this.ttsEngine) {
+            hilog.info(0x0000, TAG, 'TTS引擎未创建，正在创建...');
+            await this.createTTSEngine();
+            // 创建完成后，如果引擎仍然没有创建成功，则返回
+            if (!this.isTTSEngineCreated || !this.ttsEngine) {
+                hilog.error(0x0000, TAG, 'TTS引擎创建失败');
+                return;
+            }
+        }
+        if (this.isTTSPlaying) {
+            // 如果正在播放，则停止播放
+            this.stopTTS();
+            return;
+        }
+        // 设置自动播放标志位
+        this.isTTSAutoPlay = true;
+        // 获取当前章节内容
+        try {
+            const content = await this.getCurrentChapterContent();
+            if (content && content.length > 0) {
+                this.ttsText = content;
+                this.speakText();
+                hilog.info(0x0000, TAG, 'TTS朗读已开始');
+            }
+            else {
+                hilog.warn(0x0000, TAG, '没有找到章节内容');
+            }
+        }
+        catch (error) {
+            hilog.error(0x0000, TAG, '获取章节内容失败: ' + JSON.stringify(error));
+        }
+    }
+    // 获取当前章节内容
+    private async getCurrentChapterContent(): Promise<string> {
+        try {
+            if (this.defaultHandler && this.currentCatalogIndex >= 0 && this.currentCatalogIndex < this.catalogList.length) {
+                let catalogItem: bookParser.CatalogItem = this.catalogList[this.currentCatalogIndex];
+                let spineItem: bookParser.SpineItem = this.getResourceItemByCatalog(catalogItem);
+                let content: string = await this.defaultHandler.getSpineItemContent(spineItem.index);
+                return content || '';
+            }
+        }
+        catch (error) {
+            console.error("获取章节内容失败: " + error);
+        }
+        return '';
+    }
+    // TTS朗读文本
+    private speakText() {
+        if (!this.ttsEngine || !this.ttsText || this.ttsText.length === 0) {
+            return;
+        }
+        let speakListener: textToSpeech.SpeakListener = {
+            // 开始播报回调
+            onStart: (requestId: string, response: textToSpeech.StartResponse) => {
+                console.info(`onStart, requestId: ${requestId} response: ${JSON.stringify(response)}`);
+                this.isTTSPlaying = true;
+                this.currentSpeakingChapter = this.currentCatalogIndex;
+                // 申请后台任务
+                this.requestBackgroundTask();
+            },
+            // 完成播报回调
+            onComplete: (requestId: string, response: textToSpeech.CompleteResponse) => {
+                console.info(`onComplete, requestId: ${requestId} response: ${JSON.stringify(response)}`);
+                this.isTTSPlaying = false;
+                this.pcmData.clear();
+                this.bufferLength = 0;
+                // 只有在设置了自动播放标志位时才自动朗读下一章
+                if (this.isTTSAutoPlay && this.currentCatalogIndex < this.catalogList.length - 1) {
+                    this.jumpToNextChapter();
+                    setTimeout(() => {
+                        this.startTTS();
+                    }, 1000);
+                }
+                else {
+                    // 如果不继续播放，取消后台任务
+                    this.cancelBackgroundTask();
+                }
+            },
+            // 停止播报完成回调，调用stop方法并完成时会触发此回调
+            onStop: (requestId: string, response: textToSpeech.StopResponse) => {
+                console.info(`onStop, requestId: ${requestId} response: ${JSON.stringify(response)}`);
+                this.isTTSPlaying = false;
+                this.pcmData.clear();
+                this.bufferLength = 0;
+                // 取消后台任务
+                this.cancelBackgroundTask();
+            },
+            // 返回音频流
+            onData: (requestId: string, audio: ArrayBuffer, response: textToSpeech.SynthesisResponse) => {
+                console.info(`onData, requestId: ${requestId} sequence: ${JSON.stringify(response)} audio: ${JSON.stringify(audio)}`);
+                // 将ArrayBuffer转换为Uint8Array
+                let uint8Array: Uint8Array = new Uint8Array(audio);
+                this.pcmData.set(response.sequence, uint8Array);
+                this.bufferLength += 1;
+            },
+            // 错误回调，播报过程发生错误时触发此回调
+            onError: (requestId: string, errorCode: number, errorMessage: string) => {
+                if (errorCode === 1002300007) {
+                    this.isTTSEngineCreated = false;
+                }
+                console.error(`onError, requestId: ${requestId} errorCode: ${errorCode} errorMessage: ${errorMessage}`);
+                this.isTTSPlaying = false;
+            }
+        };
+        // 设置回调
+        this.ttsEngine.setListener(speakListener);
+        // 设置播报相关参数
+        let extraParam: Record<string, Object> = { "queueMode": 0, "speed": this.ttsSpeed, "volume": 2, "pitch": 1, "languageContext": 'zh-CN', "audioType": "pcm", "soundChannel": 3, "playType": 1 };
+        let speakParams: textToSpeech.SpeakParams = {
+            requestId: '123456' + Date.now(),
+            extraParams: extraParam
+        };
+        // 调用speak播报方法
+        this.ttsEngine.speak(this.ttsText, speakParams);
+    }
+    // 停止TTS朗读
+    private stopTTS() {
+        if (this.ttsEngine) {
+            try {
+                // 确保TTS引擎存在并且正在播放
+                if (this.isTTSPlaying) {
+                    this.ttsEngine.stop();
+                }
+                // 立即更新UI状态，不等待回调
+                this.isTTSPlaying = false;
+                // 清除自动播放标志位
+                this.isTTSAutoPlay = false;
+                console.info("TTS朗读已停止");
+            }
+            catch (error) {
+                console.error("停止TTS失败: " + error);
+                // 即使出错也要更新UI状态
+                this.isTTSPlaying = false;
+                this.isTTSAutoPlay = false;
+            }
+        }
+    }
+    // 跳转到下一章
+    private jumpToNextChapter() {
+        if (this.currentCatalogIndex < this.catalogList.length - 1) {
+            let nextIndex = this.currentCatalogIndex + 1;
+            this.jumpToCatalogItem(this.catalogList[nextIndex]);
+        }
+    }
+    // 跳转到上一章
+    private jumpToPrevChapter() {
+        if (this.currentCatalogIndex > 0) {
+            let prevIndex = this.currentCatalogIndex - 1;
+            this.jumpToCatalogItem(this.catalogList[prevIndex]);
+        }
+    }
+    // 释放TTS引擎
+    private releaseTTSEngine() {
+        if (this.ttsEngine) {
+            try {
+                this.ttsEngine.shutdown();
+                this.ttsEngine = null;
+                this.isTTSEngineCreated = false;
+                this.isTTSPlaying = false;
+            }
+            catch (error) {
+                console.error("释放TTS引擎失败: " + error);
+            }
         }
     }
     /**
@@ -1381,13 +2522,700 @@ class Reader extends ViewPU {
         }
     }
     /**
-     * Remove the page transition animation to speed up the page access speed of the reader
+     * 构建语音朗读页面
      */
-    pageTransition() {
+    private buildTTSPage(parent = null) {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            PageTransition.create();
-        }, null);
-        PageTransition.pop();
+            Column.create();
+            Column.debugLine("entry/src/main/ets/pages/Reader.ets(1601:5)", "entry");
+            Column.width('100%');
+            Column.height('100%');
+            Column.backgroundColor(Color.White);
+            Column.zIndex(10);
+            Column.bindSheet({ value: this.showTimerSheet, changeEvent: newValue => { this.showTimerSheet = newValue; } }, { builder: () => {
+                    this.buildTimerSheet.call(this);
+                } }, {
+                height: 300,
+                dragBar: true,
+                backgroundColor: Color.White,
+                onAppear: () => {
+                    hilog.info(0x0000, TAG, '定时器弹窗出现');
+                },
+                onDisappear: () => {
+                    hilog.info(0x0000, TAG, '定时器弹窗消失');
+                }
+            });
+            Column.bindSheet({ value: this.showSpeedSheet, changeEvent: newValue => { this.showSpeedSheet = newValue; } }, { builder: () => {
+                    this.buildSpeedSheet.call(this);
+                } }, {
+                height: 250,
+                dragBar: true,
+                backgroundColor: Color.White,
+                onAppear: () => {
+                    hilog.info(0x0000, TAG, '倍速弹窗出现');
+                },
+                onDisappear: () => {
+                    hilog.info(0x0000, TAG, '倍速弹窗消失');
+                }
+            });
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // 标题栏
+            Row.create();
+            Row.debugLine("entry/src/main/ets/pages/Reader.ets(1603:7)", "entry");
+            // 标题栏
+            Row.width('100%');
+            // 标题栏
+            Row.height(108);
+            // 标题栏
+            Row.backgroundColor(Color.Blue);
+            // 标题栏
+            Row.padding({ left: 16, right: 16 });
+            // 标题栏
+            Row.justifyContent(FlexAlign.SpaceBetween);
+            // 标题栏
+            Row.alignItems(VerticalAlign.Bottom - 18);
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Button.createWithChild();
+            Button.debugLine("entry/src/main/ets/pages/Reader.ets(1604:9)", "entry");
+            Button.width(40);
+            Button.height(40);
+            Button.backgroundColor(Color.Transparent);
+            Button.onClick(() => {
+                this.showTTSPage = false;
+            });
+        }, Button);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            SymbolGlyph.create({ "id": 125832663, "type": 40000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
+            SymbolGlyph.debugLine("entry/src/main/ets/pages/Reader.ets(1605:11)", "entry");
+            SymbolGlyph.width(32);
+            SymbolGlyph.height(32);
+            SymbolGlyph.fontColor([Color.White]);
+        }, SymbolGlyph);
+        Button.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create('智能朗读');
+            Text.debugLine("entry/src/main/ets/pages/Reader.ets(1617:9)", "entry");
+            Text.fontSize(18);
+            Text.fontWeight(FontWeight.Bold);
+            Text.fontColor(Color.White);
+            Text.layoutWeight(1);
+            Text.textAlign(TextAlign.Center);
+        }, Text);
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // 占位按钮保持布局平衡
+            Button.createWithLabel();
+            Button.debugLine("entry/src/main/ets/pages/Reader.ets(1625:9)", "entry");
+            // 占位按钮保持布局平衡
+            Button.width(40);
+            // 占位按钮保持布局平衡
+            Button.height(40);
+            // 占位按钮保持布局平衡
+            Button.backgroundColor(Color.Transparent);
+        }, Button);
+        // 占位按钮保持布局平衡
+        Button.pop();
+        // 标题栏
+        Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // 内容区域
+            Column.create();
+            Column.debugLine("entry/src/main/ets/pages/Reader.ets(1638:7)", "entry");
+            // 内容区域
+            Column.width('100%');
+            // 内容区域
+            Column.flexGrow(1);
+            // 内容区域
+            Column.alignItems(HorizontalAlign.Center);
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // 书籍封面
+            Stack.create();
+            Stack.debugLine("entry/src/main/ets/pages/Reader.ets(1640:9)", "entry");
+            // 书籍封面
+            Stack.width(120);
+            // 书籍封面
+            Stack.height(160);
+            // 书籍封面
+            Stack.margin({ top: 30, bottom: 30 });
+            // 书籍封面
+            Stack.shadow({ radius: 18, color: "#4D000000" });
+            // 书籍封面
+            Stack.borderRadius(8);
+        }, Stack);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Image.create(this.bookCover);
+            Image.debugLine("entry/src/main/ets/pages/Reader.ets(1641:11)", "entry");
+            Image.draggable(false);
+            Image.width(120);
+            Image.aspectRatio(3 / 4);
+            Image.borderRadius(8);
+            Image.alt({ "id": 16777262, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
+            Image.backgroundColor({ "id": 125829129, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
+            Image.objectFit(ImageFit.Cover);
+        }, Image);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            If.create();
+            // 如果没有封面，显示默认封面
+            if (!this.bookCover) {
+                this.ifElseBranchUpdateFunction(0, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Image.create({ "id": 16777291, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
+                        Image.debugLine("entry/src/main/ets/pages/Reader.ets(1652:13)", "entry");
+                        Image.draggable(false);
+                        Image.width(120);
+                        Image.aspectRatio(3 / 4);
+                        Image.borderRadius(8);
+                        Image.backgroundColor({ "id": 125829129, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
+                        Image.objectFit(ImageFit.Cover);
+                    }, Image);
+                });
+            }
+            // 添加书脊效果
+            else {
+                this.ifElseBranchUpdateFunction(1, () => {
+                });
+            }
+        }, If);
+        If.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // 添加书脊效果
+            Image.create({ "id": 16777269, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
+            Image.debugLine("entry/src/main/ets/pages/Reader.ets(1662:11)", "entry");
+            // 添加书脊效果
+            Image.draggable(false);
+            // 添加书脊效果
+            Image.aspectRatio(3 / 4);
+            // 添加书脊效果
+            Image.width(120);
+            // 添加书脊效果
+            Image.borderRadius(8);
+            // 添加书脊效果
+            Image.position({ x: 0, y: 0 });
+        }, Image);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // 添加阴影效果
+            Image.create({ "id": 16777266, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
+            Image.debugLine("entry/src/main/ets/pages/Reader.ets(1670:11)", "entry");
+            // 添加阴影效果
+            Image.draggable(false);
+            // 添加阴影效果
+            Image.width(120);
+            // 添加阴影效果
+            Image.opacity(0.7);
+            // 添加阴影效果
+            Image.aspectRatio(3);
+            // 添加阴影效果
+            Image.position({ x: 0, y: 120 / 3 / 4 - 120 / 9 });
+        }, Image);
+        // 书籍封面
+        Stack.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // 书籍信息
+            Column.create();
+            Column.debugLine("entry/src/main/ets/pages/Reader.ets(1684:9)", "entry");
+            // 书籍信息
+            Column.width('80%');
+            // 书籍信息
+            Column.margin({ bottom: 30 });
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create(this.bookTitle);
+            Text.debugLine("entry/src/main/ets/pages/Reader.ets(1685:11)", "entry");
+            Text.fontSize(18);
+            Text.fontWeight(FontWeight.Bold);
+            Text.maxLines(2);
+            Text.textOverflow({ overflow: TextOverflow.Ellipsis });
+            Text.margin({ bottom: 8 });
+        }, Text);
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create(this.author);
+            Text.debugLine("entry/src/main/ets/pages/Reader.ets(1692:11)", "entry");
+            Text.fontSize(14);
+            Text.fontColor(Color.Gray);
+            Text.maxLines(1);
+            Text.textOverflow({ overflow: TextOverflow.Ellipsis });
+        }, Text);
+        Text.pop();
+        // 书籍信息
+        Column.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // 进度条
+            Column.create();
+            Column.debugLine("entry/src/main/ets/pages/Reader.ets(1702:9)", "entry");
+            // 进度条
+            Column.width('100%');
+            // 进度条
+            Column.margin({ bottom: 40 });
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create(`当前章节: ${this.currentCatalogIndex >= 0 ? this.catalogList[this.currentCatalogIndex]?.catalogName || '' : '未开始'}`);
+            Text.debugLine("entry/src/main/ets/pages/Reader.ets(1703:11)", "entry");
+            Text.fontSize(14);
+            Text.fontColor(Color.Gray);
+            Text.margin({ bottom: 8 });
+            Text.width('80%');
+            Text.maxLines(2);
+            Text.textOverflow({ overflow: TextOverflow.Ellipsis });
+        }, Text);
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Progress.create({
+                value: this.currentCatalogIndex >= 0 ? (this.currentCatalogIndex + 1) / this.catalogList.length * 100 : 0,
+                total: 100,
+                type: ProgressType.Linear
+            });
+            Progress.debugLine("entry/src/main/ets/pages/Reader.ets(1711:11)", "entry");
+            Progress.width('80%');
+            Progress.height(8);
+            Progress.backgroundColor('#F1F3F5');
+            Progress.color(Color.Blue);
+        }, Progress);
+        // 进度条
+        Column.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // 控制按钮
+            Row.create();
+            Row.debugLine("entry/src/main/ets/pages/Reader.ets(1725:9)", "entry");
+            // 控制按钮
+            Row.width('100%');
+            // 控制按钮
+            Row.justifyContent(FlexAlign.SpaceEvenly);
+            // 控制按钮
+            Row.margin({ bottom: 40 });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Button.createWithLabel('上一章');
+            Button.debugLine("entry/src/main/ets/pages/Reader.ets(1726:11)", "entry");
+            Button.fontSize(14);
+            Button.fontColor(Color.White);
+            Button.backgroundColor(Color.Blue);
+            Button.width(80);
+            Button.height(40);
+            Button.onClick(() => {
+                this.jumpToPrevChapter();
+                if (this.isTTSPlaying) {
+                    this.stopTTS();
+                    setTimeout(() => {
+                        this.startTTS();
+                    }, 500);
+                }
+            });
+        }, Button);
+        Button.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Button.createWithLabel(this.timerMinutes > 0 ? `定时${this.timerMinutes}分` : '定时');
+            Button.debugLine("entry/src/main/ets/pages/Reader.ets(1742:11)", "entry");
+            Button.fontSize(14);
+            Button.fontColor(Color.White);
+            Button.backgroundColor(this.timerMinutes > 0 ? Color.Orange : Color.Gray);
+            Button.width(80);
+            Button.height(40);
+            Button.onClick(() => {
+                this.showTimerSheet = true;
+            });
+        }, Button);
+        Button.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Button.createWithLabel(`${this.ttsSpeed}x倍速`);
+            Button.debugLine("entry/src/main/ets/pages/Reader.ets(1752:11)", "entry");
+            Button.fontSize(14);
+            Button.fontColor(Color.White);
+            Button.backgroundColor(this.ttsSpeed !== 1 ? Color.Orange : Color.Gray);
+            Button.width(80);
+            Button.height(40);
+            Button.onClick(() => {
+                this.showSpeedSheet = true;
+            });
+        }, Button);
+        Button.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Button.createWithLabel('下一章');
+            Button.debugLine("entry/src/main/ets/pages/Reader.ets(1762:11)", "entry");
+            Button.fontSize(14);
+            Button.fontColor(Color.White);
+            Button.backgroundColor(Color.Blue);
+            Button.width(80);
+            Button.height(40);
+            Button.onClick(() => {
+                this.jumpToNextChapter();
+                if (this.isTTSPlaying) {
+                    this.stopTTS();
+                    setTimeout(() => {
+                        this.startTTS();
+                    }, 500);
+                }
+            });
+        }, Button);
+        Button.pop();
+        // 控制按钮
+        Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // TTS控制按钮
+            Button.createWithLabel(this.isTTSPlaying ? '暂停朗读' : '开始朗读');
+            Button.debugLine("entry/src/main/ets/pages/Reader.ets(1783:9)", "entry");
+            // TTS控制按钮
+            Button.fontSize(16);
+            // TTS控制按钮
+            Button.fontColor(Color.White);
+            // TTS控制按钮
+            Button.backgroundColor(this.isTTSPlaying ? Color.Orange : Color.Green);
+            // TTS控制按钮
+            Button.width(160);
+            // TTS控制按钮
+            Button.height(50);
+            // TTS控制按钮
+            Button.onClick(() => {
+                if (this.isTTSPlaying) {
+                    this.stopTTS();
+                }
+                else {
+                    this.startTTS();
+                }
+            });
+            // TTS控制按钮
+            Button.margin({ bottom: 20 });
+        }, Button);
+        // TTS控制按钮
+        Button.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // 选择TTS按钮
+            Button.createWithLabel('选择TTS');
+            Button.debugLine("entry/src/main/ets/pages/Reader.ets(1799:9)", "entry");
+            // 选择TTS按钮
+            Button.fontSize(14);
+            // 选择TTS按钮
+            Button.fontColor(Color.Blue);
+            // 选择TTS按钮
+            Button.backgroundColor(Color.White);
+            // 选择TTS按钮
+            Button.border({ color: Color.Blue, width: 1 });
+            // 选择TTS按钮
+            Button.width(160);
+            // 选择TTS按钮
+            Button.height(40);
+            // 选择TTS按钮
+            Button.onClick(() => {
+                // 显示TTS选择功能的提示
+                this.getUIContext()
+                    .getPromptAction()
+                    .showToast({
+                    message: 'TTS选择功能开发中...',
+                    duration: 2000
+                });
+                hilog.info(0x0000, TAG, '点击了选择TTS按钮');
+            });
+            // 选择TTS按钮
+            Button.margin({ bottom: 10 });
+        }, Button);
+        // 选择TTS按钮
+        Button.pop();
+        // 内容区域
+        Column.pop();
+        Column.pop();
+    }
+    /**
+     * 构建定时器弹窗
+     */
+    private buildTimerSheet(parent = null): void {
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Column.create();
+            Column.debugLine("entry/src/main/ets/pages/Reader.ets(1857:5)", "entry");
+            Column.padding(20);
+            Column.backgroundColor(Color.White);
+            Column.borderRadius({ topLeft: 16, topRight: 16 });
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create('定时朗读');
+            Text.debugLine("entry/src/main/ets/pages/Reader.ets(1858:7)", "entry");
+            Text.fontSize(18);
+            Text.fontWeight(FontWeight.Medium);
+            Text.fontColor('#2D3748');
+            Text.margin({ bottom: 20 });
+        }, Text);
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // 定时选项
+            Column.create();
+            Column.debugLine("entry/src/main/ets/pages/Reader.ets(1865:7)", "entry");
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Row.create();
+            Row.debugLine("entry/src/main/ets/pages/Reader.ets(1866:9)", "entry");
+            Row.width('100%');
+            Row.justifyContent(FlexAlign.SpaceBetween);
+            Row.margin({ bottom: 16 });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Button.createWithLabel('关闭定时');
+            Button.debugLine("entry/src/main/ets/pages/Reader.ets(1867:11)", "entry");
+            Button.fontSize(16);
+            Button.fontColor(this.timerMinutes === 0 ? Color.White : '#2D3748');
+            Button.backgroundColor(this.timerMinutes === 0 ? Color.Blue : '#F7FAFC');
+            Button.borderRadius(8);
+            Button.width('45%');
+            Button.height(44);
+            Button.onClick(() => {
+                this.setTimer(0);
+            });
+        }, Button);
+        Button.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Button.createWithLabel('30分钟');
+            Button.debugLine("entry/src/main/ets/pages/Reader.ets(1878:11)", "entry");
+            Button.fontSize(16);
+            Button.fontColor(this.timerMinutes === 30 ? Color.White : '#2D3748');
+            Button.backgroundColor(this.timerMinutes === 30 ? Color.Blue : '#F7FAFC');
+            Button.borderRadius(8);
+            Button.width('45%');
+            Button.height(44);
+            Button.onClick(() => {
+                this.setTimer(30);
+            });
+        }, Button);
+        Button.pop();
+        Row.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Row.create();
+            Row.debugLine("entry/src/main/ets/pages/Reader.ets(1893:9)", "entry");
+            Row.width('100%');
+            Row.justifyContent(FlexAlign.SpaceBetween);
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Button.createWithLabel('60分钟');
+            Button.debugLine("entry/src/main/ets/pages/Reader.ets(1894:11)", "entry");
+            Button.fontSize(16);
+            Button.fontColor(this.timerMinutes === 60 ? Color.White : '#2D3748');
+            Button.backgroundColor(this.timerMinutes === 60 ? Color.Blue : '#F7FAFC');
+            Button.borderRadius(8);
+            Button.width('45%');
+            Button.height(44);
+            Button.onClick(() => {
+                this.setTimer(60);
+            });
+        }, Button);
+        Button.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Button.createWithLabel('90分钟');
+            Button.debugLine("entry/src/main/ets/pages/Reader.ets(1905:11)", "entry");
+            Button.fontSize(16);
+            Button.fontColor(this.timerMinutes === 90 ? Color.White : '#2D3748');
+            Button.backgroundColor(this.timerMinutes === 90 ? Color.Blue : '#F7FAFC');
+            Button.borderRadius(8);
+            Button.width('45%');
+            Button.height(44);
+            Button.onClick(() => {
+                this.setTimer(90);
+            });
+        }, Button);
+        Button.pop();
+        Row.pop();
+        // 定时选项
+        Column.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            If.create();
+            // 剩余时间显示
+            if (this.timerMinutes > 0 && this.remainingTime > 0) {
+                this.ifElseBranchUpdateFunction(0, () => {
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create(`剩余时间: ${Math.floor(this.remainingTime / 60)}分${this.remainingTime % 60}秒`);
+                        Text.debugLine("entry/src/main/ets/pages/Reader.ets(1922:9)", "entry");
+                        Text.fontSize(14);
+                        Text.fontColor('#718096');
+                        Text.margin({ top: 20 });
+                    }, Text);
+                    Text.pop();
+                });
+            }
+            else {
+                this.ifElseBranchUpdateFunction(1, () => {
+                });
+            }
+        }, If);
+        If.pop();
+        Column.pop();
+    }
+    /**
+     * 构建倍速弹窗
+     */
+    private buildSpeedSheet(parent = null): void {
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Column.create();
+            Column.debugLine("entry/src/main/ets/pages/Reader.ets(1938:5)", "entry");
+            Column.padding(20);
+            Column.backgroundColor(Color.White);
+            Column.borderRadius({ topLeft: 16, topRight: 16 });
+        }, Column);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create('朗读倍速');
+            Text.debugLine("entry/src/main/ets/pages/Reader.ets(1939:7)", "entry");
+            Text.fontSize(18);
+            Text.fontWeight(FontWeight.Medium);
+            Text.fontColor('#2D3748');
+            Text.margin({ bottom: 20 });
+        }, Text);
+        Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            // 倍速选项 - 添加横向滑动
+            Scroll.create();
+            Scroll.debugLine("entry/src/main/ets/pages/Reader.ets(1946:7)", "entry");
+            // 倍速选项 - 添加横向滑动
+            Scroll.scrollable(ScrollDirection.Horizontal);
+            // 倍速选项 - 添加横向滑动
+            Scroll.scrollBar(BarState.Off);
+            // 倍速选项 - 添加横向滑动
+            Scroll.width('100%');
+            // 倍速选项 - 添加横向滑动
+            Scroll.margin({ bottom: 16 });
+        }, Scroll);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Row.create({ space: 12 });
+            Row.debugLine("entry/src/main/ets/pages/Reader.ets(1947:9)", "entry");
+            Row.padding({ left: 8, right: 8 });
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            ForEach.create();
+            const forEachItemGenFunction = _item => {
+                const speed = _item;
+                this.observeComponentCreation2((elmtId, isInitialRender) => {
+                    Button.createWithLabel(`${speed}x`);
+                    Button.debugLine("entry/src/main/ets/pages/Reader.ets(1949:13)", "entry");
+                    Button.fontSize(16);
+                    Button.fontColor(this.ttsSpeed === speed ? Color.White : '#2D3748');
+                    Button.backgroundColor(this.ttsSpeed === speed ? Color.Blue : '#F7FAFC');
+                    Button.borderRadius(8);
+                    Button.width(80);
+                    Button.height(44);
+                    Button.onClick(() => {
+                        this.setTTSSpeed(speed);
+                    });
+                }, Button);
+                Button.pop();
+            };
+            this.forEachUpdateFunction(elmtId, [0.5, 0.75, 1, 1.25, 1.5, 2], forEachItemGenFunction);
+        }, ForEach);
+        ForEach.pop();
+        Row.pop();
+        // 倍速选项 - 添加横向滑动
+        Scroll.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create('选择朗读速度，1x为正常速度');
+            Text.debugLine("entry/src/main/ets/pages/Reader.ets(1968:7)", "entry");
+            Text.fontSize(12);
+            Text.fontColor('#A0AEC0');
+            Text.textAlign(TextAlign.Center);
+        }, Text);
+        Text.pop();
+        Column.pop();
+    }
+    /**
+     * 设置定时器
+     */
+    private setTimer(minutes: number): void {
+        // 清除之前的定时器
+        if (this.timerInterval !== -1) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = -1;
+        }
+        this.timerMinutes = minutes;
+        this.showTimerSheet = false;
+        if (minutes > 0) {
+            this.remainingTime = minutes * 60; // 转换为秒
+            // 启动定时器
+            this.timerInterval = setInterval(() => {
+                this.remainingTime--;
+                if (this.remainingTime <= 0) {
+                    // 时间到，停止朗读
+                    this.stopTTS();
+                    this.timerMinutes = 0;
+                    clearInterval(this.timerInterval);
+                    this.timerInterval = -1;
+                    // 显示提示
+                    this.getUIContext()
+                        .getPromptAction()
+                        .showToast({ message: '定时朗读结束', duration: 2000 });
+                }
+            }, 1000);
+            hilog.info(0x0000, TAG, `设置定时器: ${minutes}分钟`);
+        }
+        else {
+            this.remainingTime = 0;
+            hilog.info(0x0000, TAG, '关闭定时器');
+        }
+    }
+    /**
+     * 设置TTS朗读速度
+     */
+    private setTTSSpeed(speed: number): void {
+        this.ttsSpeed = speed;
+        this.showSpeedSheet = false;
+        // 如果正在朗读，需要重新开始以应用新的速度
+        if (this.isTTSPlaying) {
+            // 保存当前的自动播放状态，避免重新开始时触发自动播放下一章
+            const wasAutoPlay = this.isTTSAutoPlay;
+            // 临时关闭自动播放，避免停止时触发下一章
+            this.isTTSAutoPlay = false;
+            this.stopTTS();
+            setTimeout(() => {
+                // 恢复自动播放状态
+                this.isTTSAutoPlay = wasAutoPlay;
+                this.startTTS();
+            }, 500);
+        }
+        hilog.info(0x0000, TAG, `设置朗读速度: ${speed}x`);
+    }
+    /**
+     * 申请后台任务
+     */
+    private async requestBackgroundTask(): Promise<void> {
+        if (this.isBackgroundTaskActive) {
+            hilog.info(0x0000, TAG, '后台任务已激活，无需重复申请');
+            return;
+        }
+        try {
+            const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+            // 只申请延迟挂起任务，不申请长时运行任务
+            const delayInfo = await backgroundTaskManager.requestSuspendDelay('TTS_READING', () => {
+                hilog.info(0x0000, TAG, '后台任务即将到期，准备续期');
+                // 如果TTS还在播放，继续申请后台任务
+                if (this.isTTSPlaying) {
+                    this.requestBackgroundTask();
+                }
+            });
+            this.backgroundTaskId = delayInfo.requestId;
+            this.isBackgroundTaskActive = true;
+            hilog.info(0x0000, TAG, '后台延迟挂起任务申请成功');
+        }
+        catch (error) {
+            hilog.error(0x0000, TAG, '申请后台任务失败: ' + JSON.stringify(error));
+            // 即使后台任务申请失败，TTS功能仍然可以正常工作
+            hilog.warn(0x0000, TAG, 'TTS功能将在前台正常工作，但可能在应用切换到后台时被暂停');
+        }
+    }
+    /**
+     * 取消后台任务
+     */
+    private async cancelBackgroundTask(): Promise<void> {
+        if (!this.isBackgroundTaskActive) {
+            return;
+        }
+        try {
+            // 只取消延迟挂起任务，不调用stopBackgroundRunning
+            // 因为应用没有申请长时运行任务，只申请了延迟挂起任务
+            if (this.backgroundTaskId !== -1) {
+                backgroundTaskManager.cancelSuspendDelay(this.backgroundTaskId);
+                this.backgroundTaskId = -1;
+                hilog.info(0x0000, TAG, '延迟挂起任务已取消');
+            }
+            this.isBackgroundTaskActive = false;
+            hilog.info(0x0000, TAG, '后台任务已取消');
+        }
+        catch (error) {
+            hilog.error(0x0000, TAG, '取消后台任务失败: ' + JSON.stringify(error));
+        }
     }
     rerender() {
         this.updateDirtyElements();

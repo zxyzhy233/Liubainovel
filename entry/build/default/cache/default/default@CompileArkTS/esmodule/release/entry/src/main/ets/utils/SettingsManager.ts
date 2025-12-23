@@ -1,6 +1,6 @@
 import preferences from "@ohos:data.preferences";
 import hilog from "@ohos:hilog";
-import { ReaderSettings } from "@bundle:com.example.readerkitdemo/entry/ets/common/ReaderSettings";
+import { ReaderSettings } from "@bundle:liubai.yuedu.hos/entry/ets/common/ReaderSettings";
 import type common from "@ohos:app.ability.common";
 const TAG: string = 'SettingsManager';
 const PREFERENCES_NAME = 'ReaderSettings';

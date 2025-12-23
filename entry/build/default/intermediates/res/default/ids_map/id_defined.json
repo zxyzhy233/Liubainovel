@@ -17,339 +17,391 @@
 			"id":	"0x01000003"
 		}, {
 			"type":	"string",
-			"name":	"book_name",
+			"name":	"background_task_reason",
 			"id":	"0x01000004"
 		}, {
 			"type":	"string",
-			"name":	"catalog_list",
+			"name":	"book_name",
 			"id":	"0x01000005"
 		}, {
 			"type":	"string",
-			"name":	"continue_reading",
+			"name":	"catalog_list",
 			"id":	"0x01000006"
 		}, {
 			"type":	"string",
-			"name":	"emulation_page",
+			"name":	"continue_reading",
 			"id":	"0x01000007"
 		}, {
 			"type":	"string",
-			"name":	"font_size_placeholder",
+			"name":	"download_permission_reason",
 			"id":	"0x01000008"
 		}, {
 			"type":	"string",
-			"name":	"go_to_reader",
+			"name":	"emulation_page",
 			"id":	"0x01000009"
 		}, {
 			"type":	"string",
-			"name":	"import_book",
+			"name":	"font_size_placeholder",
 			"id":	"0x0100000A"
 		}, {
 			"type":	"string",
-			"name":	"import_successful_tips",
+			"name":	"go_to_reader",
 			"id":	"0x0100000B"
 		}, {
 			"type":	"string",
-			"name":	"line_height_placeholder",
+			"name":	"import_book",
 			"id":	"0x0100000C"
 		}, {
 			"type":	"string",
-			"name":	"module_desc",
+			"name":	"import_successful_tips",
 			"id":	"0x0100000D"
 		}, {
 			"type":	"string",
-			"name":	"permission_reason",
+			"name":	"line_height_placeholder",
 			"id":	"0x0100000E"
 		}, {
 			"type":	"string",
-			"name":	"setting",
+			"name":	"microphone_reason",
 			"id":	"0x0100000F"
 		}, {
 			"type":	"string",
-			"name":	"source_han_serif_font",
+			"name":	"module_desc",
 			"id":	"0x01000010"
 		}, {
 			"type":	"string",
-			"name":	"system_font",
+			"name":	"permission_reason",
 			"id":	"0x01000011"
 		}, {
 			"type":	"string",
-			"name":	"transversal_slip_page",
+			"name":	"setting",
 			"id":	"0x01000012"
 		}, {
 			"type":	"string",
-			"name":	"update_font_size_and_line_height",
+			"name":	"source_han_serif_font",
 			"id":	"0x01000013"
 		}, {
-			"type":	"color",
-			"name":	"black_5_opacity",
+			"type":	"string",
+			"name":	"system_font",
 			"id":	"0x01000014"
 		}, {
-			"type":	"color",
-			"name":	"black_60_opacity",
+			"type":	"string",
+			"name":	"transversal_slip_page",
 			"id":	"0x01000015"
 		}, {
-			"type":	"color",
-			"name":	"black_90_opacity",
+			"type":	"string",
+			"name":	"update_font_size_and_line_height",
 			"id":	"0x01000016"
 		}, {
 			"type":	"color",
-			"name":	"blue",
+			"name":	"black_5_opacity",
 			"id":	"0x01000017"
 		}, {
 			"type":	"color",
-			"name":	"color_transparent",
+			"name":	"black_60_opacity",
 			"id":	"0x01000018"
 		}, {
 			"type":	"color",
-			"name":	"ic_bg_font_selected",
+			"name":	"black_90_opacity",
 			"id":	"0x01000019"
 		}, {
 			"type":	"color",
-			"name":	"ic_bg_grey",
+			"name":	"blue",
 			"id":	"0x0100001A"
 		}, {
 			"type":	"color",
-			"name":	"ic_bg_selected",
+			"name":	"color_transparent",
 			"id":	"0x0100001B"
 		}, {
 			"type":	"color",
-			"name":	"ic_border_select_dark",
+			"name":	"ic_bg_font_selected",
 			"id":	"0x0100001C"
 		}, {
 			"type":	"color",
-			"name":	"ic_border_select_green",
+			"name":	"ic_bg_grey",
 			"id":	"0x0100001D"
 		}, {
 			"type":	"color",
-			"name":	"ic_border_select_pink",
+			"name":	"ic_bg_selected",
 			"id":	"0x0100001E"
 		}, {
 			"type":	"color",
-			"name":	"ic_border_select_white",
+			"name":	"ic_border_select_dark",
 			"id":	"0x0100001F"
 		}, {
 			"type":	"color",
-			"name":	"ic_border_select_yellow",
+			"name":	"ic_border_select_green",
 			"id":	"0x01000020"
 		}, {
 			"type":	"color",
-			"name":	"ic_border_unselect",
+			"name":	"ic_border_select_pink",
 			"id":	"0x01000021"
 		}, {
 			"type":	"color",
-			"name":	"ic_dark_theme_button_background",
+			"name":	"ic_border_select_white",
 			"id":	"0x01000022"
 		}, {
 			"type":	"color",
-			"name":	"ic_green_theme_button_background",
+			"name":	"ic_border_select_yellow",
 			"id":	"0x01000023"
 		}, {
 			"type":	"color",
-			"name":	"ic_pink_theme_button_background",
+			"name":	"ic_border_unselect",
 			"id":	"0x01000024"
 		}, {
 			"type":	"color",
-			"name":	"ic_scroll_bar",
+			"name":	"ic_dark_theme_button_background",
 			"id":	"0x01000025"
 		}, {
 			"type":	"color",
-			"name":	"ic_text_input_bg",
+			"name":	"ic_green_theme_button_background",
 			"id":	"0x01000026"
 		}, {
 			"type":	"color",
-			"name":	"ic_white_theme_button_background",
+			"name":	"ic_pink_theme_button_background",
 			"id":	"0x01000027"
 		}, {
 			"type":	"color",
-			"name":	"ic_yellow_theme_button_background",
+			"name":	"ic_scroll_bar",
 			"id":	"0x01000028"
 		}, {
 			"type":	"color",
-			"name":	"ohos_id_color_primary_light",
+			"name":	"ic_text_input_bg",
 			"id":	"0x01000029"
 		}, {
 			"type":	"color",
-			"name":	"page_background",
+			"name":	"ic_white_theme_button_background",
 			"id":	"0x0100002A"
 		}, {
 			"type":	"color",
-			"name":	"start_window_background",
+			"name":	"ic_yellow_theme_button_background",
 			"id":	"0x0100002B"
 		}, {
 			"type":	"color",
-			"name":	"window_background",
+			"name":	"ohos_id_color_primary_light",
 			"id":	"0x0100002C"
+		}, {
+			"type":	"color",
+			"name":	"page_background",
+			"id":	"0x0100002D"
+		}, {
+			"type":	"color",
+			"name":	"start_window_background",
+			"id":	"0x0100002E"
+		}, {
+			"type":	"color",
+			"name":	"window_background",
+			"id":	"0x0100002F"
 		}, {
 			"type":	"float",
 			"name":	"page_text_font_size",
-			"id":	"0x0100002D"
-		}, {
-			"type":	"media",
-			"name":	"CheckCircle",
-			"id":	"0x0100002E"
-		}, {
-			"type":	"media",
-			"name":	"Circle",
-			"id":	"0x0100002F"
-		}, {
-			"type":	"media",
-			"name":	"Plus",
 			"id":	"0x01000030"
 		}, {
 			"type":	"media",
-			"name":	"Repeat",
+			"name":	"CheckCircle",
 			"id":	"0x01000031"
 		}, {
 			"type":	"media",
-			"name":	"SignIn",
+			"name":	"Circle",
 			"id":	"0x01000032"
 		}, {
 			"type":	"media",
-			"name":	"SignOut",
+			"name":	"Globe",
 			"id":	"0x01000033"
 		}, {
 			"type":	"media",
-			"name":	"StackMinus",
+			"name":	"Plus",
 			"id":	"0x01000034"
 		}, {
 			"type":	"media",
-			"name":	"aixin",
+			"name":	"Repeat",
 			"id":	"0x01000035"
 		}, {
 			"type":	"media",
-			"name":	"background",
+			"name":	"SignIn",
 			"id":	"0x01000036"
 		}, {
 			"type":	"media",
-			"name":	"book",
+			"name":	"SignOut",
 			"id":	"0x01000037"
 		}, {
 			"type":	"media",
-			"name":	"bookshelf",
+			"name":	"StackMinus",
 			"id":	"0x01000038"
 		}, {
 			"type":	"media",
-			"name":	"cover_shadow",
+			"name":	"User",
 			"id":	"0x01000039"
 		}, {
 			"type":	"media",
-			"name":	"dark_sky_icon",
+			"name":	"aixin",
 			"id":	"0x0100003A"
 		}, {
 			"type":	"media",
-			"name":	"default_cover",
+			"name":	"background",
 			"id":	"0x0100003B"
 		}, {
 			"type":	"media",
-			"name":	"faxian",
+			"name":	"book",
 			"id":	"0x0100003C"
 		}, {
 			"type":	"media",
-			"name":	"fenlei",
+			"name":	"bookshelf",
 			"id":	"0x0100003D"
 		}, {
 			"type":	"media",
-			"name":	"foreground",
+			"name":	"cover_shadow",
 			"id":	"0x0100003E"
 		}, {
 			"type":	"media",
-			"name":	"guanbi",
+			"name":	"dark_sky_icon",
 			"id":	"0x0100003F"
 		}, {
 			"type":	"media",
-			"name":	"home",
+			"name":	"default_cover",
 			"id":	"0x01000040"
 		}, {
 			"type":	"media",
-			"name":	"jilu",
+			"name":	"faxian",
 			"id":	"0x01000041"
 		}, {
 			"type":	"media",
-			"name":	"layered_image",
+			"name":	"fenlei",
 			"id":	"0x01000042"
 		}, {
 			"type":	"media",
-			"name":	"mulu",
+			"name":	"foreground",
 			"id":	"0x01000043"
 		}, {
 			"type":	"media",
-			"name":	"night",
+			"name":	"guanbi",
 			"id":	"0x01000044"
 		}, {
 			"type":	"media",
-			"name":	"shanchu",
+			"name":	"headset",
 			"id":	"0x01000045"
 		}, {
 			"type":	"media",
-			"name":	"shang",
+			"name":	"home",
 			"id":	"0x01000046"
 		}, {
 			"type":	"media",
-			"name":	"shezhi",
+			"name":	"ic_back",
 			"id":	"0x01000047"
 		}, {
 			"type":	"media",
-			"name":	"shuaxin",
+			"name":	"ic_book_cover",
 			"id":	"0x01000048"
 		}, {
 			"type":	"media",
-			"name":	"shuqian",
+			"name":	"ic_check",
 			"id":	"0x01000049"
 		}, {
 			"type":	"media",
-			"name":	"sousuo",
+			"name":	"ic_error",
 			"id":	"0x0100004A"
 		}, {
 			"type":	"media",
-			"name":	"spines",
+			"name":	"ic_next",
 			"id":	"0x0100004B"
 		}, {
 			"type":	"media",
-			"name":	"startIcon",
+			"name":	"ic_search_empty",
 			"id":	"0x0100004C"
 		}, {
 			"type":	"media",
-			"name":	"tianjia",
+			"name":	"ic_toc",
 			"id":	"0x0100004D"
 		}, {
 			"type":	"media",
-			"name":	"usercenter",
+			"name":	"icon",
 			"id":	"0x0100004E"
 		}, {
 			"type":	"media",
-			"name":	"white_sky_icon",
+			"name":	"icon_startwindow",
 			"id":	"0x0100004F"
 		}, {
 			"type":	"media",
-			"name":	"xia",
+			"name":	"jilu",
 			"id":	"0x01000050"
 		}, {
 			"type":	"media",
-			"name":	"xiangq",
+			"name":	"layered_image",
 			"id":	"0x01000051"
 		}, {
 			"type":	"media",
-			"name":	"xuanx",
+			"name":	"mulu",
 			"id":	"0x01000052"
 		}, {
 			"type":	"media",
-			"name":	"zwfm",
+			"name":	"night",
 			"id":	"0x01000053"
 		}, {
-			"type":	"profile",
-			"name":	"backup_config",
+			"type":	"media",
+			"name":	"shanchu",
 			"id":	"0x01000054"
 		}, {
-			"type":	"profile",
-			"name":	"main_pages",
+			"type":	"media",
+			"name":	"shang",
 			"id":	"0x01000055"
 		}, {
 			"type":	"media",
-			"name":	"icon",
+			"name":	"shezhi",
 			"id":	"0x01000056"
 		}, {
 			"type":	"media",
-			"name":	"icon_startwindow",
+			"name":	"shuaxin",
 			"id":	"0x01000057"
+		}, {
+			"type":	"media",
+			"name":	"shuqian",
+			"id":	"0x01000058"
+		}, {
+			"type":	"media",
+			"name":	"sousuo",
+			"id":	"0x01000059"
+		}, {
+			"type":	"media",
+			"name":	"spines",
+			"id":	"0x0100005A"
+		}, {
+			"type":	"media",
+			"name":	"startIcon",
+			"id":	"0x0100005B"
+		}, {
+			"type":	"media",
+			"name":	"tianjia",
+			"id":	"0x0100005C"
+		}, {
+			"type":	"media",
+			"name":	"usercenter",
+			"id":	"0x0100005D"
+		}, {
+			"type":	"media",
+			"name":	"white_sky_icon",
+			"id":	"0x0100005E"
+		}, {
+			"type":	"media",
+			"name":	"xia",
+			"id":	"0x0100005F"
+		}, {
+			"type":	"media",
+			"name":	"xiangq",
+			"id":	"0x01000060"
+		}, {
+			"type":	"media",
+			"name":	"xuanx",
+			"id":	"0x01000061"
+		}, {
+			"type":	"media",
+			"name":	"zwfm",
+			"id":	"0x01000062"
+		}, {
+			"type":	"profile",
+			"name":	"backup_config",
+			"id":	"0x01000063"
+		}, {
+			"type":	"profile",
+			"name":	"main_pages",
+			"id":	"0x01000064"
 		}]
 }

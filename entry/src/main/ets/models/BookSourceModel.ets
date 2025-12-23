@@ -14,7 +14,7 @@
  */
 
 /**
- * 书源规则接口
+ * 鹿析规则接口
  */
 export interface BookSourceRule {
   author?: string;           // 作者选择器

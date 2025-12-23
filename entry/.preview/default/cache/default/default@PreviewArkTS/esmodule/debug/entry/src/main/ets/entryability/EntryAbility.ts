@@ -1,7 +1,10 @@
 import type AbilityConstant from "@ohos:app.ability.AbilityConstant";
+import abilityAccessCtrl from "@ohos:abilityAccessCtrl";
 import type { Configuration as Configuration } from "@ohos:app.ability.Configuration";
 import UIAbility from "@ohos:app.ability.UIAbility";
 import type Want from "@ohos:app.ability.Want";
+import type { Permissions as Permissions } from "@ohos:abilityAccessCtrl";
+import type { PermissionRequestResult as PermissionRequestResult } from "@ohos:abilityAccessCtrl";
 import hilog from "@ohos:hilog";
 import window from "@ohos:window";
 import { WindowAbility } from "@bundle:liubai.yuedu.hos/entry/ets/entryability/WindowAbility";
@@ -13,8 +16,38 @@ export default class EntryAbility extends UIAbility {
     onCreate(want: Want, launchParam: AbilityConstant.LaunchParam) {
         hilog.info(0x0000, TAG, '%{public}s', 'Ability onCreate');
         WindowAbility.getInstance().initContext(this.context);
+        // 请求必要的权限
+        this.requestPermissions();
         // 初始化书源管理器
         this.initializeBookSourceManager();
+    }
+    /**
+     * 请求应用所需权限
+     */
+    private async requestPermissions(): Promise<void> {
+        try {
+            const permissions: Permissions[] = [
+                'ohos.permission.READ_WRITE_DOWNLOAD_DIRECTORY',
+                'ohos.permission.READ_MEDIA'
+            ];
+            const atManager = abilityAccessCtrl.createAtManager();
+            const grantStatus: PermissionRequestResult = await atManager.requestPermissionsFromUser(this.context, permissions);
+            if (grantStatus && grantStatus.permissions) {
+                for (let i: number = 0; i < grantStatus.permissions.length; i++) {
+                    const permission: string = grantStatus.permissions[i];
+                    const authResult: number = grantStatus.authResults[i];
+                    if (authResult === 0) { // 0 表示授权成功
+                        hilog.info(0x0000, TAG, `权限已授予: ${permission}`);
+                    }
+                    else {
+                        hilog.warn(0x0000, TAG, `权限被拒绝: ${permission}`);
+                    }
+                }
+            }
+        }
+        catch (error) {
+            hilog.error(0x0000, TAG, '权限申请失败: ' + JSON.stringify(error));
+        }
     }
     /**
      * 初始化书源管理器

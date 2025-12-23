@@ -1,9 +1,9 @@
 import fs from "@ohos:file.fs";
 import hash from "@ohos:file.hash";
 import util from "@ohos:util";
-import { BookParserInfo, LocalBookImportResult } from "@bundle:com.example.readerkitdemo/entry/ets/common/BookParserInfo";
-import { BookUtils } from "@bundle:com.example.readerkitdemo/entry/ets/utils/BookUtils";
-import { FileUtils } from "@bundle:com.example.readerkitdemo/entry/ets/utils/FileUtils";
+import { BookParserInfo, LocalBookImportResult } from "@bundle:liubai.yuedu.hos/entry/ets/common/BookParserInfo";
+import { BookUtils } from "@bundle:liubai.yuedu.hos/entry/ets/utils/BookUtils";
+import { FileUtils } from "@bundle:liubai.yuedu.hos/entry/ets/utils/FileUtils";
 import hilog from "@ohos:hilog";
 const TAG = "LocalBookImporter";
 // Algorithm used for file hash

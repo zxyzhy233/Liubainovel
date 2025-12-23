@@ -5,7 +5,7 @@ import hilog from "@ohos:hilog";
 import router from "@ohos:router";
 const TAG: string = 'BookSourceEditPage';
 /**
- * 书源规则接口
+ * 鹿析规则接口
  */
 interface BookSourceRule {
     author?: string;
@@ -29,7 +29,7 @@ interface BookSourceRule {
     init?: string;
 }
 /**
- * 完整书源信息接口
+ * 完整鹿析信息接口
  */
 interface BookSourceInfo {
     bookSourceName: string;
@@ -122,6 +122,58 @@ class BookSourceEditPage extends ViewV2 {
         this.contentNextContentUrl = '';
         this.contentReplaceRegex = '';
         this.finalizeConstruction();
+    }
+    public resetStateVarsOnReuse(params: Object): void {
+        this.isEdit = false;
+        this.currentTab = 0;
+        this.bookSourceName = '';
+        this.bookSourceUrl = '';
+        this.bookSourceGroup = '';
+        this.bookSourceComment = '';
+        this.bookSourceType = 0;
+        this.sourceEnabled = true;
+        this.enabledCookieJar = true;
+        this.enabledExplore = true;
+        this.enabledReview = false;
+        this.header = '';
+        this.searchUrl = '';
+        this.exploreUrl = '';
+        this.bookUrlPattern = '';
+        this.weight = 0;
+        this.customOrder = 0;
+        this.searchAuthor = '';
+        this.searchBookList = '';
+        this.searchBookUrl = '';
+        this.searchCoverUrl = '';
+        this.searchName = '';
+        this.searchLastChapter = '';
+        this.searchKind = '';
+        this.searchWordCount = '';
+        this.searchCheckKeyWord = '';
+        this.exploreAuthor = '';
+        this.exploreBookList = '';
+        this.exploreBookUrl = '';
+        this.exploreCoverUrl = '';
+        this.exploreName = '';
+        this.exploreLastChapter = '';
+        this.exploreKind = '';
+        this.exploreWordCount = '';
+        this.bookInfoAuthor = '';
+        this.bookInfoCoverUrl = '';
+        this.bookInfoIntro = '';
+        this.bookInfoKind = '';
+        this.bookInfoLastChapter = '';
+        this.bookInfoName = '';
+        this.bookInfoTocUrl = '';
+        this.bookInfoWordCount = '';
+        this.bookInfoInit = '';
+        this.tocChapterList = '';
+        this.tocChapterName = '';
+        this.tocChapterUrl = '';
+        this.tocNextTocUrl = '';
+        this.contentContent = '';
+        this.contentNextContentUrl = '';
+        this.contentReplaceRegex = '';
     }
     @Local
     isEdit: boolean; // 是否为编辑模式
@@ -248,8 +300,8 @@ class BookSourceEditPage extends ViewV2 {
         }
     }
     /**
-     * 加载书源数据到表单
-     * @param sourceData 书源数据
+     * 加载鹿析数据到表单
+     * @param sourceData 鹿析数据
      */
     private loadSourceData(sourceData: BookSourceInfo): void {
         // 基本信息
@@ -318,19 +370,19 @@ class BookSourceEditPage extends ViewV2 {
         }
     }
     /**
-     * 保存书源数据
+     * 保存鹿析数据
      */
     private saveBookSource(): void {
         // 验证必填字段
         if (!this.bookSourceName.trim()) {
-            hilog.warn(0x0000, TAG, '书源名称不能为空');
+            hilog.warn(0x0000, TAG, '鹿析名称不能为空');
             return;
         }
         if (!this.bookSourceUrl.trim()) {
-            hilog.warn(0x0000, TAG, '书源URL不能为空');
+            hilog.warn(0x0000, TAG, '鹿析URL不能为空');
             return;
         }
-        // 构建书源数据
+        // 构建鹿析数据
         const sourceData: BookSourceInfo = {
             bookSourceName: this.bookSourceName.trim(),
             bookSourceUrl: this.bookSourceUrl.trim(),
@@ -394,15 +446,28 @@ class BookSourceEditPage extends ViewV2 {
             },
             ruleReview: {}
         };
-        hilog.info(0x0000, TAG, `${this.isEdit ? '更新' : '保存'}书源: ${sourceData.bookSourceName}`);
+        hilog.info(0x0000, TAG, `${this.isEdit ? '更新' : '保存'}鹿析: ${sourceData.bookSourceName}`);
         // 返回上一页并传递数据
-        router.back({
-            url: 'pages/BookSourcePage',
-            params: {
-                action: this.isEdit ? 'update' : 'add',
-                sourceData: sourceData
-            }
-        });
+        try {
+            router.replaceUrl({
+                url: 'pages/BookSourcePage',
+                params: {
+                    action: this.isEdit ? 'update' : 'add',
+                    sourceData: sourceData
+                }
+            }).then(() => {
+                hilog.info(0x0000, TAG, '成功返回鹿析管理页面');
+            }).catch((error: Error) => {
+                hilog.error(0x0000, TAG, '返回鹿析管理页面失败: ' + error.message);
+                // 如果replaceUrl失败，尝试使用back
+                router.back();
+            });
+        }
+        catch (error) {
+            hilog.error(0x0000, TAG, '页面跳转出错: ' + JSON.stringify(error));
+            // 最后的备选方案，直接返回
+            router.back();
+        }
     }
     /**
      * 返回上一页
@@ -420,12 +485,8 @@ class BookSourceEditPage extends ViewV2 {
             Row.height(56);
             Row.padding({ left: 16, right: 16 });
             Row.margin({ top: 44 });
-            Row.backgroundColor(Color.White);
-            Row.shadow({
-                radius: 2,
-                color: '#10000000',
-                offsetY: 1
-            });
+            Row.justifyContent(FlexAlign.Start);
+            Row.alignItems(VerticalAlign.Center);
         }, Row);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 返回按钮
@@ -442,17 +503,15 @@ class BookSourceEditPage extends ViewV2 {
             });
         }, Button);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            Text.create('‹');
-            Text.fontSize(24);
-            Text.fontColor('#2D3748');
-            Text.fontWeight(FontWeight.Bold);
+            Text.create('👈');
+            Text.fontSize(20);
         }, Text);
         Text.pop();
         // 返回按钮
         Button.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             // 标题
-            Text.create(this.isEdit ? '编辑书源' : '新建书源');
+            Text.create(this.isEdit ? '编辑鹿析' : '新建鹿析');
             // 标题
             Text.fontSize(20);
             // 标题
@@ -639,16 +698,16 @@ class BookSourceEditPage extends ViewV2 {
             Column.create();
             Column.padding(16);
         }, Column);
-        this.buildInputField.bind(this)('书源名称 *', '请输入书源名称', this.bookSourceName, (value: string) => {
+        this.buildInputField.bind(this)('鹿析名称 *', '请输入鹿析名称', this.bookSourceName, (value: string) => {
             this.bookSourceName = value;
         });
-        this.buildInputField.bind(this)('书源URL *', '请输入书源URL', this.bookSourceUrl, (value: string) => {
+        this.buildInputField.bind(this)('鹿析URL *', '请输入鹿析URL', this.bookSourceUrl, (value: string) => {
             this.bookSourceUrl = value;
         });
-        this.buildInputField.bind(this)('书源分组', '请输入书源分组', this.bookSourceGroup, (value: string) => {
+        this.buildInputField.bind(this)('鹿析分组', '请输入鹿析分组', this.bookSourceGroup, (value: string) => {
             this.bookSourceGroup = value;
         });
-        this.buildInputField.bind(this)('书源注释', '请输入书源注释', this.bookSourceComment, (value: string) => {
+        this.buildInputField.bind(this)('鹿析注释', '请输入鹿析注释', this.bookSourceComment, (value: string) => {
             this.bookSourceComment = value;
         }, true);
         this.buildInputField.bind(this)('搜索URL', '请输入搜索URL', this.searchUrl, (value: string) => {
@@ -663,7 +722,7 @@ class BookSourceEditPage extends ViewV2 {
         this.buildInputField.bind(this)('请求头', '请输入请求头（JSON格式）', this.header, (value: string) => {
             this.header = value;
         }, true);
-        this.buildSwitchField.bind(this)('启用书源', '是否启用此书源', this.sourceEnabled, (value: boolean) => {
+        this.buildSwitchField.bind(this)('启用鹿析', '是否启用此鹿析', this.sourceEnabled, (value: boolean) => {
             this.sourceEnabled = value;
         });
         this.buildSwitchField.bind(this)('启用Cookie', '是否启用Cookie管理', this.enabledCookieJar, (value: boolean) => {
@@ -688,16 +747,16 @@ class BookSourceEditPage extends ViewV2 {
         this.buildInputField.bind(this)('书籍列表', '书籍列表选择器', this.searchBookList, (value: string) => {
             this.searchBookList = value;
         });
-        this.buildInputField.bind(this)('书籍名称', '书籍名称选择器', this.searchName, (value: string) => {
+        this.buildInputField.bind(this)('书籍名称 *', '书籍名称选择器', this.searchName, (value: string) => {
             this.searchName = value;
         });
-        this.buildInputField.bind(this)('作者', '作者选择器', this.searchAuthor, (value: string) => {
+        this.buildInputField.bind(this)('作者 *', '作者选择器', this.searchAuthor, (value: string) => {
             this.searchAuthor = value;
         });
-        this.buildInputField.bind(this)('书籍URL', '书籍URL选择器', this.searchBookUrl, (value: string) => {
+        this.buildInputField.bind(this)('书籍URL *', '书籍URL选择器', this.searchBookUrl, (value: string) => {
             this.searchBookUrl = value;
         });
-        this.buildInputField.bind(this)('封面URL', '封面URL选择器', this.searchCoverUrl, (value: string) => {
+        this.buildInputField.bind(this)('封面URL *', '封面URL选择器', this.searchCoverUrl, (value: string) => {
             this.searchCoverUrl = value;
         });
         this.buildInputField.bind(this)('最新章节', '最新章节选择器', this.searchLastChapter, (value: string) => {
@@ -749,26 +808,26 @@ class BookSourceEditPage extends ViewV2 {
         Column.pop();
     }
     /**
-     * 构建书籍信息规则标签页
+     * 构建鹿析信息规则标签页
      */
     private buildBookInfoRuleTab(parent = null): void {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
             Column.padding(16);
         }, Column);
-        this.buildInputField.bind(this)('书籍名称', '书籍名称选择器', this.bookInfoName, (value: string) => {
+        this.buildInputField.bind(this)('书籍名称 *', '书籍名称选择器', this.bookInfoName, (value: string) => {
             this.bookInfoName = value;
         });
-        this.buildInputField.bind(this)('作者', '作者选择器', this.bookInfoAuthor, (value: string) => {
+        this.buildInputField.bind(this)('作者 *', '作者选择器', this.bookInfoAuthor, (value: string) => {
             this.bookInfoAuthor = value;
         });
-        this.buildInputField.bind(this)('封面URL', '封面URL选择器', this.bookInfoCoverUrl, (value: string) => {
+        this.buildInputField.bind(this)('封面URL *', '封面URL选择器', this.bookInfoCoverUrl, (value: string) => {
             this.bookInfoCoverUrl = value;
         });
-        this.buildInputField.bind(this)('简介', '简介选择器', this.bookInfoIntro, (value: string) => {
+        this.buildInputField.bind(this)('简介 *', '简介选择器', this.bookInfoIntro, (value: string) => {
             this.bookInfoIntro = value;
         });
-        this.buildInputField.bind(this)('分类', '分类选择器', this.bookInfoKind, (value: string) => {
+        this.buildInputField.bind(this)('分类 *', '分类选择器', this.bookInfoKind, (value: string) => {
             this.bookInfoKind = value;
         });
         this.buildInputField.bind(this)('最新章节', '最新章节选择器', this.bookInfoLastChapter, (value: string) => {
@@ -791,15 +850,16 @@ class BookSourceEditPage extends ViewV2 {
     private buildTocRuleTab(parent = null): void {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
+            Column.justifyContent(FlexAlign.Start);
             Column.padding(16);
         }, Column);
-        this.buildInputField.bind(this)('章节列表', '章节列表选择器', this.tocChapterList, (value: string) => {
+        this.buildInputField.bind(this)('章节列表 *', '章节列表选择器', this.tocChapterList, (value: string) => {
             this.tocChapterList = value;
         });
-        this.buildInputField.bind(this)('章节名称', '章节名称选择器', this.tocChapterName, (value: string) => {
+        this.buildInputField.bind(this)('章节名称 *', '章节名称选择器', this.tocChapterName, (value: string) => {
             this.tocChapterName = value;
         });
-        this.buildInputField.bind(this)('章节URL', '章节URL选择器', this.tocChapterUrl, (value: string) => {
+        this.buildInputField.bind(this)('章节URL *', '章节URL选择器', this.tocChapterUrl, (value: string) => {
             this.tocChapterUrl = value;
         });
         this.buildInputField.bind(this)('下一页URL', '下一页URL选择器', this.tocNextTocUrl, (value: string) => {
@@ -813,6 +873,7 @@ class BookSourceEditPage extends ViewV2 {
     private buildContentRuleTab(parent = null): void {
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             Column.create();
+            Column.justifyContent(FlexAlign.Start);
             Column.padding(16);
         }, Column);
         this.buildInputField.bind(this)('正文内容', '正文内容选择器', this.contentContent, (value: string) => {
@@ -899,4 +960,4 @@ class BookSourceEditPage extends ViewV2 {
     }
 }
 export { BookSourceEditPage };
-registerNamedRoute(() => new BookSourceEditPage(undefined, {}), "", { bundleName: "com.example.readerkitdemo", moduleName: "entry", pagePath: "pages/BookSourceEditPage", pageFullPath: "entry/src/main/ets/pages/BookSourceEditPage", integratedHsp: "false", moduleType: "followWithHap" });
+registerNamedRoute(() => new BookSourceEditPage(undefined, {}), "", { bundleName: "liubai.yuedu.hos", moduleName: "entry", pagePath: "pages/BookSourceEditPage", pageFullPath: "entry/src/main/ets/pages/BookSourceEditPage", integratedHsp: "false", moduleType: "followWithHap" });

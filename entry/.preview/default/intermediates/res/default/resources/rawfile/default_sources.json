@@ -1,7 +1,7 @@
 [
   {
     "bookSourceName": "笔趣阁",
-    "bookSourceUrl": "https://www.bqg128.com",
+    "bookSourceUrl": "https://www.bqg128.cc",
     "bookSourceGroup": "默认",
     "bookSourceComment": "系统默认书源，支持小说搜索和阅读",
     "bookSourceType": 0,
@@ -10,8 +10,8 @@
     "enabledExplore": true,
     "enabledReview": false,
     "header": "",
-    "searchUrl": "https://www.bqg128.com/search.php?keyword={{key}}",
-    "exploreUrl": "https://www.bqg128.com",
+    "searchUrl": "https://www.bqg128.cc/s?q={{key}}",
+    "exploreUrl": "https://www.bqg128.cc",
     "bookUrlPattern": "",
     "weight": 100,
     "customOrder": 1,
@@ -34,22 +34,24 @@
       "intro": "<dd>([\\s\\S]*?)<\\/dd>"
     },
     "ruleBookInfo": {
-      "name": "meta[property=\"og:title\"]@content",
-      "author": "meta[property=\"og:novel:author\"]@content",
-      "coverUrl": "meta[property=\"og:image\"]@content",
-      "intro": "meta[property=\"og:description\"]@content",
-      "kind": "meta[property=\"og:novel:category\"]@content",
-      "lastChapter": "meta[property=\"og:novel:latest_chapter_name\"]@content",
+       "name": "<meta property=\"og:novel:book_name\" content=\"([^\"]+)\"/>",
+      "author": "<meta property=\"og:novel:author\" content=\"([^\"]+)\"/>",
+      "coverUrl": "<meta property=\"og:image\" content=\"([^\"]+)\"/>",
+      "intro": "<meta property=\"og:description\" content=\"([^\"]+)\"/>",
+      "kind": "<meta property=\"og:novel:category\" content=\"([^\"]+)\"/>",
+      "lastChapter": "<meta property=\"og:novel:latest_chapter_name\" content=\"([^\"]+)\"/>",
+      "updateTime": "<meta property=\"og:novel:update_time\" content=\"([^\"]+)\"/>",
+      "status": "<meta property=\"og:novel:status\" content=\"([^\"]+)\"/>",
       "tocUrl": ""
     },
     "ruleToc": {
       "chapterList": "<div class=\"listmain\">([\\s\\S]*?)<\\/div>",
-      "chapterName": "a@text",
-      "chapterUrl": "a@href"
+      "chapterName": "<a[^>]*>([^<]+)<\\/a>",
+      "chapterUrl": "<a href\\s*=\\s*\"([^\"]+)\""
     },
     "ruleContent": {
-      "content": "div#content@text",
-      "replaceRegex": "笔趣阁##||www\\.bqg128\\.com##"
+      "content": "<div id=\"chaptercontent\"[^>]*>([\\s\\S]*?)<p class=\"readinline\">",
+      "replaceRegex": "笔趣阁##||www\\.bqg128\\.cc##||请收藏本站.*?<br />##||<br />##\n||最⊥新⊥小⊥说⊥在⊥六⊥9⊥⊥书⊥⊥吧⊥⊥首⊥发！<br />##"
     },
     "ruleReview": {}
   }

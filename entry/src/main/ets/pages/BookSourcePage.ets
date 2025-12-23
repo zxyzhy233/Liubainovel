@@ -20,37 +20,12 @@ import { common } from '@kit.AbilityKit';
 import { fileIo } from '@kit.CoreFileKit';
 import { util } from '@kit.ArkTS';
 import { bookSourceManager } from '../managers/BookSourceManager';
-import { BookSourceInfo as BookSourceInfoModel } from '../models/BookSourceModel';
+import { BookSourceInfo as BookSourceInfoModel, BookSourceRule as BookSourceRuleModel, ImportResult } from '../models/BookSourceModel';
 
 const TAG: string = 'BookSourcePage';
 
 /**
- * 书源规则接口
- */
-interface BookSourceRule {
-  author?: string;
-  bookList?: string;
-  bookUrl?: string;
-  coverUrl?: string;
-  intro?: string;
-  kind?: string;
-  lastChapter?: string;
-  name?: string;
-  wordCount?: string;
-  checkKeyWord?: string;
-  chapterList?: string;
-  chapterName?: string;
-  chapterUrl?: string;
-  nextTocUrl?: string;
-  content?: string;
-  nextContentUrl?: string;
-  replaceRegex?: string;
-  tocUrl?: string;
-  init?: string;
-}
-
-/**
- * 书源信息接口
+ * 鹿析信息接口
  */
 interface BookSource {
   id: number;
@@ -71,42 +46,12 @@ interface BookSource {
   bookUrlPattern?: string;
   weight?: number;
   customOrder?: number;
-  // 添加规则字段
-  ruleSearch?: BookSourceRule;
-  ruleExplore?: BookSourceRule;
-  ruleBookInfo?: BookSourceRule;
-  ruleToc?: BookSourceRule;
-  ruleContent?: BookSourceRule;
-  ruleReview?: BookSourceRule;
-}
-
-/**
- * 完整书源信息接口（与编辑页面保持一致）
- */
-interface BookSourceInfo {
-  bookSourceName: string;
-  bookSourceUrl: string;
-  bookSourceGroup: string;
-  bookSourceComment: string;
-  bookSourceType: number;
-  enabled: boolean;
-  enabledCookieJar: boolean;
-  enabledExplore: boolean;
-  enabledReview: boolean;
-  header: string;
-  searchUrl: string;
-  exploreUrl: string;
-  bookUrlPattern: string;
-  ruleSearch: BookSourceRule;
-  ruleExplore: BookSourceRule;
-  ruleBookInfo: BookSourceRule;
-  ruleToc: BookSourceRule;
-  ruleContent: BookSourceRule;
-  ruleReview: BookSourceRule;
-  weight: number;
-  customOrder: number;
-  lastUpdateTime?: number;
-  respondTime?: number;
+  ruleSearch?: BookSourceRuleModel;
+  ruleExplore?: BookSourceRuleModel;
+  ruleBookInfo?: BookSourceRuleModel;
+  ruleToc?: BookSourceRuleModel;
+  ruleContent?: BookSourceRuleModel;
+  ruleReview?: BookSourceRuleModel;
 }
 
 /**
@@ -114,7 +59,7 @@ interface BookSourceInfo {
  */
 interface PageReturnParams {
   action?: string;
-  sourceData?: BookSourceInfo;
+  sourceData?: BookSourceInfoModel;
 }
 
 /**
@@ -122,19 +67,6 @@ interface PageReturnParams {
  */
 interface PopupStateChangeEvent {
   isVisible: boolean;
-}
-
-/**
- * 弹窗状态变化监听器实现类
- */
-class PopupStateChangeListenerImpl {
-  /**
-   * 状态变化回调方法
-   * @param event 状态变化事件
-   */
-  onStateChange(event: PopupStateChangeEvent): void {
-    hilog.info(0x0000, TAG, '弹窗状态变化: ' + event.isVisible);
-  }
 }
 
 /**
@@ -166,111 +98,38 @@ interface RouterOptions {
  */
 interface RouterParams {
   isEdit: boolean;
-  sourceData?: BookSourceInfo;
+  sourceData?: BookSourceInfoModel;
 }
 
 /**
- * 弹窗配置选项接口
+ * 弹窗状态变化监听器实现类
  */
-interface PopupOptions {
-  builder: CustomBuilder;
-  placement: Placement;
-  maskColor: ResourceColor;
-  popupColor: ResourceColor;
-  enableArrow: boolean;
-  autoCancel: boolean;
-  onStateChange: (event: PopupStateChangeEvent) => void;
-}
-
-/**
- * 阴影配置选项接口
- */
-interface ShadowOptions {
-  radius: number;
-  color: ResourceColor;
-  offsetY: number;
-}
-
-/**
- * 边距配置选项接口
- */
-interface MarginOptions {
-  top: number;
-  bottom: number;
-  left: number;
-  right: number;
-}
-
-/**
- * 内边距配置选项接口
- */
-interface PaddingOptions {
-  top: number;
-  bottom: number;
-  left: number;
-  right: number;
-}
-
-/**
- * 文本溢出配置选项接口
- */
-interface TextOverflowOptions {
-  overflow: TextOverflow;
-}
-
-/**
- * Progress 配置选项接口
- */
-interface ProgressOptions {
-  type: ProgressType;
-  value: number;
-}
-
-/**
- * Toggle 配置选项接口
- */
-interface ToggleOptions {
-  type: ToggleType;
-  isOn: boolean;
-}
-
-/**
- * Image 配置选项接口
- */
-interface ImageOptions {
-  src: ResourceStr;
-}
-
-/**
- * Column 配置选项接口
- */
-interface ColumnOptions {
-  space?: number;
-}
-
-/**
- * Row 配置选项接口
- */
-interface RowOptions {
-  space?: number;
+class PopupStateChangeListenerImpl {
+  /**
+   * 状态变化回调方法
+   * @param event 状态变化事件
+   */
+  onStateChange(event: PopupStateChangeEvent): void {
+    hilog.info(0x0000, TAG, '弹窗状态变化: ' + event.isVisible);
+  }
 }
 
 @Entry
 @ComponentV2
 struct BookSourcePage {
-  @Local bookSources: BookSource[] = []; // 书源列表
-  @Local isLoading: boolean = false; // 加载状态
-  @Local showAddMenu: boolean = false; // 添加菜单弹窗状态
+  @Local bookSources: BookSource[] = [];
+  @Local isLoading: boolean = false;
+  @Local showAddMenu: boolean = false;
   
   // 创建弹窗状态变化监听器实例
   private popupStateChangeListener: PopupStateChangeListenerImpl = new PopupStateChangeListenerImpl();
 
   /**
    * 创建空规则对象
-   * @returns 空的书源规则对象
+   * @returns 空的鹿析规则对象
    */
-  private createEmptyRule(): BookSourceRule {
-    const emptyRule: BookSourceRule = {
+  private createEmptyRule(): BookSourceRuleModel {
+    const emptyRule: BookSourceRuleModel = {
       author: undefined,
       bookList: undefined,
       bookUrl: undefined,
@@ -294,28 +153,28 @@ struct BookSourcePage {
   }
 
   /**
-   * 创建书源对象
+   * 创建鹿析对象
    * @param source 源数据
    * @param emptyRule 空规则对象
    * @param index 索引
-   * @returns 书源对象
+   * @returns 鹿析对象
    */
-  private createBookSource(source: BookSourceInfoModel, emptyRule: BookSourceRule, index: number): BookSource {
+  private createBookSource(source: BookSourceInfoModel, emptyRule: BookSourceRuleModel, index: number): BookSource {
     // 先创建规则对象，确保类型正确
-    const ruleSearch: BookSourceRule = source.ruleSearch !== undefined ? source.ruleSearch : emptyRule;
-    const ruleExplore: BookSourceRule = source.ruleExplore !== undefined ? source.ruleExplore : emptyRule;
-    const ruleBookInfo: BookSourceRule = source.ruleBookInfo !== undefined ? source.ruleBookInfo : emptyRule;
-    const ruleToc: BookSourceRule = source.ruleToc !== undefined ? source.ruleToc : emptyRule;
-    const ruleContent: BookSourceRule = source.ruleContent !== undefined ? source.ruleContent : emptyRule;
-    const ruleReview: BookSourceRule = source.ruleReview !== undefined ? source.ruleReview : emptyRule;
+    const ruleSearch: BookSourceRuleModel = source.ruleSearch !== undefined ? source.ruleSearch : emptyRule;
+    const ruleExplore: BookSourceRuleModel = source.ruleExplore !== undefined ? source.ruleExplore : emptyRule;
+    const ruleBookInfo: BookSourceRuleModel = source.ruleBookInfo !== undefined ? source.ruleBookInfo : emptyRule;
+    const ruleToc: BookSourceRuleModel = source.ruleToc !== undefined ? source.ruleToc : emptyRule;
+    const ruleContent: BookSourceRuleModel = source.ruleContent !== undefined ? source.ruleContent : emptyRule;
+    const ruleReview: BookSourceRuleModel = source.ruleReview !== undefined ? source.ruleReview : emptyRule;
     
-    // 创建书源对象
+    // 创建鹿析对象
     const bookSource: BookSource = {
-      id: source.lastUpdateTime || Date.now() + index,
+      id: Number(source.lastUpdateTime ?? (Date.now() + index)),
       name: source.bookSourceName,
       url: source.bookSourceUrl,
       enabled: source.enabled,
-      description: source.bookSourceComment || source.bookSourceGroup || '默认书源',
+      description: source.bookSourceComment || source.bookSourceGroup || '默认鹿析',
       lastUpdate: source.lastUpdateTime ? new Date(source.lastUpdateTime).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       group: source.bookSourceGroup,
       comment: source.bookSourceComment,
@@ -346,20 +205,20 @@ struct BookSourcePage {
   async aboutToAppear() {
     await this.initializeBookSourceManager();
     await this.loadBookSources();
-    this.handleReturnParams();
+    await this.handleReturnParams();
   }
 
   /**
    * 处理从编辑页面返回的参数
    */
-  private handleReturnParams(): void {
+  private async handleReturnParams(): Promise<void> {
     try {
       const params = router.getParams() as PageReturnParams;
       if (params && params.action && params.sourceData) {
         if (params.action === 'add') {
-          this.addNewBookSource(params.sourceData);
+          await this.addNewBookSource(params.sourceData);
         } else if (params.action === 'update') {
-          this.updateBookSource(params.sourceData);
+          await this.updateBookSource(params.sourceData);
         }
       }
     } catch (error) {
@@ -368,129 +227,86 @@ struct BookSourcePage {
   }
 
   /**
-   * 添加新书源
-   * @param sourceData 书源数据
+   * 添加新鹿析
+   * @param sourceData 鹿析数据
    */
-  private addNewBookSource(sourceData: BookSourceInfo): void {
-    const newSource: BookSource = this.createNewBookSource(sourceData);
-    this.bookSources.push(newSource);
-    hilog.info(0x0000, TAG, '添加新书源: ' + newSource.name);
+  private async addNewBookSource(sourceData: BookSourceInfoModel): Promise<void> {
+    try {
+      // 使用BookSourceManager保存到持久化存储
+      await bookSourceManager.addBookSource(sourceData);
+      
+      // 重新加载鹿析列表以更新UI
+      await this.loadBookSources();
+      
+      hilog.info(0x0000, TAG, '添加新鹿析成功: ' + sourceData.bookSourceName);
+      
+      const successToastOptions: ToastOptions = {
+        message: '鹿析添加成功',
+        duration: 2000
+      };
+      this.getUIContext()
+        .getPromptAction()
+        .showToast(successToastOptions);
+    } catch (error) {
+      hilog.error(0x0000, TAG, '添加新鹿析失败: ' + JSON.stringify(error));
+      
+      const errorToastOptions: ToastOptions = {
+        message: '鹿析添加失败: ' + (error as Error).message,
+        duration: 2000
+      };
+      this.getUIContext()
+        .getPromptAction()
+        .showToast(errorToastOptions);
+    }
   }
 
   /**
-   * 创建新书源对象
-   * @param sourceData 书源数据
-   * @returns 新书源对象
+   * 更新鹿析
+   * @param sourceData 鹿析数据
    */
-  private createNewBookSource(sourceData: BookSourceInfo): BookSource {
-    // 先创建规则对象，确保类型正确
-    const ruleSearch: BookSourceRule = sourceData.ruleSearch;
-    const ruleExplore: BookSourceRule = sourceData.ruleExplore;
-    const ruleBookInfo: BookSourceRule = sourceData.ruleBookInfo;
-    const ruleToc: BookSourceRule = sourceData.ruleToc;
-    const ruleContent: BookSourceRule = sourceData.ruleContent;
-    const ruleReview: BookSourceRule = sourceData.ruleReview;
-    
-    // 创建书源对象
-    const newBookSource: BookSource = {
-      id: Date.now(),
-      name: sourceData.bookSourceName,
-      url: sourceData.bookSourceUrl,
-      enabled: sourceData.enabled,
-      description: sourceData.bookSourceComment || '用户添加的书源',
-      lastUpdate: new Date().toISOString().split('T')[0],
-      group: sourceData.bookSourceGroup,
-      comment: sourceData.bookSourceComment,
-      type: sourceData.bookSourceType,
-      enabledCookieJar: sourceData.enabledCookieJar,
-      enabledExplore: sourceData.enabledExplore,
-      enabledReview: sourceData.enabledReview,
-      header: sourceData.header,
-      searchUrl: sourceData.searchUrl,
-      exploreUrl: sourceData.exploreUrl,
-      bookUrlPattern: sourceData.bookUrlPattern,
-      weight: sourceData.weight,
-      customOrder: sourceData.customOrder,
-      ruleSearch: ruleSearch,
-      ruleExplore: ruleExplore,
-      ruleBookInfo: ruleBookInfo,
-      ruleToc: ruleToc,
-      ruleContent: ruleContent,
-      ruleReview: ruleReview
-    };
-    
-    return newBookSource;
+  private async updateBookSource(sourceData: BookSourceInfoModel): Promise<void> {
+    try {
+      // 使用BookSourceManager更新鹿析
+      await bookSourceManager.updateBookSource(sourceData);
+      
+      // 重新加载鹿析列表以更新UI
+      await this.loadBookSources();
+      
+      hilog.info(0x0000, TAG, '更新鹿析成功: ' + sourceData.bookSourceName);
+      
+      const successToastOptions: ToastOptions = {
+        message: '鹿析更新成功',
+        duration: 2000
+      };
+      this.getUIContext()
+        .getPromptAction()
+        .showToast(successToastOptions);
+    } catch (error) {
+      hilog.error(0x0000, TAG, '更新鹿析失败: ' + JSON.stringify(error));
+      
+      const errorToastOptions: ToastOptions = {
+        message: '鹿析更新失败: ' + (error as Error).message,
+        duration: 2000
+      };
+      this.getUIContext()
+        .getPromptAction()
+        .showToast(errorToastOptions);
+    }
   }
 
   /**
-   * 创建导入的书源对象
-   * @param sourceData 书源数据
-   * @param emptyRule 空规则对象
-   * @param importedCount 导入计数
-   * @returns 导入的书源对象
-   */
-  private createImportedBookSource(sourceData: BookSourceInfo, emptyRule: BookSourceRule, importedCount: number): BookSource {
-    // 先创建规则对象，确保类型正确
-    const ruleSearch: BookSourceRule = sourceData.ruleSearch !== undefined ? sourceData.ruleSearch : emptyRule;
-    const ruleExplore: BookSourceRule = sourceData.ruleExplore !== undefined ? sourceData.ruleExplore : emptyRule;
-    const ruleBookInfo: BookSourceRule = sourceData.ruleBookInfo !== undefined ? sourceData.ruleBookInfo : emptyRule;
-    const ruleToc: BookSourceRule = sourceData.ruleToc !== undefined ? sourceData.ruleToc : emptyRule;
-    const ruleContent: BookSourceRule = sourceData.ruleContent !== undefined ? sourceData.ruleContent : emptyRule;
-    const ruleReview: BookSourceRule = sourceData.ruleReview !== undefined ? sourceData.ruleReview : emptyRule;
-    
-    // 创建书源对象
-    const importedBookSource: BookSource = {
-      id: Date.now() + importedCount,
-      name: sourceData.bookSourceName,
-      url: sourceData.bookSourceUrl,
-      enabled: sourceData.enabled !== false,
-      description: sourceData.bookSourceComment || sourceData.bookSourceGroup || '导入的书源',
-      lastUpdate: new Date().toISOString().split('T')[0],
-      group: sourceData.bookSourceGroup,
-      comment: sourceData.bookSourceComment,
-      type: sourceData.bookSourceType || 0,
-      enabledCookieJar: sourceData.enabledCookieJar !== false,
-      enabledExplore: sourceData.enabledExplore !== false,
-      enabledReview: sourceData.enabledReview || false,
-      header: sourceData.header || '',
-      searchUrl: sourceData.searchUrl || '',
-      exploreUrl: sourceData.exploreUrl || '',
-      bookUrlPattern: sourceData.bookUrlPattern || '',
-      weight: sourceData.weight || 0,
-      customOrder: sourceData.customOrder || 0,
-      ruleSearch: ruleSearch,
-      ruleExplore: ruleExplore,
-      ruleBookInfo: ruleBookInfo,
-      ruleToc: ruleToc,
-      ruleContent: ruleContent,
-      ruleReview: ruleReview
-    };
-    
-    return importedBookSource;
-  }
-
-  /**
-   * 更新书源
-   * @param sourceData 书源数据
-   */
-  private updateBookSource(sourceData: BookSourceInfo): void {
-    // 这里简化处理，实际应该根据ID查找并更新
-    hilog.info(0x0000, TAG, '更新书源: ' + sourceData.bookSourceName);
-  }
-
-  /**
-   * 初始化书源管理器
+   * 初始化鹿析管理器
    */
   private async initializeBookSourceManager(): Promise<void> {
     try {
       this.isLoading = true;
       const context = getContext(this) as common.UIAbilityContext;
       await bookSourceManager.initialize(context);
-      hilog.info(0x0000, TAG, '书源管理器初始化成功');
+      hilog.info(0x0000, TAG, '鹿析理器初始化成功');
     } catch (error) {
-      hilog.error(0x0000, TAG, '书源管理器初始化失败: ' + JSON.stringify(error));
+      hilog.error(0x0000, TAG, '鹿析管理器初始化失败: ' + JSON.stringify(error));
       const toastOptions: ToastOptions = {
-        message: '书源管理器初始化失败',
+        message: '鹿析管理器初始化失败',
         duration: 2000
       };
       this.getUIContext()
@@ -502,19 +318,19 @@ struct BookSourcePage {
   }
 
   /**
-   * 加载书源数据
+   * 加载鹿析数据
    */
   private async loadBookSources(): Promise<void> {
     try {
       this.isLoading = true;
       
-      // 从书源管理器获取所有书源
+      // 从鹿析管理器获取所有书源
       const allSources = bookSourceManager.getAllBookSources();
       
       // 转换为页面使用的BookSource格式
       const convertedSources: BookSource[] = [];
       // 创建空规则对象
-      const emptyRule: BookSourceRule = this.createEmptyRule();
+      const emptyRule: BookSourceRuleModel = this.createEmptyRule();
       for (let i = 0; i < allSources.length; i++) {
         const source = allSources[i];
         const bookSource: BookSource = this.createBookSource(source, emptyRule, i);
@@ -522,10 +338,10 @@ struct BookSourcePage {
       }
       this.bookSources = convertedSources;
       
-      hilog.info(0x0000, TAG, '从书源管理器加载了 ' + this.bookSources.length + ' 个书源');
+      hilog.info(0x0000, TAG, '从鹿析管理器加载了 ' + this.bookSources.length + ' 个鹿析');
     } catch (error) {
-      hilog.error(0x0000, TAG, '加载书源数据失败: ' + JSON.stringify(error));
-      // 清空书源数组
+      hilog.error(0x0000, TAG, '加载鹿析数据失败: ' + JSON.stringify(error));
+      // 清空鹿析数组
       this.bookSources.splice(0, this.bookSources.length);
     } finally {
       this.isLoading = false;
@@ -533,7 +349,7 @@ struct BookSourcePage {
   }
 
   /**
-   * 导入书源文件
+   * 导入鹿析文件
    */
   private async importBookSources(): Promise<void> {
     try {
@@ -545,13 +361,13 @@ struct BookSourcePage {
       let documentSelectResult = await documentPicker.select(documentSelectOptions);
       
       if (!documentSelectResult || documentSelectResult.length <= 0) {
-        hilog.error(0x0000, TAG, '未选择书源文件');
+        hilog.error(0x0000, TAG, '未选择鹿析文件');
         return;
       }
       
       // 获取文件路径
       let srcFile: string = decodeURI(documentSelectResult[0]);
-      hilog.info(0x0000, TAG, '选择的书源文件: ' + srcFile);
+      hilog.info(0x0000, TAG, '选择的鹿析文件: ' + srcFile);
       
       // 读取文件内容
       let file = fileIo.openSync(srcFile, fileIo.OpenMode.READ_ONLY);
@@ -569,12 +385,12 @@ struct BookSourcePage {
       let jsonContent = textDecoder.decode(uint8Array);
       
       // 解析JSON数据
-      let bookSourcesData: BookSourceInfo[] = JSON.parse(jsonContent) as BookSourceInfo[];
+      let bookSourcesData: BookSourceInfoModel[] = JSON.parse(jsonContent) as BookSourceInfoModel[];
       
       if (!Array.isArray(bookSourcesData)) {
-        hilog.error(0x0000, TAG, '书源文件格式错误，应为数组格式');
+        hilog.error(0x0000, TAG, '鹿析文件格式错误，应为数组格式');
         const toastOptions: ToastOptions = {
-          message: '书源文件格式错误',
+          message: '鹿析文件格式错误',
           duration: 2000
         };
         this.getUIContext()
@@ -583,32 +399,31 @@ struct BookSourcePage {
         return;
       }
       
-      // 转换并添加书源
-      let importedCount = 0;
-      // 创建空规则对象
-      const emptyRule: BookSourceRule = this.createEmptyRule();
-      bookSourcesData.forEach((sourceData: BookSourceInfo) => {
-        if (sourceData.bookSourceName && sourceData.bookSourceUrl) {
-          const newSource: BookSource = this.createImportedBookSource(sourceData, emptyRule, importedCount);
-          
-          this.bookSources.push(newSource);
-          importedCount++;
-        }
-      });
+      // 使用BookSourceManager批量导入鹿析
+      const importResult: ImportResult = await bookSourceManager.importBookSources(bookSourcesData);
       
-      hilog.info(0x0000, TAG, `成功导入 ${importedCount} 个书源`);
+      // 重新加载鹿析列表以更新UI
+      await this.loadBookSources();
+      
+      hilog.info(0x0000, TAG, `导入完成，成功: ${importResult.success}，失败: ${importResult.failed}`);
+      
+      let message = `成功导入 ${importResult.success} 个鹿析`;
+      if (importResult.failed > 0) {
+        message += `，失败 ${importResult.failed} 个`;
+      }
+      
       const successToastOptions: ToastOptions = {
-        message: `成功导入 ${importedCount} 个书源`,
-        duration: 2000
+        message: message,
+        duration: 3000
       };
       this.getUIContext()
         .getPromptAction()
         .showToast(successToastOptions);
         
     } catch (error) {
-      hilog.error(0x0000, TAG, '导入书源失败: ' + JSON.stringify(error));
+      hilog.error(0x0000, TAG, '导入鹿析失败: ' + JSON.stringify(error));
       const errorToastOptions: ToastOptions = {
-        message: '导入书源失败',
+        message: '导入鹿析失败',
         duration: 2000
       };
       this.getUIContext()
@@ -618,28 +433,82 @@ struct BookSourcePage {
   }
 
   /**
-   * 切换书源启用状态
-   * @param source 书源对象
+   * 切换鹿析启用状态
+   * @param source 鹿析对象
    */
-  private toggleBookSource(source: BookSource): void {
-    source.enabled = !source.enabled;
-    hilog.info(0x0000, TAG, `${source.name} 已${source.enabled ? '启用' : '禁用'}`);
-  }
-
-  /**
-   * 删除书源
-   * @param sourceId 书源ID
-   */
-  private deleteBookSource(sourceId: number): void {
-    const index = this.bookSources.findIndex(source => source.id === sourceId);
-    if (index > -1) {
-      const deletedSource = this.bookSources.splice(index, 1)[0];
-      hilog.info(0x0000, TAG, '删除书源: ' + deletedSource.name);
+  private async toggleBookSource(source: BookSource): Promise<void> {
+    try {
+      const newEnabled = !source.enabled;
+      
+      // 使用BookSourceManager保存状态变更
+      await bookSourceManager.toggleBookSource(source.name, newEnabled);
+      
+      // 更新UI状态
+      source.enabled = newEnabled;
+      
+      hilog.info(0x0000, TAG, `${source.name} 已${newEnabled ? '启用' : '禁用'}`);
+      
+      const successToastOptions: ToastOptions = {
+        message: `${source.name} 已${newEnabled ? '启用' : '禁用'}`,
+        duration: 1500
+      };
+      this.getUIContext()
+        .getPromptAction()
+        .showToast(successToastOptions);
+    } catch (error) {
+      hilog.error(0x0000, TAG, `切换鹿析状态失败: ${(error as Error).message}`);
+      
+      const errorToastOptions: ToastOptions = {
+        message: '切换鹿析状态失败',
+        duration: 2000
+      };
+      this.getUIContext()
+        .getPromptAction()
+        .showToast(errorToastOptions);
     }
   }
 
   /**
-   * 跳转到新建书源页面
+   * 删除鹿析
+   * @param sourceId 鹿析ID
+   */
+  private async deleteBookSource(sourceId: number): Promise<void> {
+    try {
+      const index = this.bookSources.findIndex(source => source.id === sourceId);
+      if (index > -1) {
+        const deletedSource = this.bookSources[index];
+        
+        // 使用BookSourceManager从持久化存储中删除
+        await bookSourceManager.removeBookSource(deletedSource.name);
+        
+        // 从UI列表中移除
+        this.bookSources.splice(index, 1);
+        
+        hilog.info(0x0000, TAG, '删除鹿析成功: ' + deletedSource.name);
+        
+        const successToastOptions: ToastOptions = {
+          message: `已删除鹿析: ${deletedSource.name}`,
+          duration: 2000
+        };
+        this.getUIContext()
+          .getPromptAction()
+          .showToast(successToastOptions);
+      }
+    } catch (error) {
+      hilog.error(0x0000, TAG, `删除鹿析失败: ${error}`);
+      
+      const errorToastOptions: ToastOptions = {
+        message: '删除鹿析失败',
+        duration: 2000
+      };
+      this.getUIContext()
+        .getPromptAction()
+        .showToast(errorToastOptions);
+    }
+  }
+
+  /**
+   * 跳转到新建鹿析页面
    */
   private navigateToAddSource(): void {
     try {
@@ -652,14 +521,14 @@ struct BookSourcePage {
         params: routerParams
       };
       
-      hilog.info(0x0000, TAG, '准备跳转到新建书源页面');
+      hilog.info(0x0000, TAG, '准备跳转到新建鹿析页面');
       router.pushUrl(routerOptions).then(() => {
-        hilog.info(0x0000, TAG, '成功跳转到新建书源页面');
+        hilog.info(0x0000, TAG, '成功跳转到新建鹿析页面');
       }).catch((error: Error) => {
-        hilog.error(0x0000, TAG, '跳转到新建书源页面失败: ' + error.message);
+        hilog.error(0x0000, TAG, '跳转到新建鹿析页面失败: ' + (error as Error).message);
         // 显示错误提示
         const toastOptions: ToastOptions = {
-          message: '跳转失败: ' + error.message,
+          message: '跳转失败: ' + (error as Error).message,
           duration: 2000
         };
         this.getUIContext()
@@ -679,12 +548,12 @@ struct BookSourcePage {
   }
 
   /**
-   * 跳转到编辑书源页面
-   * @param source 书源对象
+   * 跳转到编辑鹿析页面
+   * @param source 鹿析对象
    */
   private navigateToEditSource(source: BookSource): void {
     try {
-      const sourceInfo: BookSourceInfo = this.createBookSourceInfoForEdit(source);
+      const sourceInfo: BookSourceInfoModel = this.createBookSourceInfoForEdit(source);
       
       const routerParams: RouterParams = {
         isEdit: true,
@@ -695,7 +564,7 @@ struct BookSourcePage {
         params: routerParams
       };
       router.pushUrl(routerOptions).catch((error: Error) => {
-        hilog.error(0x0000, TAG, '跳转到编辑书源页面失败: ' + error.message);
+        hilog.error(0x0000, TAG, '跳转到编辑鹿析页面失败: ' + (error as Error).message);
       });
     } catch (error) {
       hilog.error(0x0000, TAG, '创建路由参数失败: ' + JSON.stringify(error));
@@ -703,14 +572,14 @@ struct BookSourcePage {
   }
 
   /**
-   * 为编辑页面创建书源信息对象
-   * @param source 书源对象
-   * @returns 书源信息对象
+   * 为编辑页面创建鹿析信息对象
+   * @param source 鹿析对象
+   * @returns 鹿析信息对象
    */
-  private createBookSourceInfoForEdit(source: BookSource): BookSourceInfo {
-    const emptyRule: BookSourceRule = this.createEmptyRule();
+  private createBookSourceInfoForEdit(source: BookSource): BookSourceInfoModel {
+    const emptyRule: BookSourceRuleModel = this.createEmptyRule();
     
-    return {
+    const sourceInfo: BookSourceInfoModel = {
       bookSourceName: source.name,
       bookSourceUrl: source.url,
       bookSourceGroup: source.group || '',
@@ -734,281 +603,17 @@ struct BookSourcePage {
       ruleToc: source.ruleToc || emptyRule,
       ruleContent: source.ruleContent || emptyRule,
       ruleReview: source.ruleReview || emptyRule
-    } as BookSourceInfo;
+    };
+    
+    return sourceInfo;
   }
 
   /**
    * 弹窗状态变化处理函数
    * @param event 状态变化事件
    */
-  private handlePopupStateChange = (event: PopupStateChangeEvent): void => {
+  private handlePopupStateChange = (event: PopupStateChangeEvent) => {
     this.popupStateChangeListener.onStateChange(event);
-  }
-
-  /**
-   * 创建弹窗配置选项
-   * @returns 弹窗配置选项对象
-   */
-  private createPopupOptions(): PopupOptions {
-    const options: PopupOptions = {
-      builder: () => { this.popupWithButtonBuilder() },
-      placement: Placement.Bottom,
-      maskColor: Color.Transparent,
-      popupColor: Color.White,
-      enableArrow: true,
-      autoCancel: true,
-      onStateChange: this.handlePopupStateChange
-    };
-    return options;
-  }
-
-  /**
-   * 创建阴影配置选项
-   * @returns 阴影配置选项对象
-   */
-  private createShadowOptions(): ShadowOptions {
-    return {
-      radius: 2,
-      color: '#10000000',
-      offsetY: 1
-    };
-  }
-
-  /**
-   * 创建边距配置选项
-   * @returns 边距配置选项对象
-   */
-  private createMarginOptions(): MarginOptions {
-    return {
-      top: 4,
-      bottom: 0,
-      left: 0,
-      right: 0
-    };
-  }
-
-  /**
-   * 创建内边距配置选项
-   * @returns 内边距配置选项对象
-   */
-  private createPaddingOptions(): PaddingOptions {
-    return {
-      left: 16,
-      right: 16,
-      top: 0,
-      bottom: 0
-    };
-  }
-
-  /**
-   * 创建特定边距配置选项
-   * @returns 特定边距配置选项对象
-   */
-  private createSpecificMarginOptions(): MarginOptions {
-    return {
-      top: 44,
-      bottom: 0,
-      left: 0,
-      right: 0
-    };
-  }
-
-  /**
-   * 创建卡片边距配置选项
-   * @returns 卡片边距配置选项对象
-   */
-  private createCardMarginOptions(): MarginOptions {
-    return {
-      left: 16,
-      right: 16,
-      bottom: 12,
-      top: 0
-    };
-  }
-
-  /**
-   * 创建文本边距配置选项
-   * @returns 文本边距配置选项对象
-   */
-  private createTextMarginOptions(): MarginOptions {
-    return {
-      top: 4,
-      bottom: 0,
-      left: 0,
-      right: 0
-    };
-  }
-
-  /**
-   * 创建按钮边距配置选项
-   * @returns 按钮边距配置选项对象
-   */
-  private createButtonMarginOptions(): MarginOptions {
-    return {
-      left: 8,
-      right: 0,
-      top: 0,
-      bottom: 0
-    };
-  }
-
-  /**
-   * 创建底部边距配置选项
-   * @returns 底部边距配置选项对象
-   */
-  private createBottomMarginOptions(): MarginOptions {
-    return {
-      bottom: 8,
-      top: 0,
-      left: 0,
-      right: 0
-    };
-  }
-
-  /**
-   * 创建顶部边距配置选项
-   * @returns 顶部边距配置选项对象
-   */
-  private createTopMarginOptions(): MarginOptions {
-    return {
-      top: 12,
-      bottom: 0,
-      left: 0,
-      right: 0
-    };
-  }
-
-  /**
-   * 创建列表内边距配置选项
-   * @returns 列表内边距配置选项对象
-   */
-  private createListPaddingOptions(): PaddingOptions {
-    return {
-      left: 0,
-      right: 0,
-      top: 8,
-      bottom: 8
-    };
-  }
-
-  /**
-   * 创建按钮内边距配置选项
-   * @returns 按钮内边距配置选项对象
-   */
-  private createButtonPaddingOptions(): PaddingOptions {
-    return {
-      left: 12,
-      right: 12,
-      top: 4,
-      bottom: 4
-    };
-  }
-
-  /**
-   * 创建大按钮内边距配置选项
-   * @returns 大按钮内边距配置选项对象
-   */
-  private createLargeButtonPaddingOptions(): PaddingOptions {
-    return {
-      left: 20,
-      right: 20,
-      top: 8,
-      bottom: 8
-    };
-  }
-
-  /**
-   * 创建菜单内边距配置选项
-   * @returns 菜单内边距配置选项对象
-   */
-  private createMenuPaddingOptions(): PaddingOptions {
-    return {
-      left: 16,
-      right: 16,
-      top: 0,
-      bottom: 0
-    };
-  }
-
-  /**
-   * 创建文本溢出配置选项
-   * @returns 文本溢出配置选项对象
-   */
-  private createTextOverflowOptions(): TextOverflowOptions {
-    return {
-      overflow: TextOverflow.Ellipsis
-    };
-  }
-
-  /**
-   * 创建底部16边距配置选项
-   * @returns 底部16边距配置选项对象
-   */
-  private createBottom16MarginOptions(): MarginOptions {
-    return {
-      bottom: 16,
-      top: 0,
-      left: 0,
-      right: 0
-    };
-  }
-
-  /**
-   * 创建Progress配置选项
-   * @returns Progress配置选项对象
-   */
-  private createProgressOptions(): ProgressOptions {
-    return {
-      type: ProgressType.Ring,
-      value: 0
-    };
-  }
-
-  /**
-   * 创建Toggle配置选项
-   * @param isOn 开关状态
-   * @returns Toggle配置选项对象
-   */
-  private createToggleOptions(isOn: boolean): ToggleOptions {
-    const options: ToggleOptions = {
-      type: ToggleType.Switch,
-      isOn: isOn
-    };
-    return options;
-  }
-
-  /**
-   * 创建Image配置选项
-   * @param src 图片资源
-   * @returns Image配置选项对象
-   */
-  private createImageOptions(src: ResourceStr): ImageOptions {
-    const options: ImageOptions = {
-      src: src
-    };
-    return options;
-  }
-
-  /**
-   * 创建Column配置选项
-   * @returns Column配置选项对象
-   */
-  private createColumnOptions(): ColumnOptions {
-    const options: ColumnOptions = {
-      space: undefined
-    };
-    return options;
-  }
-
-  /**
-   * 创建Row配置选项
-   * @returns Row配置选项对象
-   */
-  private createRowOptions(): RowOptions {
-    const options: RowOptions = {
-      space: undefined
-    };
-    return options;
   }
 
   /**
@@ -1026,20 +631,18 @@ struct BookSourcePage {
     Row() {
       // 返回按钮
       Button() {
-        Text('‹')
-          .fontSize(24)
-          .fontColor('#2D3748')
-          .fontWeight(FontWeight.Bold)
+        Text('👈')
+          .fontSize(20)
       }
-      .width(this.getButtonSize())
-      .height(this.getButtonSize())
+      .width(40)
+      .height(40)
       .backgroundColor(Color.Transparent)
       .onClick(() => {
         this.goBack();
       })
       
       // 标题
-      Text('书源管理')
+      Text('鹿析管理')
         .fontSize(20)
         .fontWeight(FontWeight.Bold)
         .fontColor('#2D3748')
@@ -1048,37 +651,49 @@ struct BookSourcePage {
       
       // 添加按钮
       Button() {
-        Text('+')
-          .fontSize(24)
-          .fontColor('#2D3748')
-          .fontWeight(FontWeight.Bold)
+        Text('➕')
+          .fontSize(20)
       }
-      .width(this.getButtonSize())
-      .height(this.getButtonSize())
+      .width(40)
+      .height(40)
       .backgroundColor(Color.Transparent)
       .onClick(() => {
         this.showAddMenu = !this.showAddMenu;
       })
-      .bindPopup($$this.showAddMenu, this.createPopupOptions())
+      .bindPopup($$this.showAddMenu, {
+        builder: this.popupWithButtonBuilder,
+        placement: Placement.Bottom,
+        maskColor: Color.Transparent,
+        popupColor: Color.White,
+        enableArrow: true,
+        autoCancel: true,
+        onStateChange: this.handlePopupStateChange
+      })
     }
+    //.width('100%')
+    //.height(56)
+    //.padding({ left: 16, right: 16, top: 0, bottom: 0 })
+    //.margin({ top: 44, bottom: 0, left: 0, right: 0 })
+    //.backgroundColor(Color.White)
+    //.shadow({ radius: 2, color: '#10000000', offsetY: 1 })
     .width('100%')
-    .height(this.getNavBarHeight())
-    .padding(this.createPaddingOptions())
-    .margin(this.createSpecificMarginOptions())
-    .backgroundColor(Color.White)
-    .shadow(this.createShadowOptions())
+    .height(56)
+    .padding({ left: 16, right: 16 })
+    .margin({ top: 44 })
+    .justifyContent(FlexAlign.Start)
+    .alignItems(VerticalAlign.Center)
   }
 
   /**
-   * 构建书源卡片
+   * 构建鹿析卡片
    */
   @Builder
   private buildBookSourceCard(source: BookSource): void {
     Column() {
-      // 书源信息行
+      // 鹿析信息行
       Row() {
         Column() {
-          // 书源名称
+          // 鹿析名称
           Text(source.name)
             .fontSize(16)
             .fontWeight(FontWeight.Medium)
@@ -1086,27 +701,27 @@ struct BookSourcePage {
             .width('100%')
             .textAlign(TextAlign.Start)
           
-          // 书源URL
+          // 鹿析URL
           Text(source.url)
             .fontSize(12)
             .fontColor('#718096')
-            .margin(this.createTextMarginOptions())
+            .margin({ top: 4, bottom: 0, left: 0, right: 0 })
             .width('100%')
             .textAlign(TextAlign.Start)
             .maxLines(1)
-            .textOverflow(this.createTextOverflowOptions())
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
         }
         .layoutWeight(1)
         .alignItems(HorizontalAlign.Start)
         
         // 启用开关
-        Toggle(this.createToggleOptions(source.enabled))
-          .onChange((isOn: boolean) => {
+        Toggle({ type: ToggleType.Switch, isOn: source.enabled })
+          .onChange(isOn => {
             this.toggleBookSource(source);
           })
       }
       .width('100%')
-      .margin(this.createBottomMarginOptions())
+      .margin({ bottom: 8, top: 0, left: 0, right: 0 })
       
       // 描述和更新时间
       Row() {
@@ -1115,14 +730,14 @@ struct BookSourcePage {
           .fontColor('#4A5568')
           .layoutWeight(1)
           .maxLines(1)
-          .textOverflow(this.createTextOverflowOptions())
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
         
-        Text('更新: ' + source.lastUpdate)
+        Text('更新: ' + (source.lastUpdate || ''))
           .fontSize(10)
           .fontColor('#A0AEC0')
       }
       .width('100%')
-      .margin(this.createBottomMarginOptions())
+      .margin({ bottom: 8, top: 0, left: 0, right: 0 })
       
       // 操作按钮
       Row() {
@@ -1130,19 +745,19 @@ struct BookSourcePage {
           .fontSize(12)
           .fontColor('#3182CE')
           .backgroundColor('#EBF8FF')
-          .borderRadius(this.getButtonBorderRadius())
-          .padding(this.createButtonPaddingOptions())
+          .borderRadius(16)
+          .padding({ left: 12, right: 12, top: 4, bottom: 4 })
           .onClick(() => {
-            hilog.info(0x0000, TAG, '测试书源: ' + source.name);
+            hilog.info(0x0000, TAG, '测试鹿析: ' + source.name);
           })
         
         Button('编辑')
           .fontSize(12)
           .fontColor('#38A169')
           .backgroundColor('#C6F6D5')
-          .borderRadius(this.getButtonBorderRadius())
-          .padding(this.createButtonPaddingOptions())
-          .margin(this.createButtonMarginOptions())
+          .borderRadius(16)
+          .padding({ left: 12, right: 12, top: 4, bottom: 4 })
+          .margin({ left: 8, right: 0, top: 0, bottom: 0 })
           .onClick(() => {
             this.navigateToEditSource(source);
           })
@@ -1153,8 +768,8 @@ struct BookSourcePage {
           .fontSize(12)
           .fontColor('#E53E3E')
           .backgroundColor('#FED7D7')
-          .borderRadius(this.getButtonBorderRadius())
-          .padding(this.createButtonPaddingOptions())
+          .borderRadius(16)
+          .padding({ left: 12, right: 12, top: 4, bottom: 4 })
           .onClick(() => {
             this.deleteBookSource(source.id);
           })
@@ -1162,75 +777,11 @@ struct BookSourcePage {
       .width('100%')
     }
     .width('100%')
-    .padding(this.getCardPadding())
+    .padding(12)
     .backgroundColor(Color.White)
     .borderRadius(8)
-    .margin(this.createCardMarginOptions())
-    .shadow(this.createShadowOptions())
-  }
-
-  /**
-   * 获取弹出菜单宽度
-   * @returns 弹出菜单宽度
-   */
-  private getPopupMenuWidth(): number {
-    return 160;
-  }
-
-  /**
-   * 获取菜单项高度
-   * @returns 菜单项高度
-   */
-  private getMenuItemHeight(): number {
-    return 50;
-  }
-
-  /**
-   * 获取按钮尺寸
-   * @returns 按钮尺寸
-   */
-  private getButtonSize(): number {
-    return 40;
-  }
-
-  /**
-   * 获取导航栏高度
-   * @returns 导航栏高度
-   */
-  private getNavBarHeight(): number {
-    return 56;
-  }
-
-  /**
-   * 获取卡片内边距
-   * @returns 卡片内边距
-   */
-  private getCardPadding(): number {
-    return 16;
-  }
-
-  /**
-   * 获取按钮圆角半径
-   * @returns 按钮圆角半径
-   */
-  private getButtonBorderRadius(): number {
-    return 16;
-  }
-
-  /**
-   * 获取卡片圆角半径
-   * @returns 卡片圆角半径
-   */
-  private getCardBorderRadius(): number {
-    return 8;
-  }
-
-  /**
-   * 获取大按钮圆角半径
-   * @returns 大按钮圆角半径
-   */
-  private getLargeButtonBorderRadius(): number {
-    return 20;
+    .margin({bottom: 8, top: 0 })
+    .shadow({ radius: 2, color: '#10000000', offsetY: 1 })
   }
 
   /**
@@ -1243,7 +794,7 @@ struct BookSourcePage {
         Image($r("app.media.Plus"))
           .width(20)
           .height(20)
-        Text('新建书源')
+        Text('新建鹿析')
           .fontSize(18)
       }
       .height(50)
@@ -1260,7 +811,7 @@ struct BookSourcePage {
         Image($r("app.media.SignIn"))
           .width(20)
           .height(20)
-        Text('导入书源')
+        Text('导入鹿析')
           .fontSize(18)
       }
       .height(50)
@@ -1285,14 +836,14 @@ struct BookSourcePage {
       if (this.isLoading) {
         // 加载状态
         Column() {
-        Progress(this.createProgressOptions())
-          .width(this.getButtonSize())
-          .height(this.getButtonSize())
+          Progress({ type: ProgressType.Ring, value: 0 })
+            .width(40)
+            .height(40)
             .color('#3182CE')
-          Text('正在加载书源...')
+          Text('正在加载鹿析...')
             .fontSize(14)
             .fontColor('#718096')
-            .margin(this.createTopMarginOptions())
+            .margin({ top: 12, bottom: 0, left: 0, right: 0 })
         }
         .width('100%')
         .layoutWeight(1)
@@ -1300,19 +851,19 @@ struct BookSourcePage {
       } else if (this.bookSources.length === 0) {
         // 空状态
         Column() {
-          Text('📚')
+          Text('🦌')
             .fontSize(48)
-            .margin(this.createTopMarginOptions())
-          Text('暂无书源')
+            .margin({ top: 12, bottom: 0, left: 0, right: 0 })
+          Text('暂无鹿析')
             .fontSize(16)
             .fontColor('#718096')
-            .margin(this.createBottom16MarginOptions())
-          Button('添加书源')
+            .margin({ bottom: 16, top: 0, left: 0, right: 0 })
+          Button('添加鹿析')
             .fontSize(14)
             .fontColor(Color.White)
             .backgroundColor('#3182CE')
             .borderRadius(20)
-            .padding(this.createLargeButtonPaddingOptions())
+            .padding({ left: 20, right: 20, top: 8, bottom: 8 })
             .onClick(() => {
               this.navigateToAddSource();
             })
@@ -1321,7 +872,7 @@ struct BookSourcePage {
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
       } else {
-        // 书源列表
+        // 鹿析列表
         List() {
           ForEach(this.bookSources, (source: BookSource) => {
             ListItem() {
@@ -1331,7 +882,7 @@ struct BookSourcePage {
         }
         .width('100%')
         .layoutWeight(1)
-        .padding(this.createListPaddingOptions())
+        .padding({ left: 0, right: 0, top: 8, bottom: 8 })
         .scrollBar(BarState.Off)
       }
     }

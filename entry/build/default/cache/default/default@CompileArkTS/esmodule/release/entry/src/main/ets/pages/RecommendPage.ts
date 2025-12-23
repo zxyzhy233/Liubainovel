@@ -7,21 +7,12 @@ interface RecommendPage_Params {
     isLoading?: boolean;
     errorMessage?: string;
 }
-import http from "@ohos:net.http";
 import hilog from "@ohos:hilog";
 import type common from "@ohos:app.ability.common";
 import type Want from "@ohos:app.ability.Want";
+import { bookSourceManager } from "@bundle:liubai.yuedu.hos/entry/ets/managers/BookSourceManager";
+import type { NovelInfo } from '../models/BookSourceModel';
 const TAG: string = 'RecommendPage';
-/**
- * 小说信息接口
- */
-interface NovelInfo {
-    cover: string; // 封面图片URL
-    title: string; // 小说标题
-    author: string; // 作者
-    description: string; // 简介
-    link: string; // 详情链接
-}
 class RecommendPage extends ViewPU {
     constructor(parent, params, __localStorage, elmtId = -1, paramsLambda = undefined, extraInfo) {
         super(parent, __localStorage, elmtId, extraInfo);
@@ -97,143 +88,53 @@ class RecommendPage extends ViewPU {
      * 页面显示时加载推荐小说
      */
     async aboutToAppear() {
+        // 初始化书源管理器
+        await this.initializeBookSourceManager();
+        // 加载推荐小说
         await this.loadRecommendNovels();
     }
     /**
-     * 从笔趣阁网站加载推荐小说
+     * 初始化书源管理器
      */
-    private async loadRecommendNovels() {
+    private async initializeBookSourceManager(): Promise<void> {
+        try {
+            const context = getContext(this) as common.UIAbilityContext;
+            await bookSourceManager.initialize(context);
+            hilog.info(0x0000, TAG, '书源管理器初始化成功');
+        }
+        catch (error) {
+            hilog.error(0x0000, TAG, '书源管理器初始化失败: ' + JSON.stringify(error));
+        }
+    }
+    /**
+     * 使用书源管理器加载推荐小说
+     */
+    private async loadRecommendNovels(): Promise<void> {
         try {
             this.isLoading = true;
             this.errorMessage = '';
-            // 创建HTTP请求
-            let httpRequest = http.createHttp();
-            let response = await httpRequest.request('https://www.bqg128.com/', {
-                method: http.RequestMethod.GET,
-                header: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
-            });
-            if (response.responseCode === 200) {
-                const htmlContent = response.result.toString();
-                this.parseNovelList(htmlContent);
+            hilog.info(0x0000, TAG, '开始通过书源管理器获取推荐小说');
+            // 使用书源管理器获取推荐小说
+            const result = await bookSourceManager.getRecommendNovels();
+            if (result.success && result.data) {
+                this.novelList = result.data.slice(0, 8); // 取前8本小说用于轮播
+                hilog.info(0x0000, TAG, `成功获取 ${this.novelList.length} 本推荐小说，来源: ${result.source || '未知'}`);
+                // 打印获取到的小说信息
+                this.novelList.forEach((novel, index) => {
+                    hilog.info(0x0000, TAG, `小说${index + 1}: ${novel.title} - ${novel.author}`);
+                });
             }
             else {
-                hilog.error(0x0000, TAG, 'HTTP请求失败: ' + response.responseCode);
-                this.errorMessage = '网络请求失败，请检查网络连接';
+                this.errorMessage = result.error || '获取推荐小说失败';
+                hilog.error(0x0000, TAG, '获取推荐小说失败: ' + this.errorMessage);
             }
         }
         catch (error) {
-            hilog.error(0x0000, TAG, '加载推荐小说失败: ' + JSON.stringify(error));
+            hilog.error(0x0000, TAG, '加载推荐小说异常: ' + JSON.stringify(error));
             this.errorMessage = '加载失败，请重试';
         }
         finally {
             this.isLoading = false;
-        }
-    }
-    /**
-     * 使用正则表达式解析HTML内容，提取热门小说信息
-     * @param html HTML内容
-     */
-    private parseNovelList(html: string) {
-        try {
-            // 先打印HTML内容的一部分用于调试
-            hilog.info(0x0000, TAG, 'HTML内容长度: ' + html.length);
-            // 匹配 <div class="hot"> 区域内容，使用更精确的匹配
-            const hotRegex = /<div class="hot">([\s\S]*?)<\/div>\s*<div class="top">/;
-            const hotMatch = hotRegex.exec(html);
-            if (!hotMatch) {
-                hilog.warn(0x0000, TAG, '未找到热门小说区域，尝试备用匹配');
-                // 备用匹配方案
-                const hotRegexAlt = /<div class="hot">([\s\S]*?)(?=<div class="top"|$)/;
-                const hotMatchAlt = hotRegexAlt.exec(html);
-                if (!hotMatchAlt) {
-                    this.errorMessage = '未找到热门小说数据';
-                    return;
-                }
-                this.parseHotContent(hotMatchAlt[1]);
-                return;
-            }
-            this.parseHotContent(hotMatch[1]);
-        }
-        catch (error) {
-            hilog.error(0x0000, TAG, '解析HTML失败: ' + JSON.stringify(error));
-            this.errorMessage = '解析数据失败';
-        }
-    }
-    /**
-     * 解析热门区域内容
-     * @param hotContent 热门区域HTML内容
-     */
-    private parseHotContent(hotContent: string) {
-        try {
-            hilog.info(0x0000, TAG, '热门区域内容长度: ' + hotContent.length);
-            const novels: NovelInfo[] = [];
-            // 使用更精确的正则表达式匹配完整的item结构
-            const itemRegex = /<div class="item">[\s\S]*?<div class="image">[\s\S]*?<\/div>[\s\S]*?<dl>[\s\S]*?<\/dl>[\s\S]*?<\/div>/g;
-            let itemMatch: RegExpExecArray | null;
-            let count = 0;
-            while ((itemMatch = itemRegex.exec(hotContent)) !== null && count < 4) {
-                const itemContent = itemMatch[0]; // 使用完整匹配内容
-                hilog.info(0x0000, TAG, `解析第${count + 1}个item，内容长度: ${itemContent.length}`);
-                // 提取封面图片
-                const coverRegex = /<img[^>]+src="([^"]+)"[^>]*>/;
-                const coverMatch = coverRegex.exec(itemContent);
-                const cover = coverMatch ? coverMatch[1] : '';
-                // 提取小说标题和链接
-                const titleRegex = /<a[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>/g;
-                let titleMatch: RegExpExecArray | null;
-                let link = '';
-                let title = '';
-                // 找到dt标签内的a标签（第二个a标签通常是标题）
-                let matchCount = 0;
-                while ((titleMatch = titleRegex.exec(itemContent)) !== null) {
-                    matchCount++;
-                    if (matchCount === 2) { // 第二个a标签是标题
-                        link = titleMatch[1];
-                        title = titleMatch[2].trim();
-                        break;
-                    }
-                }
-                // 如果没找到第二个a标签，使用第一个
-                if (!title && !link) {
-                    titleRegex.lastIndex = 0; // 重置正则表达式
-                    titleMatch = titleRegex.exec(itemContent);
-                    if (titleMatch) {
-                        link = titleMatch[1];
-                        title = titleMatch[2].trim();
-                    }
-                }
-                // 提取作者
-                const authorRegex = /<span[^>]*>([^<]+)<\/span>/;
-                const authorMatch = authorRegex.exec(itemContent);
-                const author = authorMatch ? authorMatch[1].trim() : '未知作者';
-                // 提取简介
-                const descRegex = /<dd[^>]*>([^<]+)<\/dd>/;
-                const descMatch = descRegex.exec(itemContent);
-                const description = descMatch ? descMatch[1].trim() : '暂无简介';
-                hilog.info(0x0000, TAG, `解析结果 - 标题: ${title}, 作者: ${author}, 链接: ${link}`);
-                if (title && link) {
-                    novels.push({
-                        cover: cover.startsWith('http') ? cover : 'https://www.bqg128.com' + cover,
-                        title: title,
-                        author: author,
-                        description: description,
-                        link: link.startsWith('http') ? link : 'https://www.bqg128.com' + link
-                    } as NovelInfo);
-                    count++;
-                }
-            }
-            this.novelList = novels.slice(0, 4); // 只取4本小说
-            hilog.info(0x0000, TAG, '成功解析 ' + this.novelList.length + ' 本热门小说');
-            // 打印解析结果用于调试
-            this.novelList.forEach((novel, index) => {
-                hilog.info(0x0000, TAG, `小说${index + 1}: ${novel.title} - ${novel.author}`);
-            });
-        }
-        catch (error) {
-            hilog.error(0x0000, TAG, '解析热门内容失败: ' + JSON.stringify(error));
-            this.errorMessage = '解析数据失败';
         }
     }
     /**
@@ -260,177 +161,144 @@ class RecommendPage extends ViewPU {
                         Column.create();
                     }, Column);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        // 轮播图指示器
-                        Row.create();
-                        // 轮播图指示器
-                        Row.justifyContent(FlexAlign.Center);
-                        // 轮播图指示器
-                        Row.margin({ bottom: 16 });
-                    }, Row);
+                        // 使用 Swiper 组件替代自定义轮播图
+                        Swiper.create();
+                        // 使用 Swiper 组件替代自定义轮播图
+                        Swiper.width('90%');
+                        // 使用 Swiper 组件替代自定义轮播图
+                        Swiper.height(480);
+                        // 使用 Swiper 组件替代自定义轮播图
+                        Swiper.vertical(false);
+                        // 使用 Swiper 组件替代自定义轮播图
+                        Swiper.autoPlay(true);
+                        // 使用 Swiper 组件替代自定义轮播图
+                        Swiper.interval(4000);
+                        // 使用 Swiper 组件替代自定义轮播图
+                        Swiper.displayArrow(false);
+                        // 使用 Swiper 组件替代自定义轮播图
+                        Swiper.effectMode(EdgeEffect.None);
+                        // 使用 Swiper 组件替代自定义轮播图
+                        Swiper.indicator(new DotIndicator()
+                            .itemWidth(8)
+                            .itemHeight(8)
+                            .selectedItemWidth(12)
+                            .selectedItemHeight(8)
+                            .color('#80808080') // 未选中指示器颜色
+                            .selectedColor('#FFFF0000'));
+                        // 使用 Swiper 组件替代自定义轮播图
+                        Swiper.onChange((index: number) => {
+                            this.currentIndex = index;
+                        });
+                    }, Swiper);
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         ForEach.create();
                         const forEachItemGenFunction = (_item, index: number) => {
-                            const item = _item;
+                            const novel = _item;
                             this.observeComponentCreation2((elmtId, isInitialRender) => {
-                                Circle.create({ width: 8, height: 8 });
-                                Circle.fill(index === this.currentIndex ? '#FF0000' : '#808080');
-                                Circle.margin({ right: 4 });
-                            }, Circle);
+                                // 轮播图内容
+                                Stack.create({ alignContent: Alignment.Bottom });
+                                // 轮播图内容
+                                Stack.height(480);
+                                // 轮播图内容
+                                Stack.width('90%');
+                                // 轮播图内容
+                                Stack.onClick(() => {
+                                    // 点击跳转到小说详情
+                                    this.openNovelDetail(novel);
+                                });
+                            }, Stack);
+                            this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                // 小说封面
+                                Image.create(novel.cover);
+                                // 小说封面
+                                Image.width('100%');
+                                // 小说封面
+                                Image.height(480);
+                                // 小说封面
+                                Image.objectFit(ImageFit.Cover);
+                                // 小说封面
+                                Image.borderRadius(12);
+                            }, Image);
+                            this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                // 小说信息遮罩 - 与封面底部对齐
+                                Column.create();
+                                // 小说信息遮罩 - 与封面底部对齐
+                                Column.padding(16);
+                                // 小说信息遮罩 - 与封面底部对齐
+                                Column.width('100%');
+                                // 小说信息遮罩 - 与封面底部对齐
+                                Column.align(Alignment.Top);
+                                // 小说信息遮罩 - 与封面底部对齐
+                                Column.backgroundColor('#80000000');
+                                // 小说信息遮罩 - 与封面底部对齐
+                                Column.alignSelf(ItemAlign.End);
+                                // 小说信息遮罩 - 与封面底部对齐
+                                Column.borderRadius({ bottomLeft: 12, bottomRight: 12 });
+                            }, Column);
+                            this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                Text.create(novel.title);
+                                Text.fontSize(18);
+                                Text.fontWeight(FontWeight.Bold);
+                                Text.fontColor('#FFFFFF');
+                                Text.margin({ bottom: 8 });
+                                Text.maxLines(1);
+                                Text.textOverflow({ overflow: TextOverflow.Ellipsis });
+                            }, Text);
+                            Text.pop();
+                            this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                Text.create('作者: ' + novel.author);
+                                Text.fontSize(14);
+                                Text.fontColor('#FFFFFF');
+                                Text.margin({ bottom: 8 });
+                                Text.opacity(0.9);
+                            }, Text);
+                            Text.pop();
+                            this.observeComponentCreation2((elmtId, isInitialRender) => {
+                                Text.create(novel.description);
+                                Text.fontSize(12);
+                                Text.fontColor('#FFFFFF');
+                                Text.maxLines(2);
+                                Text.textOverflow({ overflow: TextOverflow.Ellipsis });
+                                Text.opacity(0.8);
+                            }, Text);
+                            Text.pop();
+                            // 小说信息遮罩 - 与封面底部对齐
+                            Column.pop();
+                            // 轮播图内容
+                            Stack.pop();
                         };
-                        this.forEachUpdateFunction(elmtId, this.novelList, forEachItemGenFunction, undefined, true, false);
+                        this.forEachUpdateFunction(elmtId, this.novelList, forEachItemGenFunction, (novel: NovelInfo) => novel.link, true, false);
                     }, ForEach);
                     ForEach.pop();
-                    // 轮播图指示器
-                    Row.pop();
+                    // 使用 Swiper 组件替代自定义轮播图
+                    Swiper.pop();
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        // 轮播图内容
-                        Stack.create();
-                        // 轮播图内容
-                        Stack.height(480);
-                        // 轮播图内容
-                        Stack.width('90%');
-                        // 轮播图内容
-                        Stack.onClick(() => {
-                            // 点击跳转到小说详情
-                            this.openNovelDetail(this.novelList[this.currentIndex]);
-                        });
-                    }, Stack);
-                    this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        // 小说封面
-                        Image.create(this.novelList[this.currentIndex].cover);
-                        // 小说封面
-                        Image.width('100%');
-                        // 小说封面
-                        Image.height(480);
-                        // 小说封面
-                        Image.objectFit(ImageFit.Cover);
-                        // 小说封面
-                        Image.borderRadius(12);
-                    }, Image);
-                    this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        // 小说信息遮罩 - 与封面底部对齐
-                        Column.create();
-                        // 小说信息遮罩 - 与封面底部对齐
-                        Column.padding(16);
-                        // 小说信息遮罩 - 与封面底部对齐
-                        Column.width('100%');
-                        // 小说信息遮罩 - 与封面底部对齐
-                        Column.backgroundColor('#80000000');
-                        // 小说信息遮罩 - 与封面底部对齐
-                        Column.alignSelf(ItemAlign.End);
-                        // 小说信息遮罩 - 与封面底部对齐
-                        Column.borderRadius({ bottomLeft: 12, bottomRight: 12 });
-                    }, Column);
-                    this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        Text.create(this.novelList[this.currentIndex].title);
-                        Text.fontSize(18);
-                        Text.fontWeight(FontWeight.Bold);
-                        Text.fontColor('#FFFFFF');
-                        Text.margin({ bottom: 8 });
-                        Text.maxLines(1);
-                        Text.textOverflow({ overflow: TextOverflow.Ellipsis });
-                    }, Text);
-                    Text.pop();
-                    this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        Text.create('作者: ' + this.novelList[this.currentIndex].author);
-                        Text.fontSize(14);
-                        Text.fontColor('#FFFFFF');
-                        Text.margin({ bottom: 8 });
-                        Text.opacity(0.9);
-                    }, Text);
-                    Text.pop();
-                    this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        Text.create(this.novelList[this.currentIndex].description);
-                        Text.fontSize(12);
-                        Text.fontColor('#FFFFFF');
-                        Text.maxLines(2);
-                        Text.textOverflow({ overflow: TextOverflow.Ellipsis });
-                        Text.opacity(0.8);
-                    }, Text);
-                    Text.pop();
-                    // 小说信息遮罩 - 与封面底部对齐
-                    Column.pop();
-                    // 轮播图内容
-                    Stack.pop();
-                    this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        // 左右切换按钮 - 移动到图片下方，增加间距
-                        Row.create();
-                        // 左右切换按钮 - 移动到图片下方，增加间距
-                        Row.width('90%');
-                        // 左右切换按钮 - 移动到图片下方，增加间距
-                        Row.justifyContent(FlexAlign.SpaceBetween);
-                        // 左右切换按钮 - 移动到图片下方，增加间距
-                        Row.margin({ top: 16 });
-                    }, Row);
-                    this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        Button.createWithLabel('←');
-                        Button.onClick(() => {
-                            this.prevNovel();
-                        });
-                        Button.backgroundColor('#E0E0E0');
-                        Button.fontColor('#333333');
-                        Button.borderRadius(8);
-                        Button.width(50);
-                        Button.height(40);
-                    }, Button);
-                    Button.pop();
-                    this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        Blank.create();
-                    }, Blank);
-                    Blank.pop();
-                    this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        Button.createWithLabel('→');
-                        Button.onClick(() => {
-                            this.nextNovel();
-                        });
-                        Button.backgroundColor('#E0E0E0');
-                        Button.fontColor('#333333');
-                        Button.borderRadius(8);
-                        Button.width(50);
-                        Button.height(40);
-                    }, Button);
-                    Button.pop();
-                    // 左右切换按钮 - 移动到图片下方，增加间距
-                    Row.pop();
-                    this.observeComponentCreation2((elmtId, isInitialRender) => {
-                        // 刷新按钮 - 移动到图片下方
+                        // 刷新按钮
                         Button.createWithLabel('刷新推荐');
-                        // 刷新按钮 - 移动到图片下方
+                        // 刷新按钮
                         Button.onClick(() => {
                             this.loadRecommendNovels();
                         });
-                        // 刷新按钮 - 移动到图片下方
+                        // 刷新按钮
                         Button.margin({ top: 16 });
-                        // 刷新按钮 - 移动到图片下方
+                        // 刷新按钮
                         Button.backgroundColor('#007AFF');
-                        // 刷新按钮 - 移动到图片下方
+                        // 刷新按钮
                         Button.fontColor('#FFFFFF');
-                        // 刷新按钮 - 移动到图片下方
+                        // 刷新按钮
                         Button.borderRadius(8);
-                        // 刷新按钮 - 移动到图片下方
+                        // 刷新按钮
                         Button.width(120);
-                        // 刷新按钮 - 移动到图片下方
+                        // 刷新按钮
                         Button.height(40);
                     }, Button);
-                    // 刷新按钮 - 移动到图片下方
+                    // 刷新按钮
                     Button.pop();
                     Column.pop();
                 });
             }
         }, If);
         If.pop();
-    }
-    /**
-     * 切换到上一本小说
-     */
-    private prevNovel() {
-        this.currentIndex = (this.currentIndex - 1 + this.novelList.length) % this.novelList.length;
-    }
-    /**
-     * 切换到下一本小说
-     */
-    private nextNovel() {
-        this.currentIndex = (this.currentIndex + 1) % this.novelList.length;
     }
     /**
      * 打开小说详情
@@ -465,22 +333,33 @@ class RecommendPage extends ViewPU {
             Column.create();
             Column.width('100%');
             Column.height('100%');
-            Column.justifyContent(FlexAlign.Center);
-            Column.alignItems(HorizontalAlign.Center);
             Column.backgroundColor('#F1F3F5');
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            // 标题
+            // 顶部标题
+            Row.create();
+            // 顶部标题
+            Row.width('100%');
+            // 顶部标题
+            Row.height(56);
+            // 顶部标题
+            Row.padding({ left: 16, right: 16 });
+            // 顶部标题
+            Row.margin({ top: 44 });
+            // 顶部标题
+            Row.justifyContent(FlexAlign.Start);
+            // 顶部标题
+            Row.alignItems(VerticalAlign.Center);
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
             Text.create('小说推荐');
-            // 标题
             Text.fontSize(24);
-            // 标题
             Text.fontWeight(FontWeight.Bold);
-            // 标题
-            Text.margin({ top: 20, bottom: 20 });
+            Text.fontColor('#2D3748');
         }, Text);
-        // 标题
         Text.pop();
+        // 顶部标题
+        Row.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             If.create();
             if (this.isLoading) {
@@ -509,7 +388,7 @@ class RecommendPage extends ViewPU {
                         // 错误状态
                         Text.create(this.errorMessage);
                         // 错误状态
-                        Text.fontColor('#FF0000');
+                        Text.fontColor('#9F6548');
                         // 错误状态
                         Text.margin({ bottom: 16 });
                     }, Text);
@@ -558,4 +437,4 @@ class RecommendPage extends ViewPU {
     }
 }
 export { RecommendPage };
-registerNamedRoute(() => new RecommendPage(undefined, {}), "", { bundleName: "com.example.readerkitdemo", moduleName: "entry", pagePath: "pages/RecommendPage", pageFullPath: "entry/src/main/ets/pages/RecommendPage", integratedHsp: "false", moduleType: "followWithHap" });
+registerNamedRoute(() => new RecommendPage(undefined, {}), "", { bundleName: "liubai.yuedu.hos", moduleName: "entry", pagePath: "pages/RecommendPage", pageFullPath: "entry/src/main/ets/pages/RecommendPage", integratedHsp: "false", moduleType: "followWithHap" });

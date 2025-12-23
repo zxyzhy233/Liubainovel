@@ -8,6 +8,9 @@
     "pages/SearchPage",
     "pages/BookSourcePage",
     "pages/BookSourceEditPage",
-    "pages/BookDetailPage"
+    "pages/BookDetailPage",
+    "pages/OnlineChapterReader",
+    "pages/DonatePage",
+    "pages/AboutPage"
   ]
 }

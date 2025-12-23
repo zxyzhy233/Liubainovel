@@ -19,7 +19,7 @@ import { router } from '@kit.ArkUI';
 const TAG: string = 'BookSourceEditPage';
 
 /**
- * 书源规则接口
+ * 鹿析规则接口
  */
 interface BookSourceRule {
   author?: string;
@@ -44,7 +44,7 @@ interface BookSourceRule {
 }
 
 /**
- * 完整书源信息接口
+ * 完整鹿析信息接口
  */
 interface BookSourceInfo {
   bookSourceName: string;
@@ -170,8 +170,8 @@ struct BookSourceEditPage {
   }
 
   /**
-   * 加载书源数据到表单
-   * @param sourceData 书源数据
+   * 加载鹿析数据到表单
+   * @param sourceData 鹿析数据
    */
   private loadSourceData(sourceData: BookSourceInfo): void {
     // 基本信息
@@ -246,20 +246,20 @@ struct BookSourceEditPage {
   }
 
   /**
-   * 保存书源数据
+   * 保存鹿析数据
    */
   private saveBookSource(): void {
     // 验证必填字段
     if (!this.bookSourceName.trim()) {
-      hilog.warn(0x0000, TAG, '书源名称不能为空');
+      hilog.warn(0x0000, TAG, '鹿析名称不能为空');
       return;
     }
     if (!this.bookSourceUrl.trim()) {
-      hilog.warn(0x0000, TAG, '书源URL不能为空');
+      hilog.warn(0x0000, TAG, '鹿析URL不能为空');
       return;
     }
     
-    // 构建书源数据
+    // 构建鹿析数据
     const sourceData: BookSourceInfo = {
       bookSourceName: this.bookSourceName.trim(),
       bookSourceUrl: this.bookSourceUrl.trim(),
@@ -324,7 +324,7 @@ struct BookSourceEditPage {
       ruleReview: {}
     };
     
-    hilog.info(0x0000, TAG, `${this.isEdit ? '更新' : '保存'}书源: ${sourceData.bookSourceName}`);
+    hilog.info(0x0000, TAG, `${this.isEdit ? '更新' : '保存'}鹿析: ${sourceData.bookSourceName}`);
     
     // 返回上一页并传递数据
     try {
@@ -335,9 +335,9 @@ struct BookSourceEditPage {
           sourceData: sourceData
         }
       }).then(() => {
-        hilog.info(0x0000, TAG, '成功返回书源管理页面');
+        hilog.info(0x0000, TAG, '成功返回鹿析管理页面');
       }).catch((error: Error) => {
-        hilog.error(0x0000, TAG, '返回书源管理页面失败: ' + error.message);
+        hilog.error(0x0000, TAG, '返回鹿析管理页面失败: ' + error.message);
         // 如果replaceUrl失败，尝试使用back
         router.back();
       });
@@ -363,10 +363,8 @@ struct BookSourceEditPage {
     Row() {
       // 返回按钮
       Button() {
-        Text('‹')
-          .fontSize(24)
-          .fontColor('#2D3748')
-          .fontWeight(FontWeight.Bold)
+        Text('👈')
+          .fontSize(20)
       }
       .width(40)
       .height(40)
@@ -376,7 +374,7 @@ struct BookSourceEditPage {
       })
       
       // 标题
-      Text(this.isEdit ? '编辑书源' : '新建书源')
+      Text(this.isEdit ? '编辑鹿析' : '新建鹿析')
         .fontSize(20)
         .fontWeight(FontWeight.Bold)
         .fontColor('#2D3748')
@@ -396,12 +394,8 @@ struct BookSourceEditPage {
     .height(56)
     .padding({ left: 16, right: 16 })
     .margin({ top: 44 })
-    .backgroundColor(Color.White)
-    .shadow({
-      radius: 2,
-      color: '#10000000',
-      offsetY: 1
-    })
+    .justifyContent(FlexAlign.Start)
+    .alignItems(VerticalAlign.Center)
   }
 
   /**
@@ -512,19 +506,19 @@ struct BookSourceEditPage {
   @Builder
   private buildBasicInfoTab(): void {
     Column() {
-      this.buildInputField('书源名称 *', '请输入书源名称', this.bookSourceName, (value: string) => {
+      this.buildInputField('鹿析名称 *', '请输入鹿析名称', this.bookSourceName, (value: string) => {
         this.bookSourceName = value;
       })
       
-      this.buildInputField('书源URL *', '请输入书源URL', this.bookSourceUrl, (value: string) => {
+      this.buildInputField('鹿析URL *', '请输入鹿析URL', this.bookSourceUrl, (value: string) => {
         this.bookSourceUrl = value;
       })
       
-      this.buildInputField('书源分组', '请输入书源分组', this.bookSourceGroup, (value: string) => {
+      this.buildInputField('鹿析分组', '请输入鹿析分组', this.bookSourceGroup, (value: string) => {
         this.bookSourceGroup = value;
       })
       
-      this.buildInputField('书源注释', '请输入书源注释', this.bookSourceComment, (value: string) => {
+      this.buildInputField('鹿析注释', '请输入鹿析注释', this.bookSourceComment, (value: string) => {
         this.bookSourceComment = value;
       }, true)
       
@@ -544,7 +538,7 @@ struct BookSourceEditPage {
         this.header = value;
       }, true)
       
-      this.buildSwitchField('启用书源', '是否启用此书源', this.sourceEnabled, (value: boolean) => {
+      this.buildSwitchField('启用鹿析', '是否启用此鹿析', this.sourceEnabled, (value: boolean) => {
         this.sourceEnabled = value;
       })
       
@@ -650,7 +644,7 @@ struct BookSourceEditPage {
   }
 
   /**
-   * 构建书籍信息规则标签页
+   * 构建鹿析信息规则标签页
    */
   @Builder
   private buildBookInfoRuleTab(): void {

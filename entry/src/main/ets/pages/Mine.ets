@@ -32,53 +32,75 @@ struct MinePage {
   // 菜单项数据
   private menuItems: MenuItem[] = [
     {
-      title: '书源管理',
-      icon: '📚',
+      title: '鹿析管理',
+      icon: '🦌‌',
       action: () => {
         this.navigateToBookSource();
       }
     },
-    {
-      title: '主题模式',
-      icon: '🎨',
-      action: () => {
-        hilog.info(0x0000, TAG, '点击主题模式');
-        // TODO: 实现主题模式功能
-      }
-    },
-    {
-      title: '备份与恢复',
-      icon: '💾',
-      action: () => {
-        hilog.info(0x0000, TAG, '点击备份与恢复');
-        // TODO: 实现备份与恢复功能
-      }
-    },
+    // {
+    //   title: '主题模式',
+    //   icon: '🎨',
+    //   action: () => {
+    //     hilog.info(0x0000, TAG, '点击主题模式');
+    //     // TODO: 实现主题模式功能
+    //   }
+    // },
+    // {
+    //   title: '备份与恢复',
+    //   icon: '💾',
+    //   action: () => {
+    //     hilog.info(0x0000, TAG, '点击备份与恢复');
+    //     // TODO: 实现备份与恢复功能
+    //   }
+    // },
     {
       title: '捐赠',
       icon: '❤️',
       action: () => {
-        hilog.info(0x0000, TAG, '点击捐赠');
-        // TODO: 实现捐赠功能
+        this.navigateToDonatePage();
       }
     },
     {
       title: '关于',
       icon: 'ℹ️',
       action: () => {
-        hilog.info(0x0000, TAG, '点击关于');
-        // TODO: 实现关于功能
+        this.navigateToAboutPage();
       }
     }
   ];
 
   /**
-   * 跳转到书源管理页面
+   * 跳转到鹿析管理页面
    */
   private navigateToBookSource(): void {
     try {
       this.getUIContext().getRouter().pushUrl({ url: 'pages/BookSourcePage' });
-      hilog.info(0x0000, TAG, '跳转到书源管理页面');
+      hilog.info(0x0000, TAG, '跳转到鹿析管理页面');
+    } catch (error) {
+      hilog.error(0x0000, TAG, '跳转失败: ' + JSON.stringify(error));
+    }
+  }
+
+  /**
+   * 跳转到捐赠页面
+   */
+  private navigateToDonatePage(): void {
+    try {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/DonatePage' });
+      hilog.info(0x0000, TAG, '跳转到捐赠页面');
+    } catch (error) {
+      hilog.error(0x0000, TAG, '跳转失败: ' + JSON.stringify(error));
+    }
+  }
+
+  /**
+   * 跳转到关于页面
+   */
+  private navigateToAboutPage(): void {
+    try {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/AboutPage' });
+      hilog.info(0x0000, TAG, '跳转到关于页面');
     } catch (error) {
       hilog.error(0x0000, TAG, '跳转失败: ' + JSON.stringify(error));
     }

@@ -1,10 +1,10 @@
 {
   "modulePathMap": {
-    "entry": "D:\\liubaixiaoshuo\\Liubainovel\\entry"
+    "entry": "D:\\ST\\LiubaiNovel\\entry"
   },
   "compileMode": "esmodule",
-  "projectRootPath": "D:\\liubaixiaoshuo\\Liubainovel",
-  "nodeModulesPath": "D:\\liubaixiaoshuo\\Liubainovel\\entry\\build\\default\\intermediates\\loader_out\\default\\node_modules",
+  "projectRootPath": "D:\\ST\\LiubaiNovel",
+  "nodeModulesPath": "D:\\ST\\LiubaiNovel\\entry\\build\\default\\intermediates\\loader_out\\default\\node_modules",
   "byteCodeHarInfo": {},
   "declarationEntry": [],
   "moduleName": "entry",
@@ -17,9 +17,9 @@
   "routerMap": [],
   "hspResourcesMap": {},
   "updateVersionInfo": {},
-  "anBuildOutPut": "D:\\liubaixiaoshuo\\Liubainovel\\entry\\build\\default\\intermediates\\loader_out\\default\\an\\arm64-v8a",
+  "anBuildOutPut": "D:\\ST\\LiubaiNovel\\entry\\build\\default\\intermediates\\loader_out\\default\\an\\arm64-v8a",
   "anBuildMode": "type",
   "patchConfig": {
-    "changedFileList": "D:\\liubaixiaoshuo\\Liubainovel\\entry\\build\\default\\intermediates\\patch\\default\\changedFileList.json"
+    "changedFileList": "D:\\ST\\LiubaiNovel\\entry\\build\\default\\intermediates\\patch\\default\\changedFileList.json"
   }
 }

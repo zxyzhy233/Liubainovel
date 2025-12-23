@@ -25,12 +25,26 @@ import { settingsManager } from '../utils/SettingsManager';
 import { preferences } from '@kit.ArkData';
 
 import { ReadPageComponent, readerCore, bookParser } from '@kit.ReaderKit';
-import { common, ConfigurationConstant } from '@kit.AbilityKit';
+import { common, ConfigurationConstant, wantAgent, Want } from '@kit.AbilityKit';
+import { textToSpeech } from '@kit.CoreSpeechKit';
+import { avSession } from '@kit.AVSessionKit';
+import { backgroundTaskManager } from '@kit.BackgroundTasksKit';
+import PcmPlayer from '../model/PcmPlayer';
+import { ChapterInfo } from '../models/BookSourceModel';
+import { onlineBookDataManager } from '../utils/OnlineBookDataManager';
+import { downloadManager } from '../managers/DownloadManager';
+import { bookSourceManager } from '../managers/BookSourceManager';
 
 interface paramType {
-  filePath: string;
-  resourceIndex: number;
-  domPos: string;
+  filePath?: string;
+  resourceIndex?: number;
+  domPos?: string;
+  isOnlineBook?: boolean;
+  bookId?: number;
+  bookUrl?: string;
+  bookTitle?: string;
+  chapters?: ChapterInfo[];
+  startChapterIndex?: number;
 }
 
 interface ProgressData {
@@ -57,8 +71,20 @@ struct Reader {
    */
   @State currentIndex: number = -1;
   @State catalogItemList: bookParser.CatalogItem[] = [];
+  @State catalogList: bookParser.CatalogItem[] = [];
   @State currentCatalogIndex: number = -1; // 当前章节索引
+  @State resourceIndex: number = -1; // 当前资源索引
+  @State spineList: bookParser.SpineItem[] = []; // 脊柱列表
   private catalogListScroller: Scroller = new Scroller(); // 目录列表滚动控制器
+  
+  // 在线书籍相关状态
+  @State isOnlineBook: boolean = false; // 是否为在线书籍
+  @State onlineBookId: number = 0; // 在线书籍ID
+  @State onlineChapters: ChapterInfo[] = []; // 在线章节列表
+  @State currentOnlineChapterIndex: number = 0; // 当前在线章节索引
+  @State onlineChapterContent: string = ''; // 当前在线章节内容
+  @State chapterDownloadStatus: Map<number, boolean> = new Map(); // 章节下载状态
+  @State isReverseOrder: boolean = false; // 是否倒序显示章节
   private currentData: readerCore.PageDataInfo | null = null;
   private defaultHandler: bookParser.BookParserHandler | null = null;
   private readerComponentController: readerCore.ReaderComponentController = new readerCore.ReaderComponentController();
@@ -117,6 +143,28 @@ struct Reader {
     6: $r('app.color.ic_border_select_white')
   }
   @State themeSelectIndex: number = 0;
+  @State ttsEngine: textToSpeech.TextToSpeechEngine | null = null;
+  @State isTTSEngineCreated: boolean = false;
+  @State isTTSPlaying: boolean = false;
+  @State isTTSAutoPlay: boolean = false; // 控制是否自动播放下一章
+  @State ttsText: string = '';
+  @State pcmPlayer: PcmPlayer = new PcmPlayer();
+  @State showTTSControl: boolean = false;
+  @State showTTSPage: boolean = false; // 控制语音朗读页面显示
+  @State currentSpeakingChapter: number = -1;
+  @State pcmData: Map<number, Uint8Array> = new Map();
+  @State bufferLength: number = 0;
+  @State showTimerSheet: boolean = false; // 定时器弹窗显示状态
+  @State showSpeedSheet: boolean = false; // 倍速弹窗显示状态
+  @State timerMinutes: number = 0; // 定时器分钟数，0表示不定时
+  @State ttsSpeed: number = 1; // TTS朗读速度，1为正常速度
+  private timerInterval: number = -1; // 定时器ID
+  @State remainingTime: number = 0; // 剩余时间（秒）
+  
+  // 后台任务相关
+  private backgroundTaskId: number = -1; // 后台任务ID
+  @State isBackgroundTaskActive: boolean = false; // 后台任务是否激活
+  
   private readerSetting: readerCore.ReaderSetting = {
     fontName: this.getUIContext().getHostContext()!.resourceManager.getStringSync($r('app.string.system_font')),
     fontPath: '',
@@ -152,6 +200,8 @@ struct Reader {
       const errorMessage: string = `Failed to get preferences; err: ${err}`;
       hilog.error(0x0000, TAG, errorMessage);
     }
+    // 初始化 bookDataManager
+    await bookDataManager.init(context);
     await settingsManager.init(context);
     const settings = await settingsManager.loadSettings();
 
@@ -170,15 +220,23 @@ struct Reader {
     this.registerScreenDensityChange();
     WindowAbility.getInstance().toggleWindowSystemBar([], this.getUIContext().getHostContext());
     let param = this.getUIContext().getRouter().getParams() as paramType;
-    this.filePath = param.filePath;
-    let resourceIndex = param.resourceIndex;
-    let domPos = param.domPos;
+    this.filePath = param.filePath || '';
+    let resourceIndex = param.resourceIndex || 0;
+    let domPos = param.domPos || '';
     this.startPlay(this.filePath, resourceIndex, domPos);
   }
 
   onPageHide(): void {
     // 页面隐藏时保存阅读进度
     this.saveReadingProgress();
+    
+    // 页面隐藏时不停止TTS朗读，让其在后台继续运行
+    hilog.info(0x0000, TAG, 'Page hidden, TTS continues in background');
+  }
+
+  onPageShow(): void {
+    // 页面显示时恢复TTS状态显示
+    hilog.info(0x0000, TAG, 'Page shown, TTS state restored');
   }
 
   /**
@@ -325,8 +383,11 @@ struct Reader {
       this.loadingProgress = '正在加载内容...';
       this.readerComponentController.startPlay(startResourceIndex, startDomPos);
       
-      // 获取目录列表
+      // 获取目录列表和脊柱列表
       this.catalogItemList = this.defaultHandler?.getCatalogList() || [];
+      this.catalogList = this.defaultHandler?.getCatalogList() || [];
+      this.spineList = this.defaultHandler?.getSpineList() || [];
+      this.resourceIndex = startResourceIndex;
       this.updateCurrentCatalogIndex();
       
       // 加载完成
@@ -374,6 +435,13 @@ struct Reader {
       const spineList = this.defaultHandler.getSpineList();
       const catalogList = this.defaultHandler.getCatalogList();
       
+      // 更新spineList和resourceIndex
+      this.spineList = spineList;
+      this.resourceIndex = this.currentData.resourceIndex;
+      
+      // 更新catalogList
+      this.catalogList = catalogList;
+      
       if (spineList.length > 0 && this.currentData.resourceIndex >= 0 && 
           this.currentData.resourceIndex < spineList.length) {
         const currentSpine = spineList[this.currentData.resourceIndex];
@@ -385,6 +453,9 @@ struct Reader {
         
         if (matchingIndex !== -1) {
           this.currentCatalogIndex = matchingIndex;
+          hilog.info(0x0000, TAG, `Updated currentCatalogIndex to: ${this.currentCatalogIndex}`);
+        } else {
+          hilog.warn(0x0000, TAG, `No matching catalog found for spine: ${currentSpine.href}`);
         }
       }
     }
@@ -393,6 +464,10 @@ struct Reader {
   aboutToDisappear(): void {
     // Force save progress before disappearing
     this.saveReadingProgress();
+
+    // 只有在真正退出应用时才释放TTS引擎，页面切换时保持运行
+    // 这里不调用 releaseTTSEngine()，让TTS在后台继续运行
+    hilog.info(0x0000, TAG, 'Page disappearing, TTS continues in background');
 
     display.off('change', this.screenDensityCallBack);
     if (this.readerComponentController) {
@@ -843,6 +918,14 @@ struct Reader {
       })
       .zIndex(1)
       .visibility(this.isLoading || this.hasError ? Visibility.Hidden : Visibility.Visible)
+      
+      
+      
+      // 语音朗读页面
+      if (this.showTTSPage) {
+        this.buildTTSPage()
+      }
+      
       // menu bar
       Column() {
         Column() {
@@ -867,27 +950,48 @@ struct Reader {
           this.showModalBanner = true;
         })
 
-        Row() {
-          Text($r('app.string.catalog_list'))
-            .width('50%')
-            .height('100%')
-            .onClick(() => {
-              this.jumpToCatalogList();
-            })
-            .textAlign(TextAlign.Center)
-            .fontColor(this.currentIndex === 0 ? Color.Red : Color.Black)
-          Text($r('app.string.setting'))
-            .width('50%')
-            .height('100%')
-            .onClick(() => {
-              this.jumpToSetting();
-            })
-            .textAlign(TextAlign.Center)
-            .fontColor(this.currentIndex === 1 ? Color.Red : Color.Black)
+        Stack() {
+          Row() {
+            Text($r('app.string.catalog_list'))
+              .width('50%')
+              .height('100%')
+              .onClick(() => {
+                this.jumpToCatalogList();
+              })
+              .textAlign(TextAlign.Center)
+              .fontColor(this.currentIndex === 0 ? Color.Red : Color.Black)
+            Text($r('app.string.setting'))
+              .width('50%')
+              .height('100%')
+              .onClick(() => {
+                this.jumpToSetting();
+              })
+              .textAlign(TextAlign.Center)
+              .fontColor(this.currentIndex === 1 ? Color.Red : Color.Black)
+          }
+          .width('100%')
+          .height(80)
+          .backgroundColor(Color.White)
+          
+          // 语音朗读圆形按钮 - 放在右上角
+          Button() {
+            Image($r('app.media.headset'))
+              .width(24)
+              .height(24)
+          }
+          .width(56)
+          .height(56)
+          .borderRadius(24)
+          .backgroundColor(Color.White)
+          .position({ x: '83%', y: -64 })
+          .zIndex(5)
+          .shadow({ radius: 8, color: 'rgba(0, 122, 255, 0.4)', offsetX: 0, offsetY: 2 })
+          .onClick(() => {
+            this.showTTSPage = true;
+          })
+          .visibility(this.isLoading || this.hasError || this.showTTSPage ? Visibility.Hidden : Visibility.Visible)
         }
-        .width('100%')
-        .height(80)
-        .backgroundColor(Color.White)
+        .alignContent(Alignment.TopEnd)
       }
       .width('100%')
       .height('100%')
@@ -897,6 +1001,126 @@ struct Reader {
       .onClick(() => {
         this.closeModal();
       })
+      
+      // TTS控制面板
+      if (this.showTTSControl) {
+        Column() {
+          Row() {
+            Text('语音朗读控制')
+              .fontSize(18)
+              .fontWeight(FontWeight.Bold)
+              .margin({ left: 16 })
+            
+            Blank()
+            
+            Button('关闭')
+              .fontSize(14)
+              .fontColor(Color.White)
+              .backgroundColor(Color.Gray)
+              .margin({ right: 16 })
+              .onClick(() => {
+                this.showTTSControl = false;
+              })
+          }
+          .width('100%')
+          .height(50)
+          .backgroundColor('#F1F3F5')
+          
+          Row() {
+            Column() {
+              Button(this.isTTSPlaying ? '暂停朗读' : '开始朗读')
+                .fontSize(16)
+                .fontColor(Color.White)
+                .backgroundColor(this.isTTSPlaying ? Color.Orange : Color.Green)
+                .width(120)
+                .height(40)
+                .onClick(() => {
+                  if (this.isTTSPlaying) {
+                    this.stopTTS();
+                  } else {
+                    this.startTTS();
+                  }
+                })
+              
+              if (this.isTTSPlaying) {
+                Text(`正在朗读: ${this.currentSpeakingChapter >= 0 ? this.catalogList[this.currentSpeakingChapter]?.catalogName || '' : ''}`)
+                  .fontSize(12)
+                  .fontColor(Color.Gray)
+                  .margin({ top: 8 })
+                  .width(120)
+                  .maxLines(2)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+              }
+            }
+            .width('50%')
+            .height(100)
+            .justifyContent(FlexAlign.Center)
+            .alignItems(HorizontalAlign.Center)
+            
+            Column() {
+              Row() {
+                Button('上一章')
+                  .fontSize(14)
+                  .fontColor(Color.White)
+                  .backgroundColor(Color.Blue)
+                  .width(80)
+                  .height(36)
+                  .onClick(() => {
+                    this.jumpToPrevChapter();
+                    if (this.isTTSPlaying) {
+                      this.stopTTS();
+                      setTimeout(() => {
+                        this.startTTS();
+                      }, 500);
+                    }
+                  })
+                
+                Button('下一章')
+                  .fontSize(14)
+                  .fontColor(Color.White)
+                  .backgroundColor(Color.Blue)
+                  .width(80)
+                  .height(36)
+                  .onClick(() => {
+                    this.jumpToNextChapter();
+                    if (this.isTTSPlaying) {
+                      this.stopTTS();
+                      setTimeout(() => {
+                        this.startTTS();
+                      }, 500);
+                    }
+                  })
+              }
+              .margin({ bottom: 16 })
+              
+              Text('朗读设置')
+                .fontSize(14)
+                .fontColor(Color.Blue)
+                .onClick(() => {
+                  // 这里可以添加更多TTS设置选项
+                  console.log('打开TTS设置');
+                })
+            }
+            .width('50%')
+            .height(100)
+            .justifyContent(FlexAlign.Center)
+            .alignItems(HorizontalAlign.Center)
+          }
+          .width('100%')
+          .height(150)
+          .backgroundColor(Color.White)
+        }
+        .width('100%')
+        .height(200)
+        .position({ x: 0, y: '50%' })
+        .zIndex(4)
+        .shadow({
+          radius: 10,
+          color: Color.Gray,
+          offsetX: 0,
+          offsetY: -2
+        })
+      }
     }.width('100%').height('100%').onClick(() => {
       if (!this.isLoading && !this.hasError) {
         this.showModal();
@@ -914,7 +1138,7 @@ struct Reader {
     
     // 重新获取参数并启动
     let param = this.getUIContext().getRouter().getParams() as paramType;
-    this.startPlay(param.filePath, param.resourceIndex || 0, param.domPos || '');
+    this.startPlay(param.filePath || '', param.resourceIndex || 0, param.domPos || '');
   }
 
   private applyTheme(theme: string, index: number) {
@@ -1015,6 +1239,269 @@ struct Reader {
     }
   }
 
+  // 创建TTS引擎
+  private async createTTSEngine(): Promise<void> {
+    if (this.isTTSEngineCreated && this.ttsEngine) {
+      return;
+    }
+    
+    return new Promise<void>((resolve, reject) => {
+      // 设置创建引擎参数
+      let extraParam: Record<string, Object> = { 
+        "style": 'interaction-broadcast', 
+        "locate": 'CN', 
+        "name": 'EngineName' 
+      }
+      let initParamsInfo: textToSpeech.CreateEngineParams = {
+        language: 'zh-CN',
+        person: 0,
+        online: 1,
+        extraParams: extraParam
+      };
+      
+      try {
+        hilog.info(0x0000, TAG, 'TTS引擎开始创建...');
+        
+        // 调用createEngine方法
+        textToSpeech.createEngine(initParamsInfo, async (err: BusinessError, textToSpeechEngine: textToSpeech.TextToSpeechEngine) => {
+          if (!err) {
+            hilog.info(0x0000, TAG, 'TTS createEngine is success');
+            // 接收创建引擎的实例
+            this.ttsEngine = textToSpeechEngine;
+            this.isTTSEngineCreated = true;
+            
+            // 初始化PcmPlayer的AVSession
+            const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+            try {
+              await this.pcmPlayer.prepare(16000, 1, undefined, undefined, context);
+              hilog.info(0x0000, TAG, 'PcmPlayer AVSession initialized successfully');
+            } catch (error) {
+              hilog.error(0x0000, TAG, 'Failed to initialize PcmPlayer AVSession: ' + JSON.stringify(error));
+              // AVSession初始化失败不影响TTS功能
+            }
+            
+            resolve();
+          } else {
+            hilog.error(0x0000, TAG, "TTS createEngine errCode is " + JSON.stringify(err.code));
+            hilog.error(0x0000, TAG, "TTS createEngine errMessage is " + JSON.stringify(err.message));
+            
+            // 显示用户友好的错误信息
+            let errorMsg = 'TTS引擎创建失败';
+            if (err.code === 1002300001) {
+              errorMsg = 'TTS服务不可用，请检查系统设置';
+            } else if (err.code === 1002300002) {
+              errorMsg = 'TTS参数错误，请重试';
+            } else if (err.code === 1002300003) {
+              errorMsg = 'TTS初始化失败，请重启应用';
+            }
+            
+            this.getUIContext()
+              .getPromptAction()
+              .showToast({ 
+                message: errorMsg, 
+                duration: 3000 
+              });
+            
+            reject(new Error(errorMsg));
+          }
+        });
+      } catch (error) {
+        let message = (error as BusinessError).message;
+        let code = (error as BusinessError).code;
+        hilog.error(0x0000, TAG, `TTS createEngine failed, error code: ${code}, message: ${message}.`);
+        
+        this.getUIContext()
+          .getPromptAction()
+          .showToast({ 
+            message: 'TTS引擎创建异常，请重试', 
+            duration: 3000 
+          });
+        
+        reject(error);
+      }
+    });
+  }
+
+  // 开始TTS朗读
+  private async startTTS(): Promise<void> {
+    if (!this.isTTSEngineCreated || !this.ttsEngine) {
+      hilog.info(0x0000, TAG, 'TTS引擎未创建，正在创建...');
+      await this.createTTSEngine();
+      // 创建完成后，如果引擎仍然没有创建成功，则返回
+      if (!this.isTTSEngineCreated || !this.ttsEngine) {
+        hilog.error(0x0000, TAG, 'TTS引擎创建失败');
+        return;
+      }
+    }
+    
+    if (this.isTTSPlaying) {
+      // 如果正在播放，则停止播放
+      this.stopTTS();
+      return;
+    }
+    
+    // 设置自动播放标志位
+    this.isTTSAutoPlay = true;
+    
+    // 获取当前章节内容
+    try {
+      const content = await this.getCurrentChapterContent();
+      if (content && content.length > 0) {
+        this.ttsText = content;
+        this.speakText();
+        hilog.info(0x0000, TAG, 'TTS朗读已开始');
+      } else {
+        hilog.warn(0x0000, TAG, '没有找到章节内容');
+      }
+    } catch (error) {
+      hilog.error(0x0000, TAG, '获取章节内容失败: ' + JSON.stringify(error));
+    }
+  }
+
+  // 获取当前章节内容
+  private async getCurrentChapterContent(): Promise<string> {
+    try {
+      if (this.defaultHandler && this.currentCatalogIndex >= 0 && this.currentCatalogIndex < this.catalogList.length) {
+        let catalogItem: bookParser.CatalogItem = this.catalogList[this.currentCatalogIndex];
+        let spineItem: bookParser.SpineItem = this.getResourceItemByCatalog(catalogItem);
+        let content: string = await this.defaultHandler.getSpineItemContent(spineItem.index);
+        return content || '';
+      }
+    } catch (error) {
+      console.error("获取章节内容失败: " + error);
+    }
+    return '';
+  }
+
+  // TTS朗读文本
+  private speakText() {
+    if (!this.ttsEngine || !this.ttsText || this.ttsText.length === 0) {
+      return;
+    }
+    
+    let speakListener: textToSpeech.SpeakListener = {
+      // 开始播报回调
+      onStart: (requestId: string, response: textToSpeech.StartResponse) => {
+        console.info(`onStart, requestId: ${requestId} response: ${JSON.stringify(response)}`);
+        this.isTTSPlaying = true;
+        this.currentSpeakingChapter = this.currentCatalogIndex;
+        
+        // 申请后台任务
+        this.requestBackgroundTask();
+      },
+      // 完成播报回调
+      onComplete: (requestId: string, response: textToSpeech.CompleteResponse) => {
+        console.info(`onComplete, requestId: ${requestId} response: ${JSON.stringify(response)}`);
+        this.isTTSPlaying = false;
+        this.pcmData.clear();
+        this.bufferLength = 0;
+        
+        // 只有在设置了自动播放标志位时才自动朗读下一章
+        if (this.isTTSAutoPlay && this.currentCatalogIndex < this.catalogList.length - 1) {
+          this.jumpToNextChapter();
+          setTimeout(() => {
+            this.startTTS();
+          }, 1000);
+        } else {
+          // 如果不继续播放，取消后台任务
+          this.cancelBackgroundTask();
+        }
+      },
+      // 停止播报完成回调，调用stop方法并完成时会触发此回调
+      onStop: (requestId: string, response: textToSpeech.StopResponse) => {
+        console.info(`onStop, requestId: ${requestId} response: ${JSON.stringify(response)}`);
+        this.isTTSPlaying = false;
+        this.pcmData.clear();
+        this.bufferLength = 0;
+        
+        // 取消后台任务
+        this.cancelBackgroundTask();
+      },
+      // 返回音频流
+      onData: (requestId: string, audio: ArrayBuffer, response: textToSpeech.SynthesisResponse) => {
+        console.info(`onData, requestId: ${requestId} sequence: ${JSON.stringify(response)} audio: ${JSON.stringify(audio)}`);
+        // 将ArrayBuffer转换为Uint8Array
+        let uint8Array: Uint8Array = new Uint8Array(audio);
+        this.pcmData.set(response.sequence, uint8Array);
+        this.bufferLength += 1;
+      },
+      // 错误回调，播报过程发生错误时触发此回调
+      onError: (requestId: string, errorCode: number, errorMessage: string) => {
+        if (errorCode === 1002300007) {
+          this.isTTSEngineCreated = false;
+        }
+        console.error(`onError, requestId: ${requestId} errorCode: ${errorCode} errorMessage: ${errorMessage}`);
+        this.isTTSPlaying = false;
+      }
+    };
+    
+    // 设置回调
+    this.ttsEngine.setListener(speakListener);
+    
+    // 设置播报相关参数
+    let extraParam: Record<string, Object> = {"queueMode": 0, "speed": this.ttsSpeed, "volume": 2, "pitch": 1, "languageContext": 'zh-CN', "audioType": "pcm", "soundChannel": 3, "playType":1}
+    let speakParams: textToSpeech.SpeakParams = {
+      requestId: '123456' + Date.now(), // requestId在同一实例内仅能用一次，请勿重复设置
+      extraParams: extraParam
+    };
+    
+    // 调用speak播报方法
+    this.ttsEngine.speak(this.ttsText, speakParams);
+  }
+
+  // 停止TTS朗读
+  private stopTTS() {
+    if (this.ttsEngine) {
+      try {
+        // 确保TTS引擎存在并且正在播放
+        if (this.isTTSPlaying) {
+          this.ttsEngine.stop();
+        }
+        // 立即更新UI状态，不等待回调
+        this.isTTSPlaying = false;
+        // 清除自动播放标志位
+        this.isTTSAutoPlay = false;
+        
+        console.info("TTS朗读已停止");
+      } catch (error) {
+        console.error("停止TTS失败: " + error);
+        // 即使出错也要更新UI状态
+        this.isTTSPlaying = false;
+        this.isTTSAutoPlay = false;
+      }
+    }
+  }
+
+  // 跳转到下一章
+  private jumpToNextChapter() {
+    if (this.currentCatalogIndex < this.catalogList.length - 1) {
+      let nextIndex = this.currentCatalogIndex + 1;
+      this.jumpToCatalogItem(this.catalogList[nextIndex]);
+    }
+  }
+
+  // 跳转到上一章
+  private jumpToPrevChapter() {
+    if (this.currentCatalogIndex > 0) {
+      let prevIndex = this.currentCatalogIndex - 1;
+      this.jumpToCatalogItem(this.catalogList[prevIndex]);
+    }
+  }
+
+  // 释放TTS引擎
+  private releaseTTSEngine() {
+    if (this.ttsEngine) {
+      try {
+        this.ttsEngine.shutdown();
+        this.ttsEngine = null;
+        this.isTTSEngineCreated = false;
+        this.isTTSPlaying = false;
+      } catch (error) {
+        console.error("释放TTS引擎失败: " + error);
+      }
+    }
+  }
+
   /**
    * close menu bar
    */
@@ -1109,9 +1596,508 @@ struct Reader {
   }
 
   /**
-   * Remove the page transition animation to speed up the page access speed of the reader
+   * 构建语音朗读页面
    */
-  pageTransition() {
-    // PageTransitionEnter and PageTransitionExit should be used in build method, not here
+  @Builder
+  private buildTTSPage() {
+    Column() {
+      // 标题栏
+      Row() {
+        Button() {
+          SymbolGlyph($r('sys.symbol.chevron_left'))
+            .width(32)
+            .height(32)
+            .fontColor(['#E6000000'])
+        }
+        .width(40)
+        .height(40)
+        .backgroundColor(Color.Transparent)
+        .onClick(() => {
+          this.showTTSPage = false;
+        })
+        
+        Text('智能朗读')
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#E6000000')
+          .layoutWeight(1)
+          .textAlign(TextAlign.Center)
+        
+        // 占位按钮保持布局平衡
+        Button()
+          .width(40)
+          .height(40)
+          .backgroundColor(Color.Transparent)
+      }
+      .width('100%')
+      .height(108)
+      .backgroundColor(Color.White)
+      .padding({ left: 16, right: 16 })
+      .justifyContent(FlexAlign.SpaceBetween)
+      .alignItems(VerticalAlign.Bottom - 18)
+      
+      // 内容区域
+      Column() {
+        // 书籍封面
+        Stack() {
+          Image(this.bookCover)
+            .draggable(false)
+            .width(120)
+            .aspectRatio(3 / 4)
+            .borderRadius(8)
+            .alt($r('app.media.default_cover'))
+            .backgroundColor($r('sys.color.ohos_id_color_background'))
+            .objectFit(ImageFit.Cover)
+          
+          // 如果没有封面，显示默认封面
+          if (!this.bookCover) {
+            Image($r('app.media.zwfm'))
+              .draggable(false)
+              .width(120)
+              .aspectRatio(3 / 4)
+              .borderRadius(8)
+              .backgroundColor($r('sys.color.ohos_id_color_background'))
+              .objectFit(ImageFit.Cover)
+          }
+          
+          // 添加书脊效果
+          Image($r('app.media.spines'))
+            .draggable(false)
+            .aspectRatio(3 / 4)
+            .width(120)
+            .borderRadius(8)
+            .position({ x: 0, y: 0 })
+          
+          // 添加阴影效果
+          Image($r('app.media.cover_shadow'))
+            .draggable(false)
+            .width(120)
+            .opacity(0.7)
+            .aspectRatio(3)
+            .position({ x: 0, y: 120 / 3 / 4 - 120 / 9 })
+        }
+        .width(120)
+        .height(160)
+        .margin({ top: 30, bottom: 30 })
+        .shadow({ radius: 18, color: "#4D000000" })
+        .borderRadius(8)
+        
+        // 书籍信息
+        Column() {
+          Text(this.bookTitle)
+            .fontSize(18)
+            .fontWeight(FontWeight.Bold)
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .margin({ bottom: 8 })
+          
+          Text(this.author)
+            .fontSize(14)
+            .fontColor(Color.Gray)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
+        .width('80%')
+        .margin({ bottom: 30 })
+        
+        // 进度条
+        Column() {
+          Text(`当前章节: ${this.currentCatalogIndex >= 0 ? this.catalogList[this.currentCatalogIndex]?.catalogName || '' : '未开始'}`)
+            .fontSize(14)
+            .fontColor(Color.Gray)
+            .margin({ bottom: 8 })
+            .width('80%')
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+          
+          Progress({
+            value: this.currentCatalogIndex >= 0 ? (this.currentCatalogIndex + 1) / this.catalogList.length * 100 : 0,
+            total: 100,
+            type: ProgressType.Linear
+          })
+            .width('80%')
+            .height(8)
+            .backgroundColor('#F1F3F5')
+            .color(Color.Blue)
+        }
+        .width('100%')
+        .margin({ bottom: 40 })
+        
+        // 控制按钮
+        Row() {
+          Button('上一章')
+            .fontSize(14)
+            .fontColor('#E6000000')
+            .backgroundColor('#F7FAFC')
+            .width(80)
+            .height(40)
+            .onClick(() => {
+              this.jumpToPrevChapter();
+              if (this.isTTSPlaying) {
+                this.stopTTS();
+                setTimeout(() => {
+                  this.startTTS();
+                }, 500);
+              }
+            })
+          
+          Button(this.timerMinutes > 0 ? `定时${this.timerMinutes}分` : '定时')
+            .fontSize(14)
+            .fontColor(Color.White)
+            .backgroundColor(this.timerMinutes > 0 ? Color.Orange : Color.Gray)
+            .width(80)
+            .height(40)
+            .onClick(() => {
+              this.showTimerSheet = true;
+            })
+          
+          Button(`${this.ttsSpeed}x倍速`)
+            .fontSize(14)
+            .fontColor(this.ttsSpeed !== 1 ? Color.White : '#E6000000')
+            .backgroundColor(this.ttsSpeed !== 1 ? Color.Red : '#F7FAFC')
+            .width(80)
+            .height(40)
+            .onClick(() => {
+              this.showSpeedSheet = true;
+            })
+          
+          Button('下一章')
+            .fontSize(14)
+            .fontColor('#E6000000')
+            .backgroundColor('#F7FAFC')
+            .width(80)
+            .height(40)
+            .onClick(() => {
+              this.jumpToNextChapter();
+              if (this.isTTSPlaying) {
+                this.stopTTS();
+                setTimeout(() => {
+                  this.startTTS();
+                }, 500);
+              }
+            })
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.SpaceEvenly)
+        .margin({ bottom: 40 })
+        
+        // TTS控制按钮
+        Button(this.isTTSPlaying ? '暂停朗读' : '开始朗读')
+          .fontSize(16)
+          .fontColor(Color.White)
+          .backgroundColor(this.isTTSPlaying ? Color.Red : Color.Red)
+          .width(160)
+          .height(50)
+          .onClick(() => {
+            if (this.isTTSPlaying) {
+              this.stopTTS();
+            } else {
+              this.startTTS();
+            }
+          })
+          .margin({ bottom: 20 })
+        
+        // 选择TTS按钮
+        Button('选择TTS')
+          .fontSize(14)
+          .fontColor('#E6000000')
+          .backgroundColor('#F7FAFC')
+          .border({ color: Color.Blue, width: 1 })
+          .width(160)
+          .height(40)
+          .onClick(() => {
+            // 显示TTS选择功能的提示
+            this.getUIContext()
+              .getPromptAction()
+              .showToast({ 
+                message: 'TTS选择功能开发中...', 
+                duration: 2000 
+              });
+            
+            hilog.info(0x0000, TAG, '点击了选择TTS按钮');
+          })
+          .margin({ bottom: 10 })
+        
+      }
+      .width('100%')
+      .flexGrow(1)
+      .alignItems(HorizontalAlign.Center)
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor(Color.White)
+    .zIndex(10)
+    .bindSheet($$this.showTimerSheet, this.buildTimerSheet(), {
+      height: 300,
+      dragBar: true,
+      backgroundColor: Color.White,
+      onAppear: () => {
+        hilog.info(0x0000, TAG, '定时器弹窗出现');
+      },
+      onDisappear: () => {
+        hilog.info(0x0000, TAG, '定时器弹窗消失');
+      }
+    })
+    .bindSheet($$this.showSpeedSheet, this.buildSpeedSheet(), {
+      height: 250,
+      dragBar: true,
+      backgroundColor: Color.White,
+      onAppear: () => {
+        hilog.info(0x0000, TAG, '倍速弹窗出现');
+      },
+      onDisappear: () => {
+        hilog.info(0x0000, TAG, '倍速弹窗消失');
+      }
+    })
   }
-}
+
+  /**
+   * 构建定时器弹窗
+   */
+  @Builder
+  private buildTimerSheet(): void {
+    Column() {
+      Text('定时朗读')
+        .fontSize(18)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#2D3748')
+        .margin({ bottom: 20 })
+      
+      // 定时选项
+      Column() {
+        Row() {
+          Button('关闭定时')
+            .fontSize(16)
+            .fontColor(this.timerMinutes === 0 ? Color.White : '#2D3748')
+            .backgroundColor(this.timerMinutes === 0 ? Color.Blue : '#F7FAFC')
+            .borderRadius(8)
+            .width('45%')
+            .height(44)
+            .onClick(() => {
+              this.setTimer(0);
+            })
+          
+          Button('30分钟')
+            .fontSize(16)
+            .fontColor(this.timerMinutes === 30 ? Color.White : '#2D3748')
+            .backgroundColor(this.timerMinutes === 30 ? Color.Blue : '#F7FAFC')
+            .borderRadius(8)
+            .width('45%')
+            .height(44)
+            .onClick(() => {
+              this.setTimer(30);
+            })
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.SpaceBetween)
+        .margin({ bottom: 16 })
+        
+        Row() {
+          Button('60分钟')
+            .fontSize(16)
+            .fontColor(this.timerMinutes === 60 ? Color.White : '#2D3748')
+            .backgroundColor(this.timerMinutes === 60 ? Color.Blue : '#F7FAFC')
+            .borderRadius(8)
+            .width('45%')
+            .height(44)
+            .onClick(() => {
+              this.setTimer(60);
+            })
+          
+          Button('90分钟')
+            .fontSize(16)
+            .fontColor(this.timerMinutes === 90 ? Color.White : '#2D3748')
+            .backgroundColor(this.timerMinutes === 90 ? Color.Blue : '#F7FAFC')
+            .borderRadius(8)
+            .width('45%')
+            .height(44)
+            .onClick(() => {
+              this.setTimer(90);
+            })
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.SpaceBetween)
+      }
+      
+      // 剩余时间显示
+      if (this.timerMinutes > 0 && this.remainingTime > 0) {
+        Text(`剩余时间: ${Math.floor(this.remainingTime / 60)}分${this.remainingTime % 60}秒`)
+          .fontSize(14)
+          .fontColor('#718096')
+          .margin({ top: 20 })
+      }
+    }
+    .padding(20)
+    .backgroundColor(Color.White)
+    .borderRadius({ topLeft: 16, topRight: 16 })
+  }
+
+  /**
+   * 构建倍速弹窗
+   */
+  @Builder
+  private buildSpeedSheet(): void {
+    Column() {
+      Text('朗读倍速')
+        .fontSize(18)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#2D3748')
+        .margin({ bottom: 20 })
+      
+      // 倍速选项 - 添加横向滑动
+      Scroll() {
+        Row({ space: 12 }) {
+          ForEach([0.5, 0.75, 1, 1.25, 1.5, 2], (speed: number) => {
+            Button(`${speed}x`)
+              .fontSize(16)
+              .fontColor(this.ttsSpeed === speed ? Color.White : '#2D3748')
+              .backgroundColor(this.ttsSpeed === speed ? Color.Blue : '#F7FAFC')
+              .borderRadius(8)
+              .width(80)
+              .height(44)
+              .onClick(() => {
+                this.setTTSSpeed(speed);
+              })
+          })
+        }
+        .padding({ left: 8, right: 8 })
+      }
+      .scrollable(ScrollDirection.Horizontal)
+      .scrollBar(BarState.Off)
+      .width('100%')
+      .margin({ bottom: 16 })
+      
+      Text('选择朗读速度，1x为正常速度')
+        .fontSize(12)
+        .fontColor('#A0AEC0')
+        .textAlign(TextAlign.Center)
+    }
+    .padding(20)
+    .backgroundColor(Color.White)
+    .borderRadius({ topLeft: 16, topRight: 16 })
+  }
+
+  /**
+   * 设置定时器
+   */
+  private setTimer(minutes: number): void {
+    // 清除之前的定时器
+    if (this.timerInterval !== -1) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = -1;
+    }
+    
+    this.timerMinutes = minutes;
+    this.showTimerSheet = false;
+    
+    if (minutes > 0) {
+      this.remainingTime = minutes * 60; // 转换为秒
+      
+      // 启动定时器
+      this.timerInterval = setInterval(() => {
+        this.remainingTime--;
+        
+        if (this.remainingTime <= 0) {
+          // 时间到，停止朗读
+          this.stopTTS();
+          this.timerMinutes = 0;
+          clearInterval(this.timerInterval);
+          this.timerInterval = -1;
+          
+          // 显示提示
+          this.getUIContext()
+            .getPromptAction()
+            .showToast({ message: '定时朗读结束', duration: 2000 });
+        }
+      }, 1000);
+      
+      hilog.info(0x0000, TAG, `设置定时器: ${minutes}分钟`);
+    } else {
+      this.remainingTime = 0;
+      hilog.info(0x0000, TAG, '关闭定时器');
+    }
+  }
+
+  /**
+   * 设置TTS朗读速度
+   */
+  private setTTSSpeed(speed: number): void {
+    this.ttsSpeed = speed;
+    this.showSpeedSheet = false;
+    
+    // 如果正在朗读，需要重新开始以应用新的速度
+    if (this.isTTSPlaying) {
+      // 保存当前的自动播放状态，避免重新开始时触发自动播放下一章
+      const wasAutoPlay = this.isTTSAutoPlay;
+      
+      // 临时关闭自动播放，避免停止时触发下一章
+      this.isTTSAutoPlay = false;
+      
+      this.stopTTS();
+      
+      setTimeout(() => {
+        // 恢复自动播放状态
+        this.isTTSAutoPlay = wasAutoPlay;
+        this.startTTS();
+      }, 500);
+    }
+    
+    hilog.info(0x0000, TAG, `设置朗读速度: ${speed}x`);
+  }
+
+  /**
+   * 申请后台任务
+   */
+  private async requestBackgroundTask(): Promise<void> {
+    if (this.isBackgroundTaskActive) {
+      hilog.info(0x0000, TAG, '后台任务已激活，无需重复申请');
+      return;
+    }
+
+    try {
+      const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      
+      // 只申请延迟挂起任务，不申请长时运行任务
+      const delayInfo = await backgroundTaskManager.requestSuspendDelay('TTS_READING', () => {
+        hilog.info(0x0000, TAG, '后台任务即将到期，准备续期');
+        // 如果TTS还在播放，继续申请后台任务
+        if (this.isTTSPlaying) {
+          this.requestBackgroundTask();
+        }
+      });
+      this.backgroundTaskId = delayInfo.requestId;
+
+      this.isBackgroundTaskActive = true;
+      hilog.info(0x0000, TAG, '后台延迟挂起任务申请成功');
+    } catch (error) {
+      hilog.error(0x0000, TAG, '申请后台任务失败: ' + JSON.stringify(error));
+      // 即使后台任务申请失败，TTS功能仍然可以正常工作
+      hilog.warn(0x0000, TAG, 'TTS功能将在前台正常工作，但可能在应用切换到后台时被暂停');
+    }
+  }
+
+  /**
+   * 取消后台任务
+   */
+  private async cancelBackgroundTask(): Promise<void> {
+    if (!this.isBackgroundTaskActive) {
+      return;
+    }
+
+    try {
+      // 只取消延迟挂起任务，不调用stopBackgroundRunning
+      // 因为应用没有申请长时运行任务，只申请了延迟挂起任务
+      if (this.backgroundTaskId !== -1) {
+        backgroundTaskManager.cancelSuspendDelay(this.backgroundTaskId);
+        this.backgroundTaskId = -1;
+        hilog.info(0x0000, TAG, '延迟挂起任务已取消');
+      }
+
+      this.isBackgroundTaskActive = false;
+      hilog.info(0x0000, TAG, '后台任务已取消');
+    } catch (error) {
+      hilog.error(0x0000, TAG, '取消后台任务失败: ' + JSON.stringify(error));
+    }
+  }
+
+  }
