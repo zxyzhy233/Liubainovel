@@ -1,10 +1,10 @@
 {
   "modulePathMap": {
-    "entry": "D:\\liubaixiaoshuo\\Liubainovel\\entry"
+    "entry": "D:\\ST\\ReaderKitDemo\\entry"
   },
   "compileMode": "esmodule",
-  "projectRootPath": "D:\\liubaixiaoshuo\\Liubainovel",
-  "nodeModulesPath": "D:\\liubaixiaoshuo\\Liubainovel\\entry\\.preview\\default\\intermediates\\loader_out\\default\\node_modules",
+  "projectRootPath": "D:\\ST\\ReaderKitDemo",
+  "nodeModulesPath": "D:\\ST\\ReaderKitDemo\\entry\\.preview\\default\\intermediates\\loader_out\\default\\node_modules",
   "byteCodeHarInfo": {},
   "declarationEntry": [],
   "moduleName": "entry",
@@ -17,7 +17,7 @@
   "routerMap": [],
   "hspResourcesMap": {},
   "updateVersionInfo": {},
-  "anBuildOutPut": "D:\\liubaixiaoshuo\\Liubainovel\\entry\\.preview\\default\\intermediates\\loader_out\\default\\an\\arm64-v8a",
+  "anBuildOutPut": "D:\\ST\\ReaderKitDemo\\entry\\.preview\\default\\intermediates\\loader_out\\default\\an\\arm64-v8a",
   "anBuildMode": "type",
   "buildConfigPath": ".preview\\config\\buildConfig.json"
 }

@@ -5,13 +5,13 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "C:\\Users\\47539\\.ohos\\config\\default_Liubainovel_U9BWodJFaVx_DJWglyobLK00RVOtLrEO_Qho7OMdfC8=.cer",
+          "certpath": "C:\\Users\\zxyzhy233\\.ohos\\config\\default_LiubaiNovel-ReReader_U1UTVGz8nzXoDVi686OyEZxVoEKg_W5HfTmv5fg-wcI=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001A9CE098D20E294DDE80A4DAAA605727C8B74D0E0C08EC806F0462695B5B0311F9AC535AAA1F6E",
-          "profile": "C:\\Users\\47539\\.ohos\\config\\default_Liubainovel_U9BWodJFaVx_DJWglyobLK00RVOtLrEO_Qho7OMdfC8=.p7b",
+          "keyPassword": "0000001BC095C897361F50464BCEF06037052A9239D9DF381E5A5E469D333510A75FDE5D2925A616C437DF",
+          "profile": "C:\\Users\\zxyzhy233\\.ohos\\config\\default_LiubaiNovel-ReReader_U1UTVGz8nzXoDVi686OyEZxVoEKg_W5HfTmv5fg-wcI=.p7b",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "C:\\Users\\47539\\.ohos\\config\\default_Liubainovel_U9BWodJFaVx_DJWglyobLK00RVOtLrEO_Qho7OMdfC8=.p12",
-          "storePassword": "0000001A12B5D3A8FF0E9FBEC10674D4F96AA22493CB23D72B49E315B8454F1C6D6280AC5B127B0E3965"
+          "storeFile": "C:\\Users\\zxyzhy233\\.ohos\\config\\default_LiubaiNovel-ReReader_U1UTVGz8nzXoDVi686OyEZxVoEKg_W5HfTmv5fg-wcI=.p12",
+          "storePassword": "0000001BE54A5D97862B5A7E38137AE7375046E9CD67DA74CC638C805A698DC87D2E15E7546F1DA6CAC46B"
         }
       }
     ],
@@ -22,7 +22,17 @@
         "compatibleSdkVersion": "5.0.4(16)",
         "runtimeOS": "HarmonyOS",
         "buildOption": {
-        }
+        },
+        "targetSdkVersion": "5.0.4(16)"
+      },
+      {
+        "name": "zxyzhy233",
+        "signingConfig": "zxyzhy233",
+        "compatibleSdkVersion": "5.0.4(16)",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+        },
+        "targetSdkVersion": "5.0.4(16)"
       }
     ],
     "buildModeSet": [
@@ -30,7 +40,7 @@
         "name": "debug",
       },
       {
-        "name": "release"
+        "name": "zxyzhy233"
       }
     ]
   },
@@ -42,7 +52,8 @@
         {
           "name": "default",
           "applyToProducts": [
-            "default"
+            "default",
+            "zxyzhy233"
           ]
         }
       ]

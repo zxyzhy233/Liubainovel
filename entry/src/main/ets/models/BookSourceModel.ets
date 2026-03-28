@@ -14,7 +14,7 @@
  */
 
 /**
- * 书源规则接口
+ * 鹿析规则接口
  */
 export interface BookSourceRule {
   author?: string;           // 作者选择器
@@ -36,6 +36,25 @@ export interface BookSourceRule {
   replaceRegex?: string;     // 内容替换正则表达式
   tocUrl?: string;           // 目录URL选择器
   init?: string;             // 初始化脚本
+  status?: string;           // 状态选择器（连载/完结）
+  updateTime?: string;       // 更新时间选择器
+  // JSON API 相关字段
+  apiUrl?: string;              // JSON API 基础URL
+  apiBookPath?: string;         // 书籍详情API路径模板，如 "book?id={{bookId}}"
+  apiChapterListPath?: string;  // 章节列表API路径模板
+  apiChapterPath?: string;      // 章节内容API路径模板
+  // JSON字段映射
+  jsonTitle?: string;           // JSON中书名字段名，如 "title"
+  jsonAuthor?: string;          // JSON中作者字段名
+  jsonIntro?: string;           // JSON中简介字段名
+  jsonCover?: string;           // JSON中封面字段名
+  jsonCategory?: string;        // JSON中分类字段名
+  jsonStatus?: string;          // JSON中状态字段名
+  jsonLastChapter?: string;     // JSON中最新章节字段名
+  jsonUpdateTime?: string;      // JSON中更新时间字段名
+  jsonChapterList?: string;     // JSON中章节列表字段名，如 "list"
+  jsonChapterName?: string;     // JSON中章节名字段名
+  jsonContent?: string;         // JSON中正文字段名，如 "txt"
 }
 
 /**
@@ -46,7 +65,7 @@ export interface BookSourceInfo {
   bookSourceUrl: string;            // 书源URL
   bookSourceGroup: string;          // 书源分组
   bookSourceComment: string;        // 书源注释
-  bookSourceType: number;           // 书源类型 (0: 小说, 1: 漫画, 2: 有声书)
+  bookSourceType: number;           // 书源类型 (0: 小说, 1: 漫画, 2: 有声书, 3: JSON API)
   enabled: boolean;                 // 是否启用
   enabledCookieJar: boolean;        // 是否启用Cookie
   enabledExplore: boolean;          // 是否启用发现
@@ -188,7 +207,8 @@ export const DEFAULT_CONFIG: BookSourceManagerConfig = {
 export enum BookSourceType {
   NOVEL = 0,                        // 小说
   COMIC = 1,                        // 漫画
-  AUDIO = 2                         // 有声书
+  AUDIO = 2,                        // 有声书
+  JSON_API = 3                      // JSON API
 }
 
 /**
@@ -198,5 +218,6 @@ export enum ParserType {
   REGEX = 'regex',                  // 正则表达式
   XPATH = 'xpath',                  // XPath
   CSS = 'css',                      // CSS选择器
-  JSON = 'json'                     // JSON路径
+  JSON = 'json',                    // JSON路径
+  JSON_API = 'json_api'             // JSON API
 }

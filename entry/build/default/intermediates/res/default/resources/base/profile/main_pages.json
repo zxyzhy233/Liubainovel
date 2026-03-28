@@ -4,10 +4,12 @@
     "pages/MainPage",
     "pages/RecommendPage",
     "pages/Mine",
-    "pages/Reader",
     "pages/SearchPage",
     "pages/BookSourcePage",
     "pages/BookSourceEditPage",
-    "pages/BookDetailPage"
+    "pages/BookDetailPage",
+    "pages/DonatePage",
+    "pages/AboutPage",
+    "pages/UnifiedReaderPage"
   ]
 }

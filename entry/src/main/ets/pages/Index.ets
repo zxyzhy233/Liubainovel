@@ -29,6 +29,7 @@ import { onlineBookDataManager } from '../utils/OnlineBookDataManager';
 import { OnlineBookInfo } from '../models/OnlineBookModel';
 import { bookListManager } from '../utils/BookListManager';
 import { fileIo as fs } from '@kit.CoreFileKit';
+import { downloadManager } from '../managers/DownloadManager';
 
 const TAG: string = 'IndexPage';
 
@@ -37,6 +38,7 @@ const TAG: string = 'IndexPage';
 struct Index {
   @State isShow: boolean = false;
   @State books: BookInfo[] = [];
+  @State greetingText: string = '';
   @State onlineBooks: OnlineBookInfo[] = [];
   @State searchText: string = '';
   @State isEditMode: boolean = false;
@@ -65,8 +67,26 @@ struct Index {
    */
   @StorageLink('isDensityChange') isDensityChange: boolean = false;
 
+  private getGreeting(): string {
+    const hour = new Date().getHours();
+    if (hour >= 0 && hour < 5) {
+      return '夜深了，早点休息 🌙';
+    } else if (hour >= 5 && hour < 9) {
+      return '早上好，书友 🌿';
+    } else if (hour >= 9 && hour < 12) {
+      return '上午好，书友 ☀️';
+    } else if (hour >= 12 && hour < 14) {
+      return '中午好，书友 🍃';
+    } else if (hour >= 14 && hour < 18) {
+      return '下午好，书友 🌿';
+    } else {
+      return '晚上好，书友 🌙';
+    }
+  }
+
   async aboutToAppear() {
     hilog.info(0x0000, TAG, 'aboutToAppear');
+    this.greetingText = this.getGreeting();
     WindowAbility.getInstance().toggleWindowSystemBar(['status', 'navigation'], this.getUIContext().getHostContext());
     const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
     await bookDataManager.init(context);
@@ -79,6 +99,28 @@ struct Index {
     this.books = await bookDataManager.queryAllBooks();
     this.onlineBooks = await onlineBookDataManager.queryAllOnlineBooks();
     hilog.info(0x0000, TAG, `加载书籍: 本地${this.books.length}本, 在线${this.onlineBooks.length}本`);
+  }
+
+  /**
+   * 根据书名生成稳定的随机颜色（同一本书每次显示颜色一致）
+   */
+  private getBookColor(bookName: string): string[] {
+    const colorPairs: string[][] = [
+      ['#5B9A76', '#3D7A5A'],
+      ['#D89575', '#C07A5A'],
+      ['#7BA68E', '#5A8A6E'],
+      ['#A8C5B8', '#8AAF9C'],
+      ['#C4A882', '#A89068'],
+      ['#6B9E82', '#4D8066'],
+      ['#B8A090', '#9A8272'],
+      ['#8DB4A0', '#6E9A84'],
+    ];
+    let hash = 0;
+    for (let i = 0; i < bookName.length; i++) {
+      hash = ((hash << 5) - hash) + bookName.charCodeAt(i);
+      hash = hash & hash;
+    }
+    return colorPairs[Math.abs(hash) % colorPairs.length];
   }
 
   /**
@@ -97,6 +139,7 @@ struct Index {
   }
 
   onPageShow(): void {
+    this.greetingText = this.getGreeting();
     this.refreshBookshelf(); // Refresh bookshelf data when returning to the page
     WindowAbility.getInstance().toggleWindowSystemBar(['status', 'navigation'], this.getUIContext().getHostContext());
     if (this.isDensityChange) {
@@ -114,37 +157,59 @@ struct Index {
       let documentSelectOptions = new picker.DocumentSelectOptions();
       // Set file type selection
       documentSelectOptions.fileSuffixFilters = ['.epub', '.txt', '.mobi', '.azw', '.azw3'];
+      documentSelectOptions.maxSelectNumber = 15;
       let documentPicker = new picker.DocumentViewPicker();
       let documentSelectResult = await documentPicker.select(documentSelectOptions);
       if (!documentSelectResult || documentSelectResult.length <= 0) {
         hilog.error(0x0000, TAG, 'loadBook failed');
         return;
       }
-      // get book file path
-      let srcFile: string = decodeURI(documentSelectResult[0]);
-      hilog.info(0x0000, TAG, 'loadBook decodeURI succeeded. ' + srcFile);
+
       let importer = new LocalBookImporter();
       let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
-      let bookParserInfo = await importer.importLocalBookToCache(srcFile,
-        BookUtils.getBookFileLocalBookPath(context.filesDir));
-      const newBook = new BookInfo();
-      newBook.filePath = bookParserInfo.getFilePath();
-      newBook.bookName = bookParserInfo.getBookName();
-      try {
-        let defaultHandler = await bookParser.getDefaultHandler(newBook.filePath);
-        let bookInfo = defaultHandler.getBookInfo();
-        newBook.author = bookInfo?.bookCreator || '未知';
-      } catch (e) {
-        hilog.error(0x0000, TAG, 'get book author failed', e);
+      let successCount = 0;
+      let failCount = 0;
+      const totalCount = documentSelectResult.length;
+
+      for (let i = 0; i < totalCount; i++) {
+        let srcFile: string = decodeURI(documentSelectResult[i]);
+        hilog.info(0x0000, TAG, `loadBook [${i + 1}/${totalCount}] decodeURI succeeded. ` + srcFile);
+        try {
+          let bookParserInfo = await importer.importLocalBookToCache(srcFile,
+            BookUtils.getBookFileLocalBookPath(context.filesDir));
+          const newBook = new BookInfo();
+          newBook.filePath = bookParserInfo.getFilePath();
+          newBook.bookName = bookParserInfo.getBookName();
+          try {
+            let defaultHandler = await bookParser.getDefaultHandler(newBook.filePath);
+            let bookInfo = defaultHandler.getBookInfo();
+            newBook.author = bookInfo?.bookCreator || '未知';
+          } catch (e) {
+            hilog.error(0x0000, TAG, 'get book author failed', e);
+          }
+          newBook.coverPath = ''; // Temporarily empty
+          newBook.lastReadTime = new Date().getTime();
+          await bookDataManager.insertBook(newBook);
+          successCount++;
+          hilog.info(0x0000, TAG, `loadBook [${i + 1}/${totalCount}] succeeded: ` + newBook.filePath);
+        } catch (innerErr) {
+          failCount++;
+          hilog.error(0x0000, TAG, `loadBook [${i + 1}/${totalCount}] failed: ` + innerErr);
+        }
       }
-      newBook.coverPath = ''; // Temporarily empty
-      newBook.lastReadTime = new Date().getTime();
-      await bookDataManager.insertBook(newBook);
+
       await this.loadBooksFromDB(); // Refresh the bookshelf
-      hilog.info(0x0000, TAG, 'loadBook bookParserInfo parse succeeded,dest path is: ' + newBook.filePath);
-      this.getUIContext()
-        .getPromptAction()
-        .showToast({ message: $r('app.string.import_successful_tips'), duration: 2000 });
+
+      // Show result toast
+      if (failCount === 0) {
+        this.getUIContext()
+          .getPromptAction()
+          .showToast({ message: `成功导入${successCount}本书籍`, duration: 2000 });
+      } else {
+        this.getUIContext()
+          .getPromptAction()
+          .showToast({ message: `导入完成：成功${successCount}本，失败${failCount}本`, duration: 3000 });
+      }
     } catch (err) {
       hilog.error(0x0000, TAG, 'loadBook failed, error is: ' + err);
     }
@@ -245,18 +310,37 @@ struct Index {
   build() {
       // 否则显示书架页面
       Column() {
+      // 问候语
+      Column() {
+        Text('书架')
+          .fontSize(26)
+          .fontWeight(FontWeight.Bold)
+          .fontColor($r('app.color.text_primary'))
+        Text(this.greetingText)
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
+          .fontColor($r('app.color.text_secondary'))
+          .margin({ top: 4 })
+      }
+      .width('100%')
+      .padding({ left: 16, right: 16 })
+      .margin({ top: 44 })
+      .alignItems(HorizontalAlign.Start)
+
       Row() {
         Row({ space: 16 }) {
           Image($r('app.media.sousuo'))
-            .width(32)
-            .height(32)
+            .width(28)
+            .height(28)
+            .fillColor($r('app.color.text_secondary'))
             .onClick(() => {
               this.getUIContext().getRouter().pushUrl({ url: 'pages/SearchPage' });
             })
 
           Image($r('app.media.xuanx'))
-            .width(32)
-            .height(32)
+            .width(28)
+            .height(28)
+            .fillColor($r('app.color.text_secondary'))
             .onClick(() => {
               this.isShow = !this.isShow;
             })
@@ -272,9 +356,7 @@ struct Index {
         }
       }
       .width('100%')
-      .height(56)
       .padding({ left: 16, right: 16 })
-      .margin({ top: 44 })
       .justifyContent(FlexAlign.End)
       .alignItems(VerticalAlign.Center)
 
@@ -285,14 +367,32 @@ struct Index {
             .onClick(async () => {
               // 删除本地书籍
               await bookDataManager.deleteBooksByIds(this.selectedBooks);
-              // 删除在线书籍
+              
+              // 删除在线书籍（包括缓存文件）
               for (const bookId of this.selectedOnlineBooks) {
+                // 先查询书籍信息获取书名
+                const book = await onlineBookDataManager.queryOnlineBookById(bookId);
+                if (book) {
+                  // 删除缓存文件
+                  await downloadManager.clearDownloads(bookId, book.title);
+                  hilog.info(0x0000, TAG, `已删除书籍缓存: ${book.title}`);
+                }
+                // 删除数据库记录
                 await onlineBookDataManager.deleteOnlineBook(bookId);
               }
+              
               this.selectedBooks = [];
               this.selectedOnlineBooks = [];
               this.isEditMode = false;
               await this.loadBooksFromDB();
+              
+              // 提示用户
+              const totalDeleted = this.selectedBooks.length + this.selectedOnlineBooks.length;
+              if (totalDeleted > 0) {
+                this.getUIContext()
+                  .getPromptAction()
+                  .showToast({ message: `已删除${totalDeleted}本书籍及其缓存`, duration: 2000 });
+              }
             })
           Blank()
           Text('取消')
@@ -337,11 +437,33 @@ struct Index {
             GridItem() {
               Column({ space: 8 }) {
                 Stack({ alignContent: Alignment.TopEnd }) {
-                  Image(book.coverPath || $r('app.media.zwfm'))
+                  if (book.coverPath) {
+                    Image(book.coverPath)
+                      .width('100%')
+                      .aspectRatio(0.75)
+                      .borderRadius(12)
+                      .shadow({ radius: 8, color: '#1A191810', offsetX: 0, offsetY: 2 })
+                  } else {
+                    Column() {
+                      Text(book.bookName.length > 4 ? book.bookName.substring(0, 4) : book.bookName)
+                        .fontSize(16)
+                        .fontWeight(FontWeight.Bold)
+                        .fontColor('#FFFFFF')
+                        .textAlign(TextAlign.Center)
+                        .maxLines(2)
+                        .textOverflow({ overflow: TextOverflow.Ellipsis })
+                    }
                     .width('100%')
                     .aspectRatio(0.75)
-                    .borderRadius(8)
-                    .backgroundColor($r('app.color.black_5_opacity'))
+                    .borderRadius(12)
+                    .linearGradient({
+                      angle: 180,
+                      colors: [[this.getBookColor(book.bookName)[0], 0], [this.getBookColor(book.bookName)[1], 1]]
+                    })
+                    .justifyContent(FlexAlign.Center)
+                    .alignItems(HorizontalAlign.Center)
+                    .shadow({ radius: 8, color: '#1A191810', offsetX: 0, offsetY: 2 })
+                  }
                   if (this.isEditMode) {
                     Image(this.selectedBooks.includes(book.id) ? $r('app.media.CheckCircle') : $r('app.media.Circle'))
                       .width(24)
@@ -350,9 +472,12 @@ struct Index {
                   }
                 }
                 Text(book.bookName)
-                  .fontSize(14)
+                  .fontSize(13)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor($r('app.color.text_primary'))
                   .maxLines(2)
                   .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  .textAlign(TextAlign.Center)
               }
               .padding(8)
               .onClick(() => {
@@ -375,11 +500,33 @@ struct Index {
             GridItem() {
               Column({ space: 8 }) {
                 Stack({ alignContent: Alignment.TopEnd }) {
-                  Image(book.cover || $r('app.media.zwfm'))
+                  if (book.cover) {
+                    Image(book.cover)
+                      .width('100%')
+                      .aspectRatio(0.75)
+                      .borderRadius(12)
+                      .shadow({ radius: 8, color: '#1A191810', offsetX: 0, offsetY: 2 })
+                  } else {
+                    Column() {
+                      Text(book.title.length > 4 ? book.title.substring(0, 4) : book.title)
+                        .fontSize(16)
+                        .fontWeight(FontWeight.Bold)
+                        .fontColor('#FFFFFF')
+                        .textAlign(TextAlign.Center)
+                        .maxLines(2)
+                        .textOverflow({ overflow: TextOverflow.Ellipsis })
+                    }
                     .width('100%')
                     .aspectRatio(0.75)
-                    .borderRadius(8)
-                    .backgroundColor($r('app.color.black_5_opacity'))
+                    .borderRadius(12)
+                    .linearGradient({
+                      angle: 180,
+                      colors: [[this.getBookColor(book.title)[0], 0], [this.getBookColor(book.title)[1], 1]]
+                    })
+                    .justifyContent(FlexAlign.Center)
+                    .alignItems(HorizontalAlign.Center)
+                    .shadow({ radius: 8, color: '#1A191810', offsetX: 0, offsetY: 2 })
+                  }
                   if (this.isEditMode) {
                     Image(this.selectedOnlineBooks.includes(book.id) ? $r('app.media.CheckCircle') : $r('app.media.Circle'))
                       .width(24)
@@ -396,15 +543,18 @@ struct Index {
                   Text('在线')
                     .fontSize(10)
                     .fontColor(Color.White)
-                    .backgroundColor('#FF6B6B')
-                    .padding({ left: 4, right: 4, top: 2, bottom: 2 })
-                    .borderRadius(4)
+                    .backgroundColor($r('app.color.primary_green'))
+                    .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                    .borderRadius(100)
                     .position({ x: 4, y: 4 })
                 }
                 Text(book.title)
-                  .fontSize(14)
+                  .fontSize(13)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor($r('app.color.text_primary'))
                   .maxLines(2)
                   .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  .textAlign(TextAlign.Center)
               }
               .padding(8)
               .onClick(() => {
@@ -441,11 +591,31 @@ struct Index {
           ForEach(this.books, (book: BookInfo) => {
             ListItem() {
               Row({ space: 12 }) {
-                Image(book.coverPath || $r('app.media.zwfm'))
+                if (book.coverPath) {
+                  Image(book.coverPath)
+                    .width(60)
+                    .aspectRatio(0.75)
+                    .borderRadius(4)
+                } else {
+                  Column() {
+                    Text(book.bookName.length > 4 ? book.bookName.substring(0, 4) : book.bookName)
+                      .fontSize(12)
+                      .fontWeight(FontWeight.Bold)
+                      .fontColor('#FFFFFF')
+                      .textAlign(TextAlign.Center)
+                      .maxLines(2)
+                      .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  }
                   .width(60)
                   .aspectRatio(0.75)
                   .borderRadius(4)
-                  .backgroundColor($r('app.color.black_5_opacity'))
+                  .linearGradient({
+                    angle: 180,
+                    colors: [[this.getBookColor(book.bookName)[0], 0], [this.getBookColor(book.bookName)[1], 1]]
+                  })
+                  .justifyContent(FlexAlign.Center)
+                  .alignItems(HorizontalAlign.Center)
+                }
                 Column({ space: 4 }) {
                   Text(book.bookName)
                     .fontSize(16)
@@ -476,17 +646,37 @@ struct Index {
             ListItem() {
               Row({ space: 12 }) {
                 Stack() {
-                  Image(book.cover || $r('app.media.zwfm'))
+                  if (book.cover) {
+                    Image(book.cover)
+                      .width(60)
+                      .aspectRatio(0.75)
+                      .borderRadius(8)
+                  } else {
+                    Column() {
+                      Text(book.title.length > 4 ? book.title.substring(0, 4) : book.title)
+                        .fontSize(12)
+                        .fontWeight(FontWeight.Bold)
+                        .fontColor('#FFFFFF')
+                        .textAlign(TextAlign.Center)
+                        .maxLines(2)
+                        .textOverflow({ overflow: TextOverflow.Ellipsis })
+                    }
                     .width(60)
                     .aspectRatio(0.75)
-                    .borderRadius(4)
-                    .backgroundColor($r('app.color.black_5_opacity'))
+                    .borderRadius(8)
+                    .linearGradient({
+                      angle: 180,
+                      colors: [[this.getBookColor(book.title)[0], 0], [this.getBookColor(book.title)[1], 1]]
+                    })
+                    .justifyContent(FlexAlign.Center)
+                    .alignItems(HorizontalAlign.Center)
+                  }
                   Text('在线')
                     .fontSize(10)
                     .fontColor(Color.White)
-                    .backgroundColor('#FF6B6B')
-                    .padding({ left: 4, right: 4, top: 2, bottom: 2 })
-                    .borderRadius(4)
+                    .backgroundColor($r('app.color.primary_green'))
+                    .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                    .borderRadius(100)
                     .position({ x: 2, y: 2 })
                 }
                 .width(60)
@@ -568,8 +758,8 @@ struct Index {
         Button('解析')
           .fontSize(14)
           .fontColor(Color.White)
-          .backgroundColor('#9F6548')
-          .borderRadius(8)
+          .backgroundColor($r('app.color.primary_green'))
+          .borderRadius(12)
           .height(44)
           .width(80)
           .margin({ left: 12 })
@@ -758,17 +948,17 @@ struct Index {
   private openOnlineBook(book: OnlineBookInfo): void {
     hilog.info(0x0000, TAG, `打开在线书籍: ${book.title}`);
     
-    // 跳转到书籍详情页
+    // 直接跳转到阅读器（阅读进度由 UnifiedReaderPage 自动恢复）
     router.pushUrl({
-      url: 'pages/BookDetailPage',
+      url: 'pages/UnifiedReaderPage',
       params: {
-        bookUrl: book.bookUrl,
+        source: 'online',
+        bookId: book.id,
         bookTitle: book.title,
-        bookAuthor: book.author,
-        bookCover: book.cover
+        bookUrl: book.bookUrl
       }
     }).then(() => {
-      hilog.info(0x0000, TAG, '成功跳转到书籍详情页面');
+      hilog.info(0x0000, TAG, '成功跳转到阅读器');
     }).catch((error: Error) => {
       hilog.error(0x0000, TAG, '跳转失败: ' + error.message);
     });
@@ -778,14 +968,16 @@ struct Index {
     if (!book.filePath) {
       return;
     }
+
+    // 直接打开自研阅读器
     this.getUIContext().getRouter().pushUrl({
-      url: "pages/Reader", params: {
+      url: 'pages/UnifiedReaderPage',
+      params: {
+        source: 'local',
         filePath: book.filePath,
-        resourceIndex: book.resourceIndex,
-        domPos: book.domPos || ''
+        bookTitle: book.bookName || ''
       }
     })
-    // Router addObserver 方法已移除，因为Router类型没有这个属性
   }
 
   /**

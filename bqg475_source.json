@@ -1,0 +1,43 @@
+[{
+  "bookSourceName": "笔趣阁475(API)",
+  "bookSourceUrl": "https://www.bqg475.cc",
+  "bookSourceGroup": "默认",
+  "bookSourceComment": "笔趣阁475站源 - JSON API版本",
+  "bookSourceType": 3,
+  "enabled": true,
+  "enabledCookieJar": false,
+  "enabledExplore": false,
+  "enabledReview": false,
+  "header": "",
+  "searchUrl": "",
+  "exploreUrl": "",
+  "bookUrlPattern": "",
+  "weight": 100,
+  "customOrder": 1,
+  "ruleSearch": {},
+  "ruleExplore": {},
+  "ruleBookInfo": {
+    "apiUrl": "https://apibi.cc/api/",
+    "apiBookPath": "book?id={{bookId}}",
+    "jsonTitle": "title",
+    "jsonAuthor": "author",
+    "jsonIntro": "intro",
+    "jsonCategory": "sortname",
+    "jsonStatus": "full",
+    "jsonLastChapter": "lastchapter",
+    "jsonUpdateTime": "lastupdate"
+  },
+  "ruleToc": {
+    "apiUrl": "https://apibi.cc/api/",
+    "apiChapterListPath": "booklist?id={{bookId}}",
+    "jsonChapterList": "list",
+    "chapterList": "json_api"
+  },
+  "ruleContent": {
+    "apiUrl": "https://apibi.cc/api/",
+    "apiChapterPath": "chapter?id={{bookId}}&chapterid={{chapterId}}",
+    "jsonContent": "txt",
+    "content": "json_api"
+  },
+  "ruleReview": {}
+}]

@@ -90,7 +90,51 @@
     },
     {
       "name": "page_background",
-      "value": "#F1F3F5"
+      "value": "#F5F4F1"
+    },
+    {
+      "name": "primary_green",
+      "value": "#3D8A5A"
+    },
+    {
+      "name": "dark_green",
+      "value": "#4D9B6A"
+    },
+    {
+      "name": "light_green",
+      "value": "#C8F0D8"
+    },
+    {
+      "name": "warm_coral",
+      "value": "#D89575"
+    },
+    {
+      "name": "card_bg",
+      "value": "#FFFFFF"
+    },
+    {
+      "name": "text_primary",
+      "value": "#1A1918"
+    },
+    {
+      "name": "text_secondary",
+      "value": "#6D6C6A"
+    },
+    {
+      "name": "text_tertiary",
+      "value": "#9C9B99"
+    },
+    {
+      "name": "tab_inactive",
+      "value": "#A8A7A5"
+    },
+    {
+      "name": "border_subtle",
+      "value": "#E5E4E1"
+    },
+    {
+      "name": "muted_bg",
+      "value": "#EDECEA"
     },
     {
       "name": "ic_scroll_bar",
@@ -99,6 +143,34 @@
     {
       "name": "ic_bg_selected",
       "value": "#1A000000"
+    },
+    {
+      "name": "pageflip_bottom_blank_backgroundcolor",
+      "value": "#80aeacac"
+    },
+    {
+      "name": "pageflip_button_backgroundcolor",
+      "value": "#ffffffff"
+    },
+    {
+      "name": "pageflip_column_backgroundcolor",
+      "value": "#ffffffff"
+    },
+    {
+      "name": "pageflip_row_backgroundcolor",
+      "value": "#ffffffff"
+    },
+    {
+      "name": "pageflip_button_fontcolor",
+      "value": "#000000"
+    },
+    {
+      "name": "pageflip_button_click_fontcolor",
+      "value": "#ff51b6ff"
+    },
+    {
+      "name": "pageflip_swiper_backgroundcolor",
+      "value": "#FFEFEFEF"
     }
   ]
 }

@@ -13,22 +13,13 @@
  * limitations under the License.
  */
 
-import { http } from '@kit.NetworkKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { common, Want } from '@kit.AbilityKit';
+import { productViewManager } from '@kit.StoreKit';
+import { bookSourceManager } from '../managers/BookSourceManager';
+import { NovelInfo } from '../models/BookSourceModel';
 
 const TAG: string = 'RecommendPage';
-
-/**
- * 小说信息接口
- */
-interface NovelInfo {
-  cover: string; // 封面图片URL
-  title: string; // 小说标题
-  author: string; // 作者
-  description: string; // 简介
-  link: string; // 详情链接
-}
 
 @Entry
 @Component
@@ -42,167 +33,59 @@ struct RecommendPage {
    * 页面显示时加载推荐小说
    */
   async aboutToAppear() {
+    // 初始化书源管理器
+    await this.initializeBookSourceManager();
+    // 加载推荐小说
     await this.loadRecommendNovels();
   }
 
   /**
-   * 从笔趣阁网站加载推荐小说
+   * 初始化书源管理器
    */
-  private async loadRecommendNovels() {
+  private async initializeBookSourceManager(): Promise<void> {
+    try {
+      const context = getContext(this) as common.UIAbilityContext;
+      await bookSourceManager.initialize(context);
+      hilog.info(0x0000, TAG, '书源管理器初始化成功');
+    } catch (error) {
+      hilog.error(0x0000, TAG, '书源管理器初始化失败: ' + JSON.stringify(error));
+    }
+  }
+
+  /**
+   * 使用书源管理器加载推荐小说
+   */
+  private async loadRecommendNovels(): Promise<void> {
     try {
       this.isLoading = true;
       this.errorMessage = '';
       
-      // 创建HTTP请求
-      let httpRequest = http.createHttp();
-      let response = await httpRequest.request(
-        'https://www.bqg128.com/',
-        {
-          method: http.RequestMethod.GET,
-          header: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-          }
-        }
-      );
-
-      if (response.responseCode === 200) {
-        const htmlContent = response.result.toString();
-        this.parseNovelList(htmlContent);
+      hilog.info(0x0000, TAG, '开始通过书源管理器获取推荐小说');
+      
+      // 使用书源管理器获取推荐小说
+      const result = await bookSourceManager.getRecommendNovels();
+      
+      if (result.success && result.data) {
+        this.novelList = result.data.slice(0, 8); // 取前8本小说用于轮播
+        hilog.info(0x0000, TAG, `成功获取 ${this.novelList.length} 本推荐小说，来源: ${result.source || '未知'}`);
+        
+        // 打印获取到的小说信息
+        this.novelList.forEach((novel, index) => {
+          hilog.info(0x0000, TAG, `小说${index + 1}: ${novel.title} - ${novel.author}`);
+        });
       } else {
-        hilog.error(0x0000, TAG, 'HTTP请求失败: ' + response.responseCode);
-        this.errorMessage = '网络请求失败，请检查网络连接';
+        this.errorMessage = result.error || '获取推荐小说失败';
+        hilog.error(0x0000, TAG, '获取推荐小说失败: ' + this.errorMessage);
       }
+      
     } catch (error) {
-      hilog.error(0x0000, TAG, '加载推荐小说失败: ' + JSON.stringify(error));
+      hilog.error(0x0000, TAG, '加载推荐小说异常: ' + JSON.stringify(error));
       this.errorMessage = '加载失败，请重试';
     } finally {
       this.isLoading = false;
     }
   }
 
-  /**
-   * 使用正则表达式解析HTML内容，提取热门小说信息
-   * @param html HTML内容
-   */
-  private parseNovelList(html: string) {
-    try {
-      // 先打印HTML内容的一部分用于调试
-      hilog.info(0x0000, TAG, 'HTML内容长度: ' + html.length);
-      
-      // 匹配 <div class="hot"> 区域内容，使用更精确的匹配
-      const hotRegex = /<div class="hot">([\s\S]*?)<\/div>\s*<div class="top">/;
-      const hotMatch = hotRegex.exec(html);
-      
-      if (!hotMatch) {
-        hilog.warn(0x0000, TAG, '未找到热门小说区域，尝试备用匹配');
-        // 备用匹配方案
-        const hotRegexAlt = /<div class="hot">([\s\S]*?)(?=<div class="top"|$)/;
-        const hotMatchAlt = hotRegexAlt.exec(html);
-        if (!hotMatchAlt) {
-          this.errorMessage = '未找到热门小说数据';
-          return;
-        }
-        this.parseHotContent(hotMatchAlt[1]);
-        return;
-      }
-
-      this.parseHotContent(hotMatch[1]);
-      
-    } catch (error) {
-      hilog.error(0x0000, TAG, '解析HTML失败: ' + JSON.stringify(error));
-      this.errorMessage = '解析数据失败';
-    }
-  }
-
-  /**
-   * 解析热门区域内容
-   * @param hotContent 热门区域HTML内容
-   */
-  private parseHotContent(hotContent: string) {
-    try {
-      hilog.info(0x0000, TAG, '热门区域内容长度: ' + hotContent.length);
-      
-      const novels: NovelInfo[] = [];
-
-      // 使用更精确的正则表达式匹配完整的item结构
-      const itemRegex = /<div class="item">[\s\S]*?<div class="image">[\s\S]*?<\/div>[\s\S]*?<dl>[\s\S]*?<\/dl>[\s\S]*?<\/div>/g;
-      let itemMatch: RegExpExecArray | null;
-      let count = 0;
-
-      while ((itemMatch = itemRegex.exec(hotContent)) !== null && count < 4) {
-        const itemContent = itemMatch[0]; // 使用完整匹配内容
-        
-        hilog.info(0x0000, TAG, `解析第${count + 1}个item，内容长度: ${itemContent.length}`);
-        
-        // 提取封面图片
-        const coverRegex = /<img[^>]+src="([^"]+)"[^>]*>/;
-        const coverMatch = coverRegex.exec(itemContent);
-        const cover = coverMatch ? coverMatch[1] : '';
-        
-        // 提取小说标题和链接
-        const titleRegex = /<a[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>/g;
-        let titleMatch: RegExpExecArray | null;
-        let link = '';
-        let title = '';
-        
-        // 找到dt标签内的a标签（第二个a标签通常是标题）
-        let matchCount = 0;
-        while ((titleMatch = titleRegex.exec(itemContent)) !== null) {
-          matchCount++;
-          if (matchCount === 2) { // 第二个a标签是标题
-            link = titleMatch[1];
-            title = titleMatch[2].trim();
-            break;
-          }
-        }
-        
-        // 如果没找到第二个a标签，使用第一个
-        if (!title && !link) {
-          titleRegex.lastIndex = 0; // 重置正则表达式
-          titleMatch = titleRegex.exec(itemContent);
-          if (titleMatch) {
-            link = titleMatch[1];
-            title = titleMatch[2].trim();
-          }
-        }
-        
-        // 提取作者
-        const authorRegex = /<span[^>]*>([^<]+)<\/span>/;
-        const authorMatch = authorRegex.exec(itemContent);
-        const author = authorMatch ? authorMatch[1].trim() : '未知作者';
-        
-        // 提取简介
-        const descRegex = /<dd[^>]*>([^<]+)<\/dd>/;
-        const descMatch = descRegex.exec(itemContent);
-        const description = descMatch ? descMatch[1].trim() : '暂无简介';
-
-        hilog.info(0x0000, TAG, `解析结果 - 标题: ${title}, 作者: ${author}, 链接: ${link}`);
-
-        if (title && link) {
-          novels.push({
-            cover: cover.startsWith('http') ? cover : 'https://www.bqg128.com' + cover,
-            title: title,
-            author: author,
-            description: description,
-            link: link.startsWith('http') ? link : 'https://www.bqg128.com' + link
-          } as NovelInfo);
-          count++;
-        }
-      }
-
-      this.novelList = novels.slice(0, 4); // 只取4本小说
-      hilog.info(0x0000, TAG, '成功解析 ' + this.novelList.length + ' 本热门小说');
-      
-      // 打印解析结果用于调试
-      this.novelList.forEach((novel, index) => {
-        hilog.info(0x0000, TAG, `小说${index + 1}: ${novel.title} - ${novel.author}`);
-      });
-      
-    } catch (error) {
-      hilog.error(0x0000, TAG, '解析热门内容失败: ' + JSON.stringify(error));
-      this.errorMessage = '解析数据失败';
-    }
-  }
 
   /**
    * 构建轮播图组件
@@ -225,12 +108,12 @@ struct RecommendPage {
                 .width('100%')
                 .height(480)
                 .objectFit(ImageFit.Cover)
-                .borderRadius(12)
+                .borderRadius(20)
 
               // 小说信息遮罩 - 与封面底部对齐
               Column() {
                 Text(novel.title)
-                  .fontSize(18)
+                  .fontSize(20)
                   .fontWeight(FontWeight.Bold)
                   .fontColor('#FFFFFF')
                   .margin({ bottom: 8 })
@@ -255,7 +138,7 @@ struct RecommendPage {
               .align(Alignment.Top)
               .backgroundColor('#80000000') // 半透明黑色背景
               .alignSelf(ItemAlign.End) // 与Stack底部对齐
-              .borderRadius({ bottomLeft: 12, bottomRight: 12 }) // 与封面底部圆角保持一致
+              .borderRadius({ bottomLeft: 20, bottomRight: 20 }) // 与封面底部圆角保持一致
             }
             .height(480) // 与封面高度一致
             .width('90%')
@@ -273,12 +156,12 @@ struct RecommendPage {
         .displayArrow(false) // 不显示箭头
         .effectMode(EdgeEffect.None) // 无边缘效果
         .indicator(new DotIndicator()
-          .itemWidth(8)
-          .itemHeight(8)
-          .selectedItemWidth(12)
+          .itemWidth(6)
+          .itemHeight(6)
+          .selectedItemWidth(8)
           .selectedItemHeight(8)
-          .color('#80808080') // 未选中指示器颜色
-          .selectedColor('#FFFF0000')) // 选中指示器颜色（红色）
+          .color($r('app.color.muted_bg')) // 未选中指示器颜色
+          .selectedColor($r('app.color.primary_green'))) // 选中指示器颜色（绿色）
         .onChange((index: number) => {
           this.currentIndex = index;
         })
@@ -289,15 +172,55 @@ struct RecommendPage {
             this.loadRecommendNovels();
           })
           .margin({ top: 16 })
-          .backgroundColor('#007AFF')
+          .backgroundColor($r('app.color.primary_green'))
           .fontColor('#FFFFFF')
-          .borderRadius(8)
+          .borderRadius(100)
           .width(120)
           .height(40)
+
+        // 应用推荐
+        Row() {
+          Text('📖 应用推荐：')
+            .fontSize(14)
+            .margin({ right: 4 })
+          Text('留白写作助手')
+            .fontSize(13)
+            .fontColor($r('app.color.primary_green'))
+            .fontWeight(FontWeight.Medium)
+            .decoration({ type: TextDecorationType.Underline, color: '#3D8A5A' })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .layoutWeight(1)
+            .onClick(() => {
+              this.openAppStore();
+            })
+        }
+        .width('90%')
+        .margin({ top: 16 })
+        .padding(14)
+        .backgroundColor($r('app.color.card_bg'))
+        .borderRadius(16)
+        .shadow({ radius: 8, color: '#1A191808', offsetX: 0, offsetY: 2 })
       }
     }
   }
 
+
+  /**
+   * 打开应用市场-留白写作助手详情页
+   */
+  private openAppStore(): void {
+    try {
+      const context = getContext(this) as common.UIAbilityContext;
+      const wantParam: Want = {
+        parameters: { bundleName: 'com.liubai.ainovelasst' }
+      };
+      productViewManager.loadProduct(context, wantParam);
+      hilog.info(0x0000, TAG, '成功拉起应用市场详情页');
+    } catch (error) {
+      hilog.error(0x0000, TAG, '拉起应用市场失败: ' + JSON.stringify(error));
+    }
+  }
 
   /**
    * 打开小说详情
@@ -334,11 +257,27 @@ struct RecommendPage {
 
   build() {
     Column() {
-      // 标题
-      Text('小说推荐')
-        .fontSize(24)
-        .fontWeight(FontWeight.Bold)
-        .margin({ top: 20, bottom: 20 })
+      // 顶部标题
+      Row() {
+        Text('发现')
+          .fontSize(26)
+          .fontWeight(FontWeight.Bold)
+          .fontColor($r('app.color.text_primary'))
+        Image($r('app.media.shuaxin'))
+          .width(22)
+          .height(22)
+          .fillColor($r('app.color.text_secondary'))
+          .onClick(() => {
+            this.loadRecommendNovels();
+          })
+      }
+      .width('100%')
+      .height(56)
+      .padding({ left: 16, right: 16 })
+      .margin({ top: 44 })
+      .justifyContent(FlexAlign.SpaceBetween)
+      .alignItems(VerticalAlign.Center)
+
 
       if (this.isLoading) {
         // 加载中状态
@@ -352,9 +291,11 @@ struct RecommendPage {
       } else if (this.errorMessage) {
         // 错误状态
         Text(this.errorMessage)
-          .fontColor('#FF0000')
+          .fontColor($r('app.color.warm_coral'))
           .margin({ bottom: 16 })
         Button('重试')
+          .backgroundColor($r('app.color.primary_green'))
+          .borderRadius(12)
           .onClick(() => {
             this.loadRecommendNovels();
           })
@@ -363,7 +304,7 @@ struct RecommendPage {
         Column() {
           Text('暂无推荐小说')
             .fontSize(16)
-            .fontColor('#808080')
+            .fontColor($r('app.color.text_tertiary'))
         }
       } else {
         // 显示轮播图
@@ -372,9 +313,7 @@ struct RecommendPage {
     }
     .width('100%')
     .height('100%')
-    .justifyContent(FlexAlign.Center)
-    .alignItems(HorizontalAlign.Center)
-    .backgroundColor('#F1F3F5')
+    .backgroundColor($r('app.color.page_background'))
   }
 }
 

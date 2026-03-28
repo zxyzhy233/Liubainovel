@@ -1,0 +1,58 @@
+[
+  {
+    "bookSourceName": "笔趣阁HK",
+    "bookSourceUrl": "https://www.biquw.net",
+    "bookSourceGroup": "默认",
+    "bookSourceComment": "笔趣阁HK站源，支持小说搜索和阅读",
+    "bookSourceType": 0,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "enabledReview": false,
+    "header": "",
+    "searchUrl": "https://www.biquw.net/search/result.html?searchkey={{key}}",
+    "exploreUrl": "https://www.biquw.net/category.html",
+    "bookUrlPattern": "",
+    "weight": 100,
+    "customOrder": 2,
+    "ruleSearch": {
+      "bookList": "<div class=\"item\">([\\s\\S]*?)<\\/dl><\\/div>",
+      "name": "<dt><a[^>]+>([^<]+)<\\/a><\\/dt>",
+      "author": "<dd>作者：<a[^>]+>([^<]+)<\\/a><\\/dd>",
+      "bookUrl": "<dt><a[^>]+href=\"([^\"]+)\"[^>]*>",
+      "coverUrl": "<img[^>]+src=\"([^\"]+)\"[^>]*>",
+      "intro": "<dd class=\"intro\">([\\s\\S]*?)<\\/dd>",
+      "lastChapter": "",
+      "kind": ""
+    },
+    "ruleExplore": {
+      "bookList": "<div class=\"item[^\"]*\">\\s*<div class=\"item-left\">[\\s\\S]*?<dd class=\"intro\">[\\s\\S]*?<\\/dl>\\s*<\\/div>\\s*<\\/div>",
+      "name": "<dt><a[^>]+>([^<]+)<\\/a><\\/dt>",
+      "author": "<dd>作者：<a[^>]+>([^<]+)<\\/a><\\/dd>",
+      "bookUrl": "<dt><a[^>]+href=\"([^\"]+)\"[^>]*>",
+      "coverUrl": "<img[^>]+src=\"([^\"]+)\"[^>]*>",
+      "intro": "<dd class=\"intro\">([^<]+)<\\/dd>"
+    },
+    "ruleBookInfo": {
+      "name": "<meta[^>]*property=\"og:novel:book_name\"[^>]*content=\"([^\"]+)\"[^>]*>",
+      "author": "<meta[^>]*property=\"og:novel:author\"[^>]*content=\"([^\"]+)\"[^>]*>",
+      "coverUrl": "<meta[^>]*property=\"og:image\"[^>]*content=\"([^\"]+)\"[^>]*>",
+      "intro": "<meta[^>]*property=\"og:description\"[^>]*content=\"([^\"]+)\"[^>]*>",
+      "kind": "<meta[^>]*property=\"og:novel:category\"[^>]*content=\"([^\"]+)\"[^>]*>",
+      "lastChapter": "<meta[^>]*property=\"og:novel:latest_chapter_name\"[^>]*content=\"([^\"]+)\"[^>]*>",
+      "updateTime": "<meta[^>]*property=\"og:novel:update_time\"[^>]*content=\"([^\"]+)\"[^>]*>",
+      "status": "<meta[^>]*property=\"og:novel:status\"[^>]*content=\"([^\"]+)\"[^>]*>",
+      "tocUrl": ""
+    },
+    "ruleToc": {
+      "chapterList": "<ul class=\"dirlist three clearfix\">([\\s\\S]*?)<\\/ul>",
+      "chapterName": "<a href=\"[^\"]+\"[^>]*>([^<]+)<\\/a>",
+      "chapterUrl": "<a href=\"([^\"]+)\"[^>]*>"
+    },
+    "ruleContent": {
+      "content": "<div class=\"content\" id=\"chaptercontent\">([\\s\\S]*?)<div class=\"info bottominfo\">",
+      "replaceRegex": "笔趣阁##||www\\.biquge\\.hk##||请收藏本站.*?<br \/>##||<br \/>##\\n||最⊥新⊥小⊥说⊥在⊥六⊥9⊥⊥书⊥⊥吧⊥⊥首⊥发！<br \/>##||<div id=\"center_tip\">.*?<\\/div>##||<p><\\/p>##||<p>##||<\\/p>##||[ \t]+##||[\\n]{3,}##\\n\\n"
+    },
+    "ruleReview": {}
+  }
+]

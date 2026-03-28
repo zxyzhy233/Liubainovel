@@ -7,21 +7,13 @@ interface RecommendPage_Params {
     isLoading?: boolean;
     errorMessage?: string;
 }
-import http from "@ohos:net.http";
 import hilog from "@ohos:hilog";
 import type common from "@ohos:app.ability.common";
 import type Want from "@ohos:app.ability.Want";
+import productViewManager from "@hms:core.appgalleryservice.productViewManager";
+import { bookSourceManager } from "@bundle:liubai.yuedu.hos/entry/ets/managers/BookSourceManager";
+import type { NovelInfo } from '../models/BookSourceModel';
 const TAG: string = 'RecommendPage';
-/**
- * 小说信息接口
- */
-interface NovelInfo {
-    cover: string; // 封面图片URL
-    title: string; // 小说标题
-    author: string; // 作者
-    description: string; // 简介
-    link: string; // 详情链接
-}
 class RecommendPage extends ViewPU {
     constructor(parent, params, __localStorage, elmtId = -1, paramsLambda = undefined, extraInfo) {
         super(parent, __localStorage, elmtId, extraInfo);
@@ -97,143 +89,53 @@ class RecommendPage extends ViewPU {
      * 页面显示时加载推荐小说
      */
     async aboutToAppear() {
+        // 初始化书源管理器
+        await this.initializeBookSourceManager();
+        // 加载推荐小说
         await this.loadRecommendNovels();
     }
     /**
-     * 从笔趣阁网站加载推荐小说
+     * 初始化书源管理器
      */
-    private async loadRecommendNovels() {
+    private async initializeBookSourceManager(): Promise<void> {
+        try {
+            const context = getContext(this) as common.UIAbilityContext;
+            await bookSourceManager.initialize(context);
+            hilog.info(0x0000, TAG, '书源管理器初始化成功');
+        }
+        catch (error) {
+            hilog.error(0x0000, TAG, '书源管理器初始化失败: ' + JSON.stringify(error));
+        }
+    }
+    /**
+     * 使用书源管理器加载推荐小说
+     */
+    private async loadRecommendNovels(): Promise<void> {
         try {
             this.isLoading = true;
             this.errorMessage = '';
-            // 创建HTTP请求
-            let httpRequest = http.createHttp();
-            let response = await httpRequest.request('https://www.bqg128.com/', {
-                method: http.RequestMethod.GET,
-                header: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
-            });
-            if (response.responseCode === 200) {
-                const htmlContent = response.result.toString();
-                this.parseNovelList(htmlContent);
+            hilog.info(0x0000, TAG, '开始通过书源管理器获取推荐小说');
+            // 使用书源管理器获取推荐小说
+            const result = await bookSourceManager.getRecommendNovels();
+            if (result.success && result.data) {
+                this.novelList = result.data.slice(0, 8); // 取前8本小说用于轮播
+                hilog.info(0x0000, TAG, `成功获取 ${this.novelList.length} 本推荐小说，来源: ${result.source || '未知'}`);
+                // 打印获取到的小说信息
+                this.novelList.forEach((novel, index) => {
+                    hilog.info(0x0000, TAG, `小说${index + 1}: ${novel.title} - ${novel.author}`);
+                });
             }
             else {
-                hilog.error(0x0000, TAG, 'HTTP请求失败: ' + response.responseCode);
-                this.errorMessage = '网络请求失败，请检查网络连接';
+                this.errorMessage = result.error || '获取推荐小说失败';
+                hilog.error(0x0000, TAG, '获取推荐小说失败: ' + this.errorMessage);
             }
         }
         catch (error) {
-            hilog.error(0x0000, TAG, '加载推荐小说失败: ' + JSON.stringify(error));
+            hilog.error(0x0000, TAG, '加载推荐小说异常: ' + JSON.stringify(error));
             this.errorMessage = '加载失败，请重试';
         }
         finally {
             this.isLoading = false;
-        }
-    }
-    /**
-     * 使用正则表达式解析HTML内容，提取热门小说信息
-     * @param html HTML内容
-     */
-    private parseNovelList(html: string) {
-        try {
-            // 先打印HTML内容的一部分用于调试
-            hilog.info(0x0000, TAG, 'HTML内容长度: ' + html.length);
-            // 匹配 <div class="hot"> 区域内容，使用更精确的匹配
-            const hotRegex = /<div class="hot">([\s\S]*?)<\/div>\s*<div class="top">/;
-            const hotMatch = hotRegex.exec(html);
-            if (!hotMatch) {
-                hilog.warn(0x0000, TAG, '未找到热门小说区域，尝试备用匹配');
-                // 备用匹配方案
-                const hotRegexAlt = /<div class="hot">([\s\S]*?)(?=<div class="top"|$)/;
-                const hotMatchAlt = hotRegexAlt.exec(html);
-                if (!hotMatchAlt) {
-                    this.errorMessage = '未找到热门小说数据';
-                    return;
-                }
-                this.parseHotContent(hotMatchAlt[1]);
-                return;
-            }
-            this.parseHotContent(hotMatch[1]);
-        }
-        catch (error) {
-            hilog.error(0x0000, TAG, '解析HTML失败: ' + JSON.stringify(error));
-            this.errorMessage = '解析数据失败';
-        }
-    }
-    /**
-     * 解析热门区域内容
-     * @param hotContent 热门区域HTML内容
-     */
-    private parseHotContent(hotContent: string) {
-        try {
-            hilog.info(0x0000, TAG, '热门区域内容长度: ' + hotContent.length);
-            const novels: NovelInfo[] = [];
-            // 使用更精确的正则表达式匹配完整的item结构
-            const itemRegex = /<div class="item">[\s\S]*?<div class="image">[\s\S]*?<\/div>[\s\S]*?<dl>[\s\S]*?<\/dl>[\s\S]*?<\/div>/g;
-            let itemMatch: RegExpExecArray | null;
-            let count = 0;
-            while ((itemMatch = itemRegex.exec(hotContent)) !== null && count < 4) {
-                const itemContent = itemMatch[0]; // 使用完整匹配内容
-                hilog.info(0x0000, TAG, `解析第${count + 1}个item，内容长度: ${itemContent.length}`);
-                // 提取封面图片
-                const coverRegex = /<img[^>]+src="([^"]+)"[^>]*>/;
-                const coverMatch = coverRegex.exec(itemContent);
-                const cover = coverMatch ? coverMatch[1] : '';
-                // 提取小说标题和链接
-                const titleRegex = /<a[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>/g;
-                let titleMatch: RegExpExecArray | null;
-                let link = '';
-                let title = '';
-                // 找到dt标签内的a标签（第二个a标签通常是标题）
-                let matchCount = 0;
-                while ((titleMatch = titleRegex.exec(itemContent)) !== null) {
-                    matchCount++;
-                    if (matchCount === 2) { // 第二个a标签是标题
-                        link = titleMatch[1];
-                        title = titleMatch[2].trim();
-                        break;
-                    }
-                }
-                // 如果没找到第二个a标签，使用第一个
-                if (!title && !link) {
-                    titleRegex.lastIndex = 0; // 重置正则表达式
-                    titleMatch = titleRegex.exec(itemContent);
-                    if (titleMatch) {
-                        link = titleMatch[1];
-                        title = titleMatch[2].trim();
-                    }
-                }
-                // 提取作者
-                const authorRegex = /<span[^>]*>([^<]+)<\/span>/;
-                const authorMatch = authorRegex.exec(itemContent);
-                const author = authorMatch ? authorMatch[1].trim() : '未知作者';
-                // 提取简介
-                const descRegex = /<dd[^>]*>([^<]+)<\/dd>/;
-                const descMatch = descRegex.exec(itemContent);
-                const description = descMatch ? descMatch[1].trim() : '暂无简介';
-                hilog.info(0x0000, TAG, `解析结果 - 标题: ${title}, 作者: ${author}, 链接: ${link}`);
-                if (title && link) {
-                    novels.push({
-                        cover: cover.startsWith('http') ? cover : 'https://www.bqg128.com' + cover,
-                        title: title,
-                        author: author,
-                        description: description,
-                        link: link.startsWith('http') ? link : 'https://www.bqg128.com' + link
-                    } as NovelInfo);
-                    count++;
-                }
-            }
-            this.novelList = novels.slice(0, 4); // 只取4本小说
-            hilog.info(0x0000, TAG, '成功解析 ' + this.novelList.length + ' 本热门小说');
-            // 打印解析结果用于调试
-            this.novelList.forEach((novel, index) => {
-                hilog.info(0x0000, TAG, `小说${index + 1}: ${novel.title} - ${novel.author}`);
-            });
-        }
-        catch (error) {
-            hilog.error(0x0000, TAG, '解析热门内容失败: ' + JSON.stringify(error));
-            this.errorMessage = '解析数据失败';
         }
     }
     /**
@@ -278,12 +180,12 @@ class RecommendPage extends ViewPU {
                         Swiper.effectMode(EdgeEffect.None);
                         // 使用 Swiper 组件替代自定义轮播图
                         Swiper.indicator(new DotIndicator()
-                            .itemWidth(8)
-                            .itemHeight(8)
-                            .selectedItemWidth(12)
+                            .itemWidth(6)
+                            .itemHeight(6)
+                            .selectedItemWidth(8)
                             .selectedItemHeight(8)
-                            .color('#80808080') // 未选中指示器颜色
-                            .selectedColor('#FFFF0000'));
+                            .color({ "id": 16777294, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" }) // 未选中指示器颜色
+                            .selectedColor({ "id": 16777304, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" }));
                         // 使用 Swiper 组件替代自定义轮播图
                         Swiper.onChange((index: number) => {
                             this.currentIndex = index;
@@ -316,7 +218,7 @@ class RecommendPage extends ViewPU {
                                 // 小说封面
                                 Image.objectFit(ImageFit.Cover);
                                 // 小说封面
-                                Image.borderRadius(12);
+                                Image.borderRadius(20);
                             }, Image);
                             this.observeComponentCreation2((elmtId, isInitialRender) => {
                                 // 小说信息遮罩 - 与封面底部对齐
@@ -332,11 +234,11 @@ class RecommendPage extends ViewPU {
                                 // 小说信息遮罩 - 与封面底部对齐
                                 Column.alignSelf(ItemAlign.End);
                                 // 小说信息遮罩 - 与封面底部对齐
-                                Column.borderRadius({ bottomLeft: 12, bottomRight: 12 });
+                                Column.borderRadius({ bottomLeft: 20, bottomRight: 20 });
                             }, Column);
                             this.observeComponentCreation2((elmtId, isInitialRender) => {
                                 Text.create(novel.title);
-                                Text.fontSize(18);
+                                Text.fontSize(20);
                                 Text.fontWeight(FontWeight.Bold);
                                 Text.fontColor('#FFFFFF');
                                 Text.margin({ bottom: 8 });
@@ -381,11 +283,11 @@ class RecommendPage extends ViewPU {
                         // 刷新按钮
                         Button.margin({ top: 16 });
                         // 刷新按钮
-                        Button.backgroundColor('#007AFF');
+                        Button.backgroundColor({ "id": 16777304, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                         // 刷新按钮
                         Button.fontColor('#FFFFFF');
                         // 刷新按钮
-                        Button.borderRadius(8);
+                        Button.borderRadius(100);
                         // 刷新按钮
                         Button.width(120);
                         // 刷新按钮
@@ -393,11 +295,65 @@ class RecommendPage extends ViewPU {
                     }, Button);
                     // 刷新按钮
                     Button.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        // 应用推荐
+                        Row.create();
+                        // 应用推荐
+                        Row.width('90%');
+                        // 应用推荐
+                        Row.margin({ top: 16 });
+                        // 应用推荐
+                        Row.padding(14);
+                        // 应用推荐
+                        Row.backgroundColor({ "id": 16777274, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
+                        // 应用推荐
+                        Row.borderRadius(16);
+                        // 应用推荐
+                        Row.shadow({ radius: 8, color: '#1A191808', offsetX: 0, offsetY: 2 });
+                    }, Row);
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create('📖 应用推荐：');
+                        Text.fontSize(14);
+                        Text.margin({ right: 4 });
+                    }, Text);
+                    Text.pop();
+                    this.observeComponentCreation2((elmtId, isInitialRender) => {
+                        Text.create('留白写作助手');
+                        Text.fontSize(13);
+                        Text.fontColor({ "id": 16777304, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
+                        Text.fontWeight(FontWeight.Medium);
+                        Text.decoration({ type: TextDecorationType.Underline, color: '#3D8A5A' });
+                        Text.maxLines(1);
+                        Text.textOverflow({ overflow: TextOverflow.Ellipsis });
+                        Text.layoutWeight(1);
+                        Text.onClick(() => {
+                            this.openAppStore();
+                        });
+                    }, Text);
+                    Text.pop();
+                    // 应用推荐
+                    Row.pop();
                     Column.pop();
                 });
             }
         }, If);
         If.pop();
+    }
+    /**
+     * 打开应用市场-留白写作助手详情页
+     */
+    private openAppStore(): void {
+        try {
+            const context = getContext(this) as common.UIAbilityContext;
+            const wantParam: Want = {
+                parameters: { bundleName: 'com.liubai.ainovelasst' }
+            };
+            productViewManager.loadProduct(context, wantParam);
+            hilog.info(0x0000, TAG, '成功拉起应用市场详情页');
+        }
+        catch (error) {
+            hilog.error(0x0000, TAG, '拉起应用市场失败: ' + JSON.stringify(error));
+        }
     }
     /**
      * 打开小说详情
@@ -432,22 +388,42 @@ class RecommendPage extends ViewPU {
             Column.create();
             Column.width('100%');
             Column.height('100%');
-            Column.justifyContent(FlexAlign.Center);
-            Column.alignItems(HorizontalAlign.Center);
-            Column.backgroundColor('#F1F3F5');
+            Column.backgroundColor({ "id": 16777296, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
         }, Column);
         this.observeComponentCreation2((elmtId, isInitialRender) => {
-            // 标题
-            Text.create('小说推荐');
-            // 标题
-            Text.fontSize(24);
-            // 标题
+            // 顶部标题
+            Row.create();
+            // 顶部标题
+            Row.width('100%');
+            // 顶部标题
+            Row.height(56);
+            // 顶部标题
+            Row.padding({ left: 16, right: 16 });
+            // 顶部标题
+            Row.margin({ top: 44 });
+            // 顶部标题
+            Row.justifyContent(FlexAlign.SpaceBetween);
+            // 顶部标题
+            Row.alignItems(VerticalAlign.Center);
+        }, Row);
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Text.create('发现');
+            Text.fontSize(26);
             Text.fontWeight(FontWeight.Bold);
-            // 标题
-            Text.margin({ top: 20, bottom: 20 });
+            Text.fontColor({ "id": 16777307, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
         }, Text);
-        // 标题
         Text.pop();
+        this.observeComponentCreation2((elmtId, isInitialRender) => {
+            Image.create({ "id": 16777352, "type": 20000, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
+            Image.width(22);
+            Image.height(22);
+            Image.fillColor({ "id": 16777308, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
+            Image.onClick(() => {
+                this.loadRecommendNovels();
+            });
+        }, Image);
+        // 顶部标题
+        Row.pop();
         this.observeComponentCreation2((elmtId, isInitialRender) => {
             If.create();
             if (this.isLoading) {
@@ -476,7 +452,7 @@ class RecommendPage extends ViewPU {
                         // 错误状态
                         Text.create(this.errorMessage);
                         // 错误状态
-                        Text.fontColor('#FF0000');
+                        Text.fontColor({ "id": 16777310, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                         // 错误状态
                         Text.margin({ bottom: 16 });
                     }, Text);
@@ -484,6 +460,8 @@ class RecommendPage extends ViewPU {
                     Text.pop();
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Button.createWithLabel('重试');
+                        Button.backgroundColor({ "id": 16777304, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
+                        Button.borderRadius(12);
                         Button.onClick(() => {
                             this.loadRecommendNovels();
                         });
@@ -500,7 +478,7 @@ class RecommendPage extends ViewPU {
                     this.observeComponentCreation2((elmtId, isInitialRender) => {
                         Text.create('暂无推荐小说');
                         Text.fontSize(16);
-                        Text.fontColor('#808080');
+                        Text.fontColor({ "id": 16777309, "type": 10001, params: [], "bundleName": "liubai.yuedu.hos", "moduleName": "entry" });
                     }, Text);
                     Text.pop();
                     // 空状态

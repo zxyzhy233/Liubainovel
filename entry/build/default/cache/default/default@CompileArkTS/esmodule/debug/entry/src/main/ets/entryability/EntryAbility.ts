@@ -1,5 +1,5 @@
 import type AbilityConstant from "@ohos:app.ability.AbilityConstant";
-import type { Configuration as Configuration } from "@ohos:app.ability.Configuration";
+import type { Configuration } from "@ohos:app.ability.Configuration";
 import UIAbility from "@ohos:app.ability.UIAbility";
 import type Want from "@ohos:app.ability.Want";
 import hilog from "@ohos:hilog";

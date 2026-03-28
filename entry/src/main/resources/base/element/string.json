@@ -10,7 +10,7 @@
     },
     {
       "name": "EntryAbility_label",
-      "value": "留白小说"
+      "value": "留白阅读"
     },
     {
       "name": "import_successful_tips",
@@ -70,7 +70,87 @@
     },
     {
       "name": "permission_reason",
-      "value": "需要此权限以记录阅读进度"
+      "value": "需要访问媒体文件以导入和阅读电子书"
+    },
+    {
+      "name": "background_task_reason",
+      "value": "需要在后台运行以继续语音朗读功能"
+    },
+    {
+      "name": "microphone_reason",
+      "value": "需要使用麦克风进行语音输入和语音朗读功能"
+    },
+    {
+      "name": "download_permission_reason",
+      "value": "需要访问下载目录以保存小说文件"
+    },
+    {
+      "name": "pageflip_full_size",
+      "value": "100%"
+    },
+    {
+      "name": "pageflip_topview_row_image_width",
+      "value": "10%"
+    },
+    {
+      "name": "pageflip_bottomview_row_text_height",
+      "value": "6%"
+    },
+    {
+      "name": "pageflip_bottom_comment",
+      "value": "写下这一刻的想法..."
+    },
+    {
+      "name": "pageflip_bottomview_row_text_width",
+      "value": "90%"
+    },
+    {
+      "name": "pageflip_default_toast",
+      "value": "该按钮仅供展示使用"
+    },
+    {
+      "name": "pageflip_bottomview_row_image_width",
+      "value": "20%"
+    },
+    {
+      "name": "pageflip_bottomview_row_image_height",
+      "value": "5%"
+    },
+    {
+      "name": "pageflip_topview_row_image_height",
+      "value": "70%"
+    },
+    {
+      "name": "pageflip_topview_row_row_image_width",
+      "value": "25%"
+    },
+    {
+      "name": "pageflip_topview_row_row_image_height",
+      "value": "60%"
+    },
+    {
+      "name": "pageflip_topview_row_height",
+      "value": "8%"
+    },
+    {
+      "name": "pageflip_back_error_message",
+      "value": "请实现页面返回功能"
+    },
+    {
+      "name": "pageflip_button_text_reader",
+      "value": "文本朗读"
+    },
+    {
+      "name": "pageflip_button_text_size",
+      "value": "字体变小"
+    },
+    {
+      "name": "pageflip_button_text_bgcolor",
+      "value": "背景颜色"
+    },
+    {
+      "name": "pageflip_button_text_reader_bg",
+      "value": "阅读背景"
     }
   ]
 }

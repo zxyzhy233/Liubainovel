@@ -1,0 +1,58 @@
+[
+  {
+    "bookSourceName": "笔趣阁",
+    "bookSourceUrl": "https://www.bqg128.cc",
+    "bookSourceGroup": "默认",
+    "bookSourceComment": "系统默认书源(CSS选择器版)，支持小说搜索和阅读",
+    "bookSourceType": 0,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "enabledReview": false,
+    "header": "",
+    "searchUrl": "https://www.bqg128.cc/s?q={{key}}",
+    "exploreUrl": "https://www.bqg128.cc",
+    "bookUrlPattern": "",
+    "weight": 100,
+    "customOrder": 1,
+    "ruleSearch": {
+      "bookList": "",
+      "name": "",
+      "author": "",
+      "bookUrl": "",
+      "coverUrl": "",
+      "intro": "",
+      "lastChapter": "",
+      "kind": ""
+    },
+    "ruleExplore": {
+      "bookList": ".item",
+      "name": "dt a@text",
+      "author": "dd a@text",
+      "bookUrl": "dt a@href",
+      "coverUrl": "img@src",
+      "intro": "dd.intro@text"
+    },
+    "ruleBookInfo": {
+      "name": "meta[property='og:novel:book_name']@content",
+      "author": "meta[property='og:novel:author']@content",
+      "coverUrl": "meta[property='og:image']@content",
+      "intro": "meta[property='og:description']@content",
+      "kind": "meta[property='og:novel:category']@content",
+      "lastChapter": "meta[property='og:novel:latest_chapter_name']@content",
+      "updateTime": "meta[property='og:novel:update_time']@content",
+      "status": "meta[property='og:novel:status']@content",
+      "tocUrl": ""
+    },
+    "ruleToc": {
+      "chapterList": ".listmain dd a",
+      "chapterName": ":self@text",
+      "chapterUrl": ":self@href"
+    },
+    "ruleContent": {
+      "content": "#chaptercontent",
+      "replaceRegex": "笔趣阁##||www\\.bqg128\\.cc##||请收藏本站.*?<br />##||<br />##\n||最⊥新⊥小⊥说⊥在⊥六⊥9⊥⊥书⊥⊥吧⊥⊥首⊥发！<br />##"
+    },
+    "ruleReview": {}
+  }
+]

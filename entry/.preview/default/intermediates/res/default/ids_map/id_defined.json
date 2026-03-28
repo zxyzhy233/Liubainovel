@@ -351,5 +351,57 @@
 			"type":	"media",
 			"name":	"icon_startwindow",
 			"id":	"0x01000057"
+		}, {
+			"type":	"media",
+			"name":	"headset",
+			"id":	"0x01000058"
+		}, {
+			"type":	"media",
+			"name":	"ic_check",
+			"id":	"0x01000059"
+		}, {
+			"type":	"string",
+			"name":	"background_task_reason",
+			"id":	"0x0100005A"
+		}, {
+			"type":	"string",
+			"name":	"microphone_reason",
+			"id":	"0x0100005C"
+		}, {
+			"type":	"media",
+			"name":	"Globe",
+			"id":	"0x0100005D"
+		}, {
+			"type":	"media",
+			"name":	"ic_next",
+			"id":	"0x0100005E"
+		}, {
+			"type":	"media",
+			"name":	"ic_back",
+			"id":	"0x0100005F"
+		}, {
+			"type":	"media",
+			"name":	"ic_book_cover",
+			"id":	"0x01000060"
+		}, {
+			"type":	"media",
+			"name":	"ic_toc",
+			"id":	"0x01000061"
+		}, {
+			"type":	"media",
+			"name":	"ic_search_empty",
+			"id":	"0x01000062"
+		}, {
+			"type":	"media",
+			"name":	"ic_error",
+			"id":	"0x01000063"
+		}, {
+			"type":	"media",
+			"name":	"User",
+			"id":	"0x01000064"
+		}, {
+			"type":	"string",
+			"name":	"download_permission_reason",
+			"id":	"0x01000065"
 		}]
 }

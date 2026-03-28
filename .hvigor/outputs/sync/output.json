@@ -1,27 +1,27 @@
 {
+  "version": 1,
   "ohos-module-entry": {
     "SELECT_TARGET": "default",
-    "MODULE_BUILD_DIR": "D:\\liubaixiaoshuo\\Liubainovel\\entry\\build",
-    "DEPENDENCY_INFO": {},
+    "MODULE_BUILD_DIR": "D:\\HMAPPTEST\\LiubaiNovel-ReReader\\entry\\build",
     "TARGETS": {
       "default": {
-        "SOURCE_ROOT": "D:\\liubaixiaoshuo\\Liubainovel\\entry\\src\\main",
+        "SOURCE_ROOT": "D:\\HMAPPTEST\\LiubaiNovel-ReReader\\entry\\src\\main",
         "RESOURCES_PATH": [
-          "D:\\liubaixiaoshuo\\Liubainovel\\entry\\src\\main\\resources"
+          "D:\\HMAPPTEST\\LiubaiNovel-ReReader\\entry\\src\\main\\resources"
         ],
         "BUILD_PATH": {
-          "OUTPUT_PATH": "D:\\liubaixiaoshuo\\Liubainovel\\entry\\build\\default\\outputs\\default",
-          "INTERMEDIA_PATH": "D:\\liubaixiaoshuo\\Liubainovel\\entry\\build\\default\\intermediates",
-          "JS_ASSETS_PATH": "D:\\liubaixiaoshuo\\Liubainovel\\entry\\build\\default\\intermediates\\loader_out\\default",
-          "JS_LITE_ASSETS_PATH": "D:\\liubaixiaoshuo\\Liubainovel\\entry\\build\\default\\intermediates\\loader_out_lite\\default",
-          "RES_PATH": "D:\\liubaixiaoshuo\\Liubainovel\\entry\\build\\default\\intermediates\\res\\default",
-          "RES_PROFILE_PATH": "D:\\liubaixiaoshuo\\Liubainovel\\entry\\build\\default\\intermediates\\res\\default\\resources\\base\\profile",
-          "ETS_SUPER_VISUAL_PATH": "D:\\liubaixiaoshuo\\Liubainovel\\entry\\build\\default\\cache\\default\\default@CompileArkTS\\esmodule",
-          "JS_SUPER_VISUAL_PATH": "D:\\liubaixiaoshuo\\Liubainovel\\entry\\build\\default\\cache\\default\\default@CompileJS\\jsbundle",
-          "WORKER_LOADER": "D:\\liubaixiaoshuo\\Liubainovel\\entry\\build\\default\\intermediates\\loader\\default\\loader.json",
-          "MANIFEST_JSON": "D:\\liubaixiaoshuo\\Liubainovel\\entry\\build\\default\\intermediates\\manifest\\default",
-          "OUTPUT_METADATA_JSON": "D:\\liubaixiaoshuo\\Liubainovel\\entry\\build\\default\\intermediates\\hap_metadata\\default\\output_metadata.json",
-          "SOURCE_MAP_DIR": "D:\\liubaixiaoshuo\\Liubainovel\\entry\\build\\default\\intermediates\\source_map\\default"
+          "OUTPUT_PATH": "D:\\HMAPPTEST\\LiubaiNovel-ReReader\\entry\\build\\default\\outputs\\default",
+          "INTERMEDIA_PATH": "D:\\HMAPPTEST\\LiubaiNovel-ReReader\\entry\\build\\default\\intermediates",
+          "JS_ASSETS_PATH": "D:\\HMAPPTEST\\LiubaiNovel-ReReader\\entry\\build\\default\\intermediates\\loader_out\\default",
+          "JS_LITE_ASSETS_PATH": "D:\\HMAPPTEST\\LiubaiNovel-ReReader\\entry\\build\\default\\intermediates\\loader_out_lite\\default",
+          "RES_PATH": "D:\\HMAPPTEST\\LiubaiNovel-ReReader\\entry\\build\\default\\intermediates\\res\\default",
+          "RES_PROFILE_PATH": "D:\\HMAPPTEST\\LiubaiNovel-ReReader\\entry\\build\\default\\intermediates\\res\\default\\resources\\base\\profile",
+          "ETS_SUPER_VISUAL_PATH": "D:\\HMAPPTEST\\LiubaiNovel-ReReader\\entry\\build\\default\\cache\\default\\default@CompileArkTS\\esmodule",
+          "JS_SUPER_VISUAL_PATH": "D:\\HMAPPTEST\\LiubaiNovel-ReReader\\entry\\build\\default\\cache\\default\\default@CompileJS\\jsbundle",
+          "WORKER_LOADER": "D:\\HMAPPTEST\\LiubaiNovel-ReReader\\entry\\build\\default\\intermediates\\loader\\default\\loader.json",
+          "MANIFEST_JSON": "D:\\HMAPPTEST\\LiubaiNovel-ReReader\\entry\\build\\default\\intermediates\\manifest\\default",
+          "OUTPUT_METADATA_JSON": "D:\\HMAPPTEST\\LiubaiNovel-ReReader\\entry\\build\\default\\intermediates\\hap_metadata\\default\\output_metadata.json",
+          "SOURCE_MAP_DIR": "D:\\HMAPPTEST\\LiubaiNovel-ReReader\\entry\\build\\default\\intermediates\\source_map\\default"
         },
         "BUILD_OPTION": {
           "debuggable": true
@@ -69,24 +69,27 @@
   },
   "ohos-project": {
     "SELECT_PRODUCT_NAME": "default",
-    "MODULE_BUILD_DIR": "D:\\liubaixiaoshuo\\Liubainovel\\build",
+    "MODULE_BUILD_DIR": "D:\\HMAPPTEST\\LiubaiNovel-ReReader\\build",
     "BUNDLE_NAME": "liubai.yuedu.hos",
+    "VERSION_CODE": 1000000,
+    "VERSION_NAME": "1.0.0",
     "BUILD_PATH": {
-      "OUTPUT_PATH": "D:\\liubaixiaoshuo\\Liubainovel\\build\\outputs\\default"
+      "OUTPUT_PATH": "D:\\HMAPPTEST\\LiubaiNovel-ReReader\\build\\outputs\\default"
     },
     "MODULES": [
       {
         "name": "entry",
-        "srcPath": "D:\\liubaixiaoshuo\\Liubainovel\\entry",
+        "srcPath": "D:\\HMAPPTEST\\LiubaiNovel-ReReader\\entry",
         "targets": [
           {
             "name": "default",
             "applyToProducts": [
-              "default"
+              "default",
+              "zxyzhy233"
             ]
           }
         ],
-        "belongProjectPath": "D:\\liubaixiaoshuo\\Liubainovel"
+        "belongProjectPath": "D:\\HMAPPTEST\\LiubaiNovel-ReReader"
       }
     ],
     "PROFILE_OPT": {
@@ -96,13 +99,13 @@
             "name": "default",
             "type": "HarmonyOS",
             "material": {
-              "certpath": "C:\\Users\\47539\\.ohos\\config\\default_Liubainovel_U9BWodJFaVx_DJWglyobLK00RVOtLrEO_Qho7OMdfC8=.cer",
+              "certpath": "C:\\Users\\zxyzhy233\\.ohos\\config\\default_LiubaiNovel-ReReader_U1UTVGz8nzXoDVi686OyEZxVoEKg_W5HfTmv5fg-wcI=.cer",
               "keyAlias": "debugKey",
-              "keyPassword": "0000001A9CE098D20E294DDE80A4DAAA605727C8B74D0E0C08EC806F0462695B5B0311F9AC535AAA1F6E",
-              "profile": "C:\\Users\\47539\\.ohos\\config\\default_Liubainovel_U9BWodJFaVx_DJWglyobLK00RVOtLrEO_Qho7OMdfC8=.p7b",
+              "keyPassword": "0000001BC095C897361F50464BCEF06037052A9239D9DF381E5A5E469D333510A75FDE5D2925A616C437DF",
+              "profile": "C:\\Users\\zxyzhy233\\.ohos\\config\\default_LiubaiNovel-ReReader_U1UTVGz8nzXoDVi686OyEZxVoEKg_W5HfTmv5fg-wcI=.p7b",
               "signAlg": "SHA256withECDSA",
-              "storeFile": "C:\\Users\\47539\\.ohos\\config\\default_Liubainovel_U9BWodJFaVx_DJWglyobLK00RVOtLrEO_Qho7OMdfC8=.p12",
-              "storePassword": "0000001A12B5D3A8FF0E9FBEC10674D4F96AA22493CB23D72B49E315B8454F1C6D6280AC5B127B0E3965"
+              "storeFile": "C:\\Users\\zxyzhy233\\.ohos\\config\\default_LiubaiNovel-ReReader_U1UTVGz8nzXoDVi686OyEZxVoEKg_W5HfTmv5fg-wcI=.p12",
+              "storePassword": "0000001BE54A5D97862B5A7E38137AE7375046E9CD67DA74CC638C805A698DC87D2E15E7546F1DA6CAC46B"
             }
           }
         ],
@@ -112,7 +115,16 @@
             "signingConfig": "default",
             "compatibleSdkVersion": "5.0.4(16)",
             "runtimeOS": "HarmonyOS",
-            "buildOption": {}
+            "buildOption": {},
+            "targetSdkVersion": "5.0.4(16)"
+          },
+          {
+            "name": "zxyzhy233",
+            "signingConfig": "zxyzhy233",
+            "compatibleSdkVersion": "5.0.4(16)",
+            "runtimeOS": "HarmonyOS",
+            "buildOption": {},
+            "targetSdkVersion": "5.0.4(16)"
           }
         ],
         "buildModeSet": [
@@ -120,7 +132,7 @@
             "name": "debug"
           },
           {
-            "name": "release"
+            "name": "zxyzhy233"
           }
         ]
       },
@@ -132,7 +144,8 @@
             {
               "name": "default",
               "applyToProducts": [
-                "default"
+                "default",
+                "zxyzhy233"
               ]
             }
           ]
@@ -145,9 +158,8 @@
       "hvigor.keepDependency": true
     },
     "OVERALL_PROJECT_PATHS": [
-      "D:\\liubaixiaoshuo\\Liubainovel"
+      "D:\\HMAPPTEST\\LiubaiNovel-ReReader"
     ],
     "BUILD_CACHE_DIR": ""
-  },
-  "version": 1
+  }
 }
